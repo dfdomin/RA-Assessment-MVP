@@ -1,53 +1,57 @@
-# RA Assessment App
+# RA Assessment MVP
 
-Aplicacion web para reemplazar el flujo Excel/VBA de assessment de Resultados de Aprendizaje del programa Tecnologia en Gestion Administrativa.
+**MVP de la aplicación de assessment de Resultados de Aprendizaje (ABET) para IUB/Unibarranquilla.**
 
-## Stack previsto
+Este repositorio es la versión migrada a **Supabase + GitHub Pages** del proyecto original [RA-Assessment-App](https://github.com/dfdomin/RA-Assessment-App) (FastAPI + PostgreSQL + Hetzner).
 
-- Backend: FastAPI
-- Base de datos: PostgreSQL
-- Frontend: HTML, CSS y JavaScript estatico
-- Migraciones: Alembic
-- Reportes: WeasyPrint, openpyxl y python-docx
-- Seguridad: JWT en cookie httpOnly, RBAC, audit log, rate limiting, Bandit, pip-audit
+## ¿Por qué este MVP?
 
-## Estado actual
+El objetivo es probar que la aplicación funciona completamente sin necesidad de un servidor propio (Hetzner), usando:
 
-Este repositorio inicia en fase **S0 — Architecture & Continuity Spine**.
+- **Supabase** (free tier) como backend: base de datos PostgreSQL, autenticación, y Edge Functions
+- **GitHub Pages** como hosting estático gratuito para el frontend HTML/CSS/JS
 
-Antes de implementar features, revisar:
+Si el MVP funciona, se puede decidir si mantener Supabase o migrar a Hetzner.
 
-- `docs/PRD.md`
-- `docs/llm_council_ra_assessment_resultado.md`
-- `memory/PROJECT_STATE.md`
-- `memory/NEXT_STEPS.md`
-- `memory/DECISIONS.md`
+## Stack
 
-## Desarrollo local con PostgreSQL
+| Componente | Tecnología |
+|------------|-----------|
+| Frontend | HTML/CSS/JS vanilla |
+| Backend | Supabase (PostgREST + Auth + Edge Functions) |
+| Base de datos | PostgreSQL 15 (Supabase) |
+| Auth | Supabase Auth |
+| Hosting | GitHub Pages |
+| Reportes | Edge Functions (Deno/TypeScript) |
 
-Para ejecutar los tests de integración contra PostgreSQL real (capa 2 del plan E2E):
+## Estado
 
-```bash
-# 1. Levantar PostgreSQL 16 con Docker
-docker compose up -d db
+- **Fase actual**: Plan de migración creado. Ver `docs/MIGRATION_PLAN.md`.
+- **Origen**: 201 tests, S0-S5 completos en el repo original
+- **Pendiente**: 28 tareas en 7 bloques (A-G)
 
-# 2. Correr los tests PG opt-in
-TEST_PG_URL=postgresql+asyncpg://ra:local_only@localhost:5432/ra_test \
-  .venv/bin/python -m pytest tests/ -m pg -v
+## Estructura
 
-# 3. Bajar el contenedor al terminar
-docker compose down
+```
+frontend/        → HTML/CSS/JS (páginas estáticas)
+supabase/        → Migraciones SQL, Edge Functions, seed data
+docs/            → Documentación del proyecto
+tests/e2e/       → Tests Playwright
+memory/          → Memoria del proyecto (PROJECT_STATE, NEXT_STEPS, DECISIONS)
 ```
 
-Requiere Docker Desktop o Docker Engine disponible. Esta base es solo para pruebas locales y debe tratarse como descartable; no usarla con datos reales.
+## Guía Rápida
 
-Ver `docs/TEST_PLAN.md §11.2` para la lista completa de tests PG-01 a PG-05 y `memory/DECISIONS.md ADR-16` para la justificación de esta estrategia.
+1. Leer `docs/PRD.md` — fuente de verdad del producto
+2. Leer `docs/MIGRATION_PLAN.md` — plan de migración a Supabase
+3. Revisar `docs/DATA_MODEL.md` — modelo de datos completo
+4. Revisar `docs/ROLE_PERMISSION_MATRIX.md` — roles y permisos
 
-## Flujo de trabajo
+## Repo Original
 
-1. Leer los archivos de `memory/`.
-2. Elegir un slice pequeno.
-3. Implementar con pruebas.
-4. Ejecutar validaciones.
-5. Actualizar documentacion y memoria.
-6. Commit pequeno y revisable.
+El desarrollo completo (S0-S5, 201 tests, ~40 endpoints) está en:
+https://github.com/dfdomin/RA-Assessment-App
+
+---
+
+**IUB / Unibarranquilla — Facultad de Ciencias Económicas y Administrativas**
