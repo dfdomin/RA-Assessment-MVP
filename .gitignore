@@ -28,3 +28,6 @@ build/
 
 /tmp/
 /reports/generated/
+
+# Supabase
+supabase/.temp/
