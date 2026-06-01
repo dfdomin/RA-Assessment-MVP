@@ -12,14 +12,14 @@
   var wizardPanels = Array.from(document.querySelectorAll("[data-step-panel]"));
   var wizardNextBtn = document.getElementById("wizard-next-btn");
   var wizardPrevBtn = document.getElementById("wizard-prev-btn");
-  var moduleInfo = document.getElementById("module-info");
+  var moduleInfo = document.querySelector("#module-summary dd");
   var studentsBody = document.getElementById("students-body");
   var distributionBody = document.getElementById("distribution-body");
   var analysisBody = document.getElementById("analysis-body");
   var submitModuleBtn = document.getElementById("submit-module-btn");
   var saveAssessmentsBtn = document.getElementById("save-assessments-btn");
   var saveQualitativeBtn = document.getElementById("save-qualitative-btn");
-  var statusMsg = document.getElementById("status-message");
+  var statusMsg = document.getElementById("assessment-status");
   var stepOrder = ["general", "grading", "distribution", "analysis", "submit"];
   var currentStepIndex = 0;
 
