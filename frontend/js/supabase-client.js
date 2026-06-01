@@ -43,10 +43,10 @@ async function hasRole(role) {
 async function requireAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-        window.location.href = '/frontend/index.html';
+        window.location.href = './index.html';
         return null;
     }
     return session;
 }
 
-console.log('[Supabase] Client initialized');
+console.log('[Supabase] Client initialized with project: ra-assessment-mvp');
