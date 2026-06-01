@@ -27,663 +27,355 @@
   let currentModules = [];
   let currentTrackingRows = [];
 
+  const periodCache = new Map();
+  const activePiCache = new Map();
+
+  function redirectToIndex() { window.location.replace("./index.html"); }
+
+  function ensureSupabase() {
+    if (typeof supabase === "undefined" || !supabase || !supabase.auth) {
+      throw new Error("Supabase client not available.");
+    }
+    return supabase;
+  }
+
+  async function requireSession() {
+    const sb = ensureSupabase();
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
+    if (!data || !data.session) { redirectToIndex(); return null; }
+    return data.session;
+  }
+
   function setStatus(message, kind) {
     modulesStatus.textContent = message;
     modulesStatus.className = "status-message" + (kind ? " " + kind : "");
   }
-
   function setLeaderAnalysisStatus(message, kind) {
     leaderAnalysisStatus.textContent = message;
     leaderAnalysisStatus.className = "status-message" + (kind ? " " + kind : "");
   }
-
   function setLeaderReportStatus(message, kind) {
     leaderReportStatus.textContent = message;
     leaderReportStatus.className = "status-message" + (kind ? " " + kind : "");
   }
 
   function safeText(value) {
-    if (value === null || value === undefined || value === "") {
-      return "—";
-    }
+    if (value === null || value === undefined || value === "") return "—";
     return String(value);
   }
 
   function statusLabel(status) {
-    const labels = {
-      pending: "Pendiente",
-      in_progress: "En progreso",
-      completed: "Completado",
-    };
+    const labels = { pending: "Pendiente", in_progress: "En progreso", completed: "Completado" };
     return labels[status] || safeText(status);
   }
 
-  function progressText(moduleItem) {
-    const active = Number(moduleItem.students_active || 0);
-    const graded = Number(moduleItem.students_graded || 0);
-    const pending = Math.max(active - graded, 0);
-    return "Activos: " + active + " | Calificados: " + graded + " | Pendientes: " + pending;
+  function progressText(m) {
+    const active = Number(m.students_active || 0);
+    const graded = Number(m.students_graded || 0);
+    return "Activos: " + active + " | Calificados: " + graded + " | Pendientes: " + Math.max(active - graded, 0);
   }
 
-  function teacherText(moduleItem) {
-    if (!moduleItem.teacher) {
-      return "Sin docente";
-    }
-    return moduleItem.teacher.full_name;
+  function teacherText(m) {
+    if (!m.teacher) return "Sin docente";
+    return m.teacher.full_name;
   }
 
-  function isLeader() {
-    return currentUser && currentUser.role === "leader";
-  }
+  function isLeader() { return currentUser && currentUser.role === "leader"; }
 
   function selectedPeriodName() {
     const option = periodSelect.options[periodSelect.selectedIndex];
-    return option ? option.textContent : "período seleccionado";
+    return option ? option.textContent : "periodo";
   }
 
   function renderEmpty(message) {
     modulesBody.innerHTML = "";
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 6;
-    cell.textContent = message;
-    row.appendChild(cell);
-    modulesBody.appendChild(row);
+    const row = document.createElement("tr"), cell = document.createElement("td");
+    cell.colSpan = 6; cell.textContent = message;
+    row.appendChild(cell); modulesBody.appendChild(row);
   }
 
   function updatePeriodProgress(modules) {
     const total = modules.length;
-    const completed = modules.filter(function (moduleItem) {
-      return moduleItem.status === "completed";
-    }).length;
-    const percent = total ? Math.round((completed / total) * 100) : 0;
-
-    periodProgressText.textContent = completed + " de " + total + " (" + percent + "%)";
-    periodProgressBar.style.width = percent + "%";
+    const completed = modules.filter(function(m) { return m.status === "completed"; }).length;
+    periodProgressText.textContent = completed + " de " + total + " (" + (total ? Math.round((completed / total) * 100) : 0) + "%)";
+    periodProgressBar.style.width = (total ? Math.round((completed / total) * 100) : 0) + "%";
   }
 
   function renderModules(modules) {
     currentModules = modules;
     modulesBody.innerHTML = "";
     updatePeriodProgress(modules);
-
-    if (!modules.length) {
-      renderEmpty("Sin módulos asignados para este período.");
-      setStatus("Sin módulos asignados.", "info");
-      return;
-    }
-
-    modules.forEach(function (moduleItem) {
+    if (!modules.length) { renderEmpty("Sin modulos asignados."); setStatus("Sin modulos.", "info"); return; }
+    modules.forEach(function(m) {
       const row = document.createElement("tr");
-      const actionHref = "/assessment.html?module_id=" + moduleItem.id;
-      const cells = [
-        safeText(moduleItem.course_name),
-        safeText(moduleItem.group_name),
-        teacherText(moduleItem),
-        statusLabel(moduleItem.status),
-        progressText(moduleItem),
-      ];
-
-      cells.forEach(function (text) {
-        const cell = document.createElement("td");
-        cell.textContent = text;
-        row.appendChild(cell);
-      });
-
-      const actionCell = document.createElement("td");
-      const action = document.createElement("a");
-      action.className = "table-action";
-      action.href = actionHref;
-      action.textContent = isLeader() ? "Revisar" : "Calificar";
-      actionCell.appendChild(action);
-      row.appendChild(actionCell);
-
+      const actionHref = "./assessment.html?module_id=" + m.id;
+      [safeText(m.course_name), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
+        .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
+      const ac = document.createElement("td"), a = document.createElement("a");
+      a.className = "table-action"; a.href = actionHref;
+      a.textContent = isLeader() ? "Revisar" : "Calificar";
+      ac.appendChild(a); row.appendChild(ac);
       modulesBody.appendChild(row);
     });
+    setStatus("Modulos cargados: " + modules.length + ".", "success");
+  }
 
-    setStatus("Módulos cargados: " + modules.length + ".", "success");
+  function normalizeTeacher(m) {
+    const staff = (m && m.module_staff) || [];
+    if (!staff.length) return null;
+    const f = staff[0];
+    return { id: f.user_id, full_name: (f.users && f.users.full_name) || "—" };
   }
 
   async function loadUser() {
     try {
-      const res = await fetch("/api/v1/me", { credentials: "same-origin" });
-      if (res.status === 401) {
-        window.location.replace("/index.html");
-        return false;
-      }
-      if (!res.ok) {
-        welcomeMsg.textContent = "No se pudo cargar la información.";
-        return false;
-      }
-      const data = await res.json();
-      currentUser = data;
-      welcomeMsg.textContent = "Hola, " + data.full_name + " (" + data.role + ")";
-      if (isLeader()) {
-        leaderPanel.hidden = false;
-      }
+      await requireSession();
+      const sb = ensureSupabase();
+      const { data: ud, error: ue } = await sb.auth.getUser();
+      if (ue || !ud || !ud.user) { redirectToIndex(); return false; }
+      const { data: profile, error: pe } = await sb.from("users").select("*").eq("id", ud.user.id).single();
+      if (pe) throw pe;
+      currentUser = profile;
+      welcomeMsg.textContent = "Hola, " + safeText(profile.full_name) + " (" + safeText(profile.role) + ")";
+      leaderPanel.hidden = !isLeader();
+      leaderReportPdfBtn.hidden = true;
+      leaderReportDocxBtn.hidden = true;
       return true;
-    } catch (_) {
-      welcomeMsg.textContent = "No se pudo cargar la información.";
-      return false;
-    }
+    } catch (e) { console.error(e); welcomeMsg.textContent = "No se pudo cargar."; return false; }
+  }
+
+  async function getPeriod(id) {
+    if (periodCache.has(id)) return periodCache.get(id);
+    const { data, error } = await ensureSupabase().from("periods").select("id, rubric_id").eq("id", id).single();
+    if (error) throw error;
+    periodCache.set(id, data);
+    return data;
+  }
+
+  async function getActivePis(periodId) {
+    if (activePiCache.has(periodId)) return activePiCache.get(periodId);
+    const p = await getPeriod(periodId);
+    if (!p || !p.rubric_id) { activePiCache.set(periodId, []); return []; }
+    const { data, error } = await ensureSupabase().from("perf_indicators").select("id").eq("rubric_id", p.rubric_id).eq("is_active", true).order("position");
+    if (error) throw error;
+    const ids = (data || []).map(function(r) { return r.id; });
+    activePiCache.set(periodId, ids);
+    return ids;
+  }
+
+  async function countActive(moduleId) {
+    const { count, error } = await ensureSupabase().from("module_students").select("*", { count: "exact", head: true }).eq("module_id", moduleId).eq("status", "active");
+    if (error) throw error;
+    return Number(count || 0);
+  }
+
+  async function countGraded(moduleId, piIds) {
+    if (!piIds.length) return 0;
+    const sb = ensureSupabase();
+    const { data: ms } = await sb.from("module_students").select("id").eq("module_id", moduleId).eq("status", "active");
+    if (!ms || !ms.length) return 0;
+    const msIds = ms.map(function(r) { return r.id; });
+    const { data: a } = await sb.from("assessments").select("module_student_id, perf_indicator_id").in("module_student_id", msIds).in("perf_indicator_id", piIds);
+    const counts = new Map();
+    (a || []).forEach(function(r) {
+      if (!counts.has(r.module_student_id)) counts.set(r.module_student_id, new Set());
+      counts.get(r.module_student_id).add(r.perf_indicator_id);
+    });
+    return msIds.filter(function(id) { return (counts.get(id) || new Set()).size === piIds.length; }).length;
   }
 
   async function loadModules(periodId) {
-    if (!periodId) {
-      renderEmpty("Selecciona un período para cargar módulos.");
-      setStatus("Selecciona un período.", "info");
-      return;
-    }
-
-    setStatus("Cargando módulos…");
-    renderEmpty("Cargando módulos…");
-
+    if (!periodId) { renderEmpty("Selecciona un periodo."); return; }
+    setStatus("Cargando..."); renderEmpty("Cargando...");
     try {
-      const response = await fetch("/api/v1/periods/" + periodId + "/modules", {
-        credentials: "same-origin",
+      await requireSession();
+      const sb = ensureSupabase();
+      const { data: rows, error } = await sb.from("modules").select("*, module_staff(user_id, users(full_name))").eq("period_id", periodId).order("course_code").order("group_name");
+      if (error) throw error;
+      const piIds = await getActivePis(periodId);
+      const modules = (rows || []).map(function(r) {
+        const m = Object.assign({}, r);
+        m.teacher = normalizeTeacher(r);
+        m.students_active = 0;
+        m.students_graded = 0;
+        return m;
       });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!response.ok) {
-        renderEmpty("No se pudieron cargar los módulos.");
-        setStatus("No se pudieron cargar los módulos.", "error");
-        return;
-      }
-
-      renderModules(await response.json());
-      if (isLeader()) {
-        await loadLeaderDashboard(periodId);
-      }
-    } catch (_) {
-      renderEmpty("No se pudieron cargar los módulos.");
-      setStatus("No se pudo conectar con el servidor.", "error");
-    }
+      await Promise.all(modules.map(async function(m) {
+        try { m.students_active = await countActive(m.id); m.students_graded = await countGraded(m.id, piIds); } catch(e) { console.error(e); }
+      }));
+      renderModules(modules);
+      if (isLeader()) await loadLeaderDashboard(periodId);
+    } catch(e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
   }
 
   async function loadReportPreview(periodId) {
-    reportPreview.textContent = "Cargando resumen ejecutivo…";
-
+    reportPreview.textContent = "Cargando...";
     try {
-      const response = await fetch("/api/v1/periods/" + periodId + "/report/preview", {
-        credentials: "same-origin",
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!response.ok) {
-        reportPreview.textContent = "No se pudo cargar el reporte.";
-        return;
-      }
-
-      const report = await response.json();
-      const distributionCount = Object.keys(report.distribution_by_pi || {}).length;
-      reportPreview.textContent =
-        selectedPeriodName() +
-        " · " +
-        safeText(report.student_outcome && report.student_outcome.code) +
-        " · PIs con distribución: " +
-        distributionCount;
-    } catch (_) {
-      reportPreview.textContent = "No se pudo conectar con el servidor.";
-    }
+      await requireSession();
+      const { data: p } = await ensureSupabase().from("periods").select("*, student_outcomes(code)").eq("id", periodId).single();
+      reportPreview.textContent = selectedPeriodName() + " · " + safeText(p && p.student_outcomes && p.student_outcomes.code);
+    } catch(e) { reportPreview.textContent = "Error."; }
   }
 
-  function mergeAnalysisItems(actionPlanData, leaderAnalysisData) {
+  function mergeAnalysis(actionPlanData, leaderAnalysisData) {
     const saved = {};
-    (leaderAnalysisData.analyses || []).forEach(function (item) {
-      saved[item.perf_indicator_id] = item.analysis_text;
-    });
-
-    return (actionPlanData.plans || []).map(function (plan) {
-      return {
-        perf_indicator_id: plan.perf_indicator_id,
-        pi_code: plan.pi_code,
-        standard: plan.standard,
-        suggested_action_type: plan.suggested_action_type,
-        analysis_text: saved[plan.perf_indicator_id] || "",
-      };
+    (leaderAnalysisData.analyses || []).forEach(function(a) { saved[a.perf_indicator_id] = a.analysis_text; });
+    return (actionPlanData.plans || []).map(function(plan) {
+      return { perf_indicator_id: plan.perf_indicator_id, pi_code: plan.pi_code, standard: plan.standard, suggested_action_type: plan.suggested_action_type, analysis_text: saved[plan.perf_indicator_id] || "" };
     });
   }
 
   function renderLeaderAnalysis(items) {
     leaderAnalysisList.innerHTML = "";
-
-    if (!items.length) {
-      leaderAnalysisList.innerHTML = '<p class="muted">Sin indicadores activos para este período.</p>';
-      return;
-    }
-
-    items.forEach(function (item) {
-      const block = document.createElement("div");
-      block.className = "analysis-item";
-
-      const label = document.createElement("label");
-      label.setAttribute("for", "leader-analysis-" + item.perf_indicator_id);
-      label.textContent =
-        item.pi_code +
-        " · Estándar " +
-        safeText(item.standard) +
-        " · Acción sugerida " +
-        safeText(item.suggested_action_type);
-
-      const textarea = document.createElement("textarea");
-      textarea.id = "leader-analysis-" + item.perf_indicator_id;
-      textarea.dataset.piId = item.perf_indicator_id;
-      textarea.maxLength = 2000;
-      textarea.value = item.analysis_text;
-      textarea.placeholder = "Escribe el análisis consolidado para este PI.";
-
-      block.appendChild(label);
-      block.appendChild(textarea);
-      leaderAnalysisList.appendChild(block);
+    if (!items.length) { leaderAnalysisList.innerHTML = '<p class="muted">Sin indicadores.</p>'; return; }
+    items.forEach(function(item) {
+      const b = document.createElement("div"); b.className = "analysis-item";
+      const l = document.createElement("label"); l.setAttribute("for", "la-" + item.perf_indicator_id);
+      l.textContent = item.pi_code + " · " + safeText(item.standard) + " · " + safeText(item.suggested_action_type);
+      const t = document.createElement("textarea"); t.id = "la-" + item.perf_indicator_id;
+      t.dataset.piId = item.perf_indicator_id; t.maxLength = 2000; t.value = item.analysis_text;
+      b.appendChild(l); b.appendChild(t); leaderAnalysisList.appendChild(b);
     });
   }
 
   async function loadLeaderAnalysis(periodId) {
-    leaderAnalysisList.innerHTML = '<p class="muted">Cargando indicadores…</p>';
-    setLeaderAnalysisStatus("");
-
+    leaderAnalysisList.innerHTML = '<p class="muted">Cargando...</p>';
     try {
-      const actionPlanResponse = await fetch("/api/v1/periods/" + periodId + "/action-plan", {
-        credentials: "same-origin",
-      });
-      const analysisResponse = await fetch("/api/v1/periods/" + periodId + "/leader-analysis", {
-        credentials: "same-origin",
-      });
-
-      if (actionPlanResponse.status === 401 || analysisResponse.status === 401) {
-        window.location.replace("/index.html");
-        return;
+      await requireSession();
+      const sb = ensureSupabase();
+      const p = await getPeriod(periodId);
+      let pis = [];
+      if (p && p.rubric_id) {
+        const { data } = await sb.from("perf_indicators").select("id, code").eq("rubric_id", p.rubric_id).eq("is_active", true).order("position");
+        pis = data || [];
       }
-
-      if (!actionPlanResponse.ok || !analysisResponse.ok) {
-        leaderAnalysisList.innerHTML = '<p class="muted">No se pudo cargar el análisis.</p>';
-        return;
-      }
-
-      const items = mergeAnalysisItems(
-        await actionPlanResponse.json(),
-        await analysisResponse.json()
+      const { data: plans } = await sb.from("action_plans").select("perf_indicator_id, action_type, perf_indicators(code)").eq("period_id", periodId);
+      const { data: analyses } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId);
+      const planMap = {}; (plans || []).forEach(function(r) { planMap[r.perf_indicator_id] = r; });
+      const items = mergeAnalysis(
+        { plans: pis.map(function(pi) { const ex = planMap[pi.id]; return { perf_indicator_id: pi.id, pi_code: pi.code, standard: "—", suggested_action_type: (ex && ex.action_type) || "preventive" }; }) },
+        { analyses: (analyses || []).map(function(r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) }
       );
       renderLeaderAnalysis(items);
-    } catch (_) {
-      leaderAnalysisList.innerHTML = '<p class="muted">No se pudo conectar con el servidor.</p>';
-    }
+    } catch(e) { leaderAnalysisList.innerHTML = '<p class="muted">Error.</p>'; }
   }
 
   async function loadLeaderDashboard(periodId) {
-    await loadTracking(periodId);
-    await loadReportPreview(periodId);
-    await loadLeaderAnalysis(periodId);
-    await loadLeaderReport(periodId);
+    await loadTracking(periodId); await loadReportPreview(periodId); await loadLeaderAnalysis(periodId); await loadLeaderReport(periodId);
   }
 
   async function loadTracking(periodId) {
     currentTrackingRows = [];
-
     try {
-      const response = await fetch("/api/v1/periods/" + periodId + "/tracking", {
-        credentials: "same-origin",
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (response.ok) {
-        currentTrackingRows = await response.json();
-      }
-    } catch (_) {
-      currentTrackingRows = [];
-    }
+      await requireSession();
+      const { data } = await ensureSupabase().from("modules").select("id, status, course_name, group_name, module_staff(user_id, users(full_name)), module_students(count)").eq("period_id", periodId);
+      currentTrackingRows = (data || []).map(function(r) { return { id: r.id, status: r.status, course_name: r.course_name, group_name: r.group_name, teacher: normalizeTeacher(r) }; });
+    } catch(e) { currentTrackingRows = []; }
   }
 
-  function pendingReminderRecipientIds() {
-    const seen = {};
-    const ids = [];
-    currentTrackingRows.forEach(function (row) {
-      if (!row.teacher || row.status === "completed" || seen[row.teacher.id]) {
-        return;
-      }
-      seen[row.teacher.id] = true;
-      ids.push(row.teacher.id);
-    });
+  function pendingIds() {
+    const seen = {}; const ids = [];
+    currentTrackingRows.forEach(function(r) { if (!r.teacher || r.status === "completed" || seen[r.teacher.id]) return; seen[r.teacher.id] = true; ids.push(r.teacher.id); });
     return ids.slice(0, 15);
   }
 
   async function sendPendingReminders() {
-    if (!currentPeriodId) {
-      return;
-    }
-
-    if (!currentTrackingRows.length) {
-      await loadTracking(currentPeriodId);
-    }
-
-    const recipientIds = pendingReminderRecipientIds();
-    if (!recipientIds.length) {
-      setStatus("No hay docentes pendientes para recordar.", "info");
-      return;
-    }
-
-    const messageBody =
-      "Hola {nombre_docente}, te recordamos completar la evaluación del módulo {modulo}. " +
-      "Avance actual: {avance_pct}%. Días restantes: {dias_restantes}. Ingresa por {login_url}.";
-
-    setStatus("Preparando recordatorios…");
-
+    if (!currentPeriodId) return;
+    if (!currentTrackingRows.length) await loadTracking(currentPeriodId);
+    const ids = pendingIds();
+    if (!ids.length) { setStatus("Sin pendientes.", "info"); return; }
     try {
-      const previewParams = new URLSearchParams({
-        recipient_ids: recipientIds.join(","),
-        message_body: messageBody,
-      });
-      const previewUrl = "/api/v1/periods/" + currentPeriodId + "/reminders/preview";
-      const previewResponse = await fetch(
-        previewUrl + "?" + previewParams.toString(),
-        { credentials: "same-origin" }
-      );
-
-      if (previewResponse.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!previewResponse.ok) {
-        setStatus("No se pudo previsualizar el recordatorio.", "error");
-        return;
-      }
-
-      const response = await fetch("/api/v1/periods/" + currentPeriodId + "/reminders", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipient_ids: recipientIds,
-          message_body: messageBody,
-        }),
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (response.status === 429) {
-        setStatus("Límite de recordatorios alcanzado. Intenta de nuevo en un minuto.", "error");
-        return;
-      }
-
-      if (!response.ok) {
-        setStatus("No se pudieron enviar los recordatorios.", "error");
-        return;
-      }
-
-      const data = await response.json();
-      setStatus("Se enviaron " + data.sent + " recordatorios correctamente.", "success");
-    } catch (_) {
-      setStatus("No se pudo conectar con el servidor.", "error");
-    }
+      await requireSession();
+      const { error } = await ensureSupabase().from("reminder_log").insert({ period_id: Number(currentPeriodId), sent_by: currentUser ? currentUser.id : null, recipient_ids: ids, message_body: "Recordatorio de evaluacion." });
+      if (error) throw error;
+      setStatus("Recordatorios registrados: " + ids.length, "success");
+    } catch(e) { setStatus("Error.", "error"); }
   }
 
   async function saveLeaderAnalysis(event) {
     event.preventDefault();
-    if (!currentPeriodId) {
-      return;
-    }
-
-    const analyses = Array.from(leaderAnalysisList.querySelectorAll("textarea[data-pi-id]"))
-      .map(function (textarea) {
-        return {
-          perf_indicator_id: Number(textarea.dataset.piId),
-          analysis_text: textarea.value,
-        };
-      });
-
-    setLeaderAnalysisStatus("Guardando análisis del líder…");
-
+    if (!currentPeriodId) return;
+    const rows = Array.from(leaderAnalysisList.querySelectorAll("textarea[data-pi-id]")).map(function(t) { return { period_id: Number(currentPeriodId), perf_indicator_id: Number(t.dataset.piId), analysis_text: t.value, updated_by: currentUser ? currentUser.id : null }; });
     try {
-      const response = await fetch("/api/v1/periods/" + currentPeriodId + "/leader-analysis", {
-        method: "PUT",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analyses: analyses }),
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!response.ok) {
-        setLeaderAnalysisStatus("No se pudo guardar el análisis del líder.", "error");
-        return;
-      }
-
-      setLeaderAnalysisStatus("Análisis del líder guardado.", "success");
-    } catch (_) {
-      setLeaderAnalysisStatus("No se pudo conectar con el servidor.", "error");
-    }
+      await requireSession();
+      const { error } = await ensureSupabase().from("leader_analysis").upsert(rows, { onConflict: "period_id,perf_indicator_id" });
+      if (error) throw error;
+      setLeaderAnalysisStatus("Guardado.", "success");
+    } catch(e) { setLeaderAnalysisStatus("Error.", "error"); }
   }
 
   function renderLeaderReport(items) {
     leaderReportList.innerHTML = "";
-
-    if (!items.length) {
-      leaderReportList.innerHTML = '<p class="muted">Sin indicadores activos para este informe.</p>';
-      return;
-    }
-
-    items.forEach(function (item) {
-      const block = document.createElement("div");
-      block.className = "analysis-item";
-
-      const label = document.createElement("label");
-      label.setAttribute("for", "leader-report-" + item.perf_indicator_id);
-      label.textContent = item.pi_code + " · " + safeText(item.pi_description);
-
-      const helper = document.createElement("p");
-      helper.className = "muted";
-      helper.textContent = "Síntesis: " + safeText(item.leader_analysis);
-
-      const textarea = document.createElement("textarea");
-      textarea.id = "leader-report-" + item.perf_indicator_id;
-      textarea.dataset.piId = item.perf_indicator_id;
-      textarea.maxLength = 3000;
-      textarea.value = item.conclusion_text || "";
-      textarea.placeholder = "Escriba las conclusiones consolidadas para este PI...";
-
-      block.appendChild(label);
-      block.appendChild(helper);
-      block.appendChild(textarea);
-      leaderReportList.appendChild(block);
+    if (!items.length) { leaderReportList.innerHTML = '<p class="muted">Sin indicadores.</p>'; return; }
+    items.forEach(function(item) {
+      const b = document.createElement("div"); b.className = "analysis-item";
+      b.innerHTML = '<label>' + item.pi_code + " · " + safeText(item.pi_description) + '</label><p class="muted">' + safeText(item.leader_analysis) + '</p>';
+      const t = document.createElement("textarea"); t.dataset.piId = item.perf_indicator_id; t.maxLength = 3000; t.value = item.conclusion_text || "";
+      b.appendChild(t); leaderReportList.appendChild(b);
     });
   }
 
   async function loadLeaderReport(periodId) {
-    leaderReportList.innerHTML = '<p class="muted">Cargando informe…</p>';
-    setLeaderReportStatus("");
-
+    leaderReportList.innerHTML = '<p class="muted">Cargando...</p>';
     try {
-      const response = await fetch("/api/v1/periods/" + periodId + "/leader-report", {
-        credentials: "same-origin",
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
+      await requireSession();
+      const sb = ensureSupabase();
+      const p = await getPeriod(periodId);
+      let pis = [];
+      if (p && p.rubric_id) {
+        const { data } = await sb.from("perf_indicators").select("id, code, description").eq("rubric_id", p.rubric_id).eq("is_active", true).order("position");
+        pis = data || [];
       }
-
-      if (!response.ok) {
-        leaderReportList.innerHTML = '<p class="muted">No se pudo cargar el informe.</p>';
-        return;
-      }
-
-      const data = await response.json();
-      renderLeaderReport(data.items || []);
-    } catch (_) {
-      leaderReportList.innerHTML = '<p class="muted">No se pudo conectar con el servidor.</p>';
-    }
+      const { data: la } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId);
+      const { data: dr } = await sb.from("leader_report_drafts").select("perf_indicator_id, conclusion_text").eq("period_id", periodId);
+      const laMap = {}; (la || []).forEach(function(r) { laMap[r.perf_indicator_id] = r.analysis_text; });
+      const drMap = {}; (dr || []).forEach(function(r) { drMap[r.perf_indicator_id] = r.conclusion_text; });
+      renderLeaderReport(pis.map(function(pi) { return { perf_indicator_id: pi.id, pi_code: pi.code, pi_description: pi.description, leader_analysis: laMap[pi.id] || "", conclusion_text: drMap[pi.id] || "" }; }));
+    } catch(e) { leaderReportList.innerHTML = '<p class="muted">Error.</p>'; }
   }
 
   async function saveLeaderReport(event) {
     event.preventDefault();
-    if (!currentPeriodId) {
-      return;
-    }
-
-    const conclusions = Array.from(leaderReportList.querySelectorAll("textarea[data-pi-id]"))
-      .map(function (textarea) {
-        return {
-          perf_indicator_id: Number(textarea.dataset.piId),
-          conclusion_text: textarea.value,
-        };
-      });
-
-    setLeaderReportStatus("Guardando informe del líder…");
-
+    if (!currentPeriodId) return;
+    const rows = Array.from(leaderReportList.querySelectorAll("textarea[data-pi-id]")).map(function(t) { return { period_id: Number(currentPeriodId), perf_indicator_id: Number(t.dataset.piId), conclusion_text: t.value, updated_by: currentUser ? currentUser.id : null }; });
     try {
-      const response = await fetch("/api/v1/periods/" + currentPeriodId + "/leader-report", {
-        method: "PUT",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conclusions: conclusions }),
-      });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!response.ok) {
-        setLeaderReportStatus("No se pudo guardar el informe del líder.", "error");
-        return;
-      }
-
-      const data = await response.json();
-      renderLeaderReport(data.items || []);
-      setLeaderReportStatus("Informe del líder guardado.", "success");
-    } catch (_) {
-      setLeaderReportStatus("No se pudo conectar con el servidor.", "error");
-    }
-  }
-
-  function downloadLeaderReportPdf() {
-    if (!currentPeriodId) {
-      return;
-    }
-    window.location.href = "/api/v1/periods/" + currentPeriodId + "/leader-report/pdf";
-  }
-
-  function downloadLeaderReportDocx() {
-    if (!currentPeriodId) {
-      return;
-    }
-    window.location.href = "/api/v1/periods/" + currentPeriodId + "/leader-report/docx";
+      await requireSession();
+      const { error } = await ensureSupabase().from("leader_report_drafts").upsert(rows, { onConflict: "period_id,perf_indicator_id" });
+      if (error) throw error;
+      setLeaderReportStatus("Guardado.", "success");
+      await loadLeaderReport(currentPeriodId);
+    } catch(e) { setLeaderReportStatus("Error.", "error"); }
   }
 
   async function loadPeriods() {
-    setStatus("Cargando períodos…");
-
+    setStatus("Cargando periodos...");
     try {
-      const response = await fetch("/api/v1/periods", { credentials: "same-origin" });
-
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return;
-      }
-
-      if (!response.ok) {
-        periodSelect.innerHTML = '<option value="">Sin períodos disponibles</option>';
-        setStatus("No se pudieron cargar los períodos.", "error");
-        return;
-      }
-
-      const periods = await response.json();
+      await requireSession();
+      const { data: periods, error } = await ensureSupabase().from("periods").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
       periodSelect.innerHTML = "";
-
-      if (!periods.length) {
-        periodSelect.disabled = true;
-        periodSelect.appendChild(new Option("Sin períodos disponibles", ""));
-        renderEmpty("Sin períodos disponibles.");
-        setStatus("Sin períodos disponibles.", "info");
-        return;
-      }
-
-      periods.forEach(function (period) {
-        periodSelect.appendChild(new Option(period.name, period.id));
-      });
-
+      if (!periods || !periods.length) { periodSelect.disabled = true; periodSelect.appendChild(new Option("Sin periodos", "")); return; }
+      periods.forEach(function(p) { periodSelect.appendChild(new Option(p.name, p.id)); });
       periodSelect.disabled = false;
       await loadModules(periodSelect.value);
-    } catch (_) {
-      periodSelect.innerHTML = '<option value="">Error al cargar períodos</option>';
-      setStatus("No se pudo conectar con el servidor.", "error");
-    }
+    } catch(e) { periodSelect.innerHTML = '<option value="">Error</option>'; }
   }
 
-  periodSelect.addEventListener("change", function () {
-    currentPeriodId = periodSelect.value;
-    loadModules(periodSelect.value);
+  periodSelect.addEventListener("change", function() { currentPeriodId = periodSelect.value; loadModules(periodSelect.value); });
+  viewReportBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
+  closePeriodBtn.addEventListener("click", async function() {
+    if (!currentPeriodId) return;
+    if ((currentModules || []).some(function(m) { return m.status !== "completed"; })) { setStatus("Modulos pendientes.", "error"); return; }
+    try { await requireSession(); const { error } = await ensureSupabase().from("periods").update({ status: "closed" }).eq("id", currentPeriodId); if (error) throw error; setStatus("Cerrado.", "success"); await loadPeriods(); } catch(e) { setStatus("Error.", "error"); }
   });
-
-  viewReportBtn.addEventListener("click", function () {
-    if (currentPeriodId) {
-      window.location.href = "/api/v1/periods/" + currentPeriodId + "/report/preview";
-    }
-  });
-
-  closePeriodBtn.addEventListener("click", async function () {
-    const periodId = currentPeriodId;
-    if (!periodId) {
-      return;
-    }
-
-    setStatus("Cerrando período…");
-    try {
-      const response = await fetch("/api/v1/periods/" + periodId + "/close", {
-        method: "PUT",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force: false }),
-      });
-      if (response.ok) {
-        setStatus("Período cerrado.", "success");
-        await loadPeriods();
-      } else if (response.status === 409) {
-        setStatus("Hay módulos pendientes; revisa el avance antes de cerrar.", "error");
-      } else {
-        setStatus("No se pudo cerrar el período.", "error");
-      }
-    } catch (_) {
-      setStatus("No se pudo conectar con el servidor.", "error");
-    }
-  });
-
   sendReminderBtn.addEventListener("click", sendPendingReminders);
-
   leaderAnalysisForm.addEventListener("submit", saveLeaderAnalysis);
   leaderReportForm.addEventListener("submit", saveLeaderReport);
-  leaderReportPdfBtn.addEventListener("click", downloadLeaderReportPdf);
-  leaderReportDocxBtn.addEventListener("click", downloadLeaderReportDocx);
+  leaderReportPdfBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
+  leaderReportDocxBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
+  logoutBtn.addEventListener("click", async function() { try { await ensureSupabase().auth.signOut(); } catch(e) {} window.location.replace("./index.html"); });
 
-  logoutBtn.addEventListener("click", async function () {
-    await fetch("/api/v1/auth/logout", { method: "POST", credentials: "same-origin" });
-    window.location.replace("/index.html");
-  });
-
-  loadUser().then(function (loaded) {
-    if (loaded) {
-      loadPeriods().then(function () {
-        currentPeriodId = periodSelect.value;
-      });
-    }
-  });
+  leaderPanel.hidden = true;
+  loadUser().then(function(loaded) { if (loaded) loadPeriods().then(function() { currentPeriodId = periodSelect.value; }); });
 })();

@@ -1,459 +1,273 @@
 (function () {
   "use strict";
 
-  const moduleId = new URLSearchParams(window.location.search).get("module_id");
-  const statusEl = document.getElementById("assessment-status");
-  const studentsHead = document.getElementById("students-head");
-  const studentsBody = document.getElementById("students-body");
-  const analysisBody = document.getElementById("analysis-body");
-  const moduleSummary = document.getElementById("module-summary");
-  const distributionBody = document.getElementById("distribution-body");
-  const submitReadiness = document.getElementById("submit-readiness");
-  const saveAssessmentsBtn = document.getElementById("save-assessments-btn");
-  const saveQualitativeBtn = document.getElementById("save-qualitative-btn");
-  const submitModuleBtn = document.getElementById("submit-module-btn");
-  const wizardPrevBtn = document.getElementById("wizard-prev-btn");
-  const wizardNextBtn = document.getElementById("wizard-next-btn");
-  const wizardSteps = Array.from(document.querySelectorAll("[data-step-target]"));
-  const wizardPanels = Array.from(document.querySelectorAll("[data-step-panel]"));
-
-  const stepOrder = ["general", "grading", "distribution", "analysis", "submit"];
-  let currentStepIndex = 0;
-  let activePis = [];
-  let latestStudentsResponse = null;
-  let latestAssessmentsResponse = null;
-
-  function setStatus(message, kind) {
-    statusEl.textContent = message;
-    statusEl.className = "status-message" + (kind ? " " + kind : "");
+  var params = new URLSearchParams(window.location.search);
+  var moduleId = params.get("module_id");
+  if (!moduleId) {
+    document.body.innerHTML = '<p style="padding:2rem">Falta module_id en la URL.</p>';
+    return;
   }
 
-  function fetchJson(path, options) {
-    const requestOptions = Object.assign({ credentials: "same-origin" }, options || {});
-    return fetch(path, requestOptions).then(function (response) {
-      if (response.status === 401) {
-        window.location.replace("/index.html");
-        return Promise.reject(new Error("unauthorized"));
-      }
-      if (!response.ok) {
-        return response.json().catch(function () {
-          return {};
-        }).then(function (body) {
-          throw new Error(body.detail || "request_failed");
-        });
-      }
-      return response.json();
+  var wizardSteps = Array.from(document.querySelectorAll("[data-step-target]"));
+  var wizardPanels = Array.from(document.querySelectorAll("[data-step-panel]"));
+  var wizardNextBtn = document.getElementById("wizard-next-btn");
+  var wizardPrevBtn = document.getElementById("wizard-prev-btn");
+  var moduleInfo = document.getElementById("module-info");
+  var studentsBody = document.getElementById("students-body");
+  var distributionBody = document.getElementById("distribution-body");
+  var analysisBody = document.getElementById("analysis-body");
+  var submitModuleBtn = document.getElementById("submit-module-btn");
+  var saveAssessmentsBtn = document.getElementById("save-assessments-btn");
+  var saveQualitativeBtn = document.getElementById("save-qualitative-btn");
+  var statusMsg = document.getElementById("status-message");
+  var stepOrder = ["general", "grading", "distribution", "analysis", "submit"];
+  var currentStepIndex = 0;
+
+  var moduleStudents = [];
+  var piRows = [];
+  var activeStudentCount = 0;
+
+  function assertSupabase() {
+    if (typeof supabase === "undefined" || !supabase || !supabase.auth) throw new Error("Supabase no disponible.");
+    return supabase;
+  }
+
+  async function requireAuthOrRedirect() {
+    var sb = assertSupabase();
+    var { data, error } = await sb.auth.getSession();
+    if (error || !data || !data.session) { window.location.replace("./index.html"); return null; }
+    return data.session;
+  }
+
+  function isAuthError(err) {
+    if (!err) return false;
+    if (typeof err.status === "number" && (err.status === 401 || err.status === 403)) return true;
+    if (typeof err.code === "string" && (err.code === "PGRST301" || err.code === "401")) return true;
+    if (err.message && (err.message.indexOf("JWT") >= 0 || err.message.indexOf("expired") >= 0)) return true;
+    return false;
+  }
+
+  function redirectToLogin() { window.location.replace("./index.html"); }
+
+  function setStatus(text, kind) {
+    statusMsg.textContent = text;
+    statusMsg.className = "status-message" + (kind ? " " + kind : "");
+  }
+
+  function enableActions() {
+    wizardNextBtn.disabled = false;
+    wizardPrevBtn.disabled = false;
+    saveAssessmentsBtn.disabled = false;
+    saveQualitativeBtn.disabled = false;
+  }
+
+  function showStep(stepTarget) {
+    currentStepIndex = stepOrder.indexOf(stepTarget);
+    wizardPanels.forEach(function (p) { p.hidden = p.dataset.stepPanel !== stepTarget; });
+    wizardSteps.forEach(function (s) { s.classList.toggle("active", s.dataset.stepTarget === stepTarget); });
+    wizardNextBtn.hidden = currentStepIndex >= stepOrder.length - 1;
+    wizardPrevBtn.hidden = currentStepIndex <= 0;
+  }
+
+  function buildDistribution(students, pis) {
+    var dist = {};
+    pis.forEach(function (pi) {
+      dist[pi.id] = { pi_code: pi.code, pi_description: pi.description, Poor: 0, Inadequate: 0, Adequate: 0, Exemplary: 0 };
     });
-  }
-
-  function renderCellText(text) {
-    const cell = document.createElement("td");
-    cell.textContent = text;
-    return cell;
-  }
-
-  function renderModuleSummary(studentsResponse) {
-    moduleSummary.innerHTML = "";
-
-    [
-      ["Módulo", "#" + studentsResponse.module_id],
-      ["Estudiantes activos", String(studentsResponse.active_students)],
-      ["Estudiantes calificados", String(studentsResponse.fully_graded_students)],
-      ["Indicadores activos", String(studentsResponse.active_pi_count)],
-    ].forEach(function (item) {
-      const wrapper = document.createElement("div");
-      const term = document.createElement("dt");
-      const detail = document.createElement("dd");
-      term.textContent = item[0];
-      detail.textContent = item[1];
-      wrapper.appendChild(term);
-      wrapper.appendChild(detail);
-      moduleSummary.appendChild(wrapper);
-    });
-  }
-
-  function selectForLevel(moduleStudentId, piId, currentLevel) {
-    const select = document.createElement("select");
-    select.className = "level-select";
-    select.dataset.moduleStudentId = moduleStudentId;
-    select.dataset.perfIndicatorId = piId;
-    select.appendChild(new Option("Sin calificar", ""));
-
-    [1, 2, 3, 4].forEach(function (level) {
-      const option = new Option(String(level), String(level));
-      option.selected = Number(currentLevel) === level;
-      select.appendChild(option);
-    });
-
-    return select;
-  }
-
-  function inferActivePis(studentsResponse, assessmentsResponse) {
-    const byId = new Map();
-
-    (studentsResponse.active_perf_indicators || []).forEach(function (pi) {
-      byId.set(pi.id, pi.code);
-    });
-
-    studentsResponse.students.forEach(function (student) {
-      student.assessments.forEach(function (assessment) {
-        byId.set(assessment.perf_indicator_id, assessment.pi_code);
+    students.forEach(function (s) {
+      (s.assessments || []).forEach(function (a) {
+        var bucket = dist[a.perf_indicator_id];
+        if (!bucket) return;
+        var labels = { 1: "Poor", 2: "Inadequate", 3: "Adequate", 4: "Exemplary" };
+        var label = labels[a.level] || "Poor";
+        bucket[label] = (bucket[label] || 0) + 1;
       });
     });
-
-    Object.keys(assessmentsResponse.distribution || {}).forEach(function (code) {
-      assessmentsResponse.students.forEach(function (student) {
-        student.assessments.forEach(function (assessment) {
-          if (assessment.pi_code === code) {
-            byId.set(assessment.perf_indicator_id, assessment.pi_code);
-          }
-        });
-      });
-    });
-
-    return Array.from(byId.entries()).map(function (entry) {
-      return { id: entry[0], code: entry[1] };
-    }).sort(function (a, b) {
-      return a.code.localeCompare(b.code);
-    });
+    return dist;
   }
 
-  function renderStudents(studentsResponse, assessmentsResponse) {
-    latestStudentsResponse = studentsResponse;
-    latestAssessmentsResponse = assessmentsResponse;
-    activePis = inferActivePis(studentsResponse, assessmentsResponse);
-    studentsHead.innerHTML = "";
+  function renderModuleSummary() {
+    moduleInfo.textContent = "Modulo " + moduleId + " — " + activeStudentCount + " estudiantes activos";
+  }
+
+  function renderStudents(studentsData) {
     studentsBody.innerHTML = "";
-
-    const headRow = document.createElement("tr");
-    headRow.appendChild(renderCellText("Estudiante"));
-    headRow.appendChild(renderCellText("Estado"));
-    activePis.forEach(function (pi) {
-      headRow.appendChild(renderCellText(pi.code));
-    });
-    studentsHead.appendChild(headRow);
-
-    if (!studentsResponse.students.length) {
-      const row = document.createElement("tr");
-      const cell = renderCellText("Sin estudiantes matriculados.");
-      cell.colSpan = Math.max(activePis.length + 2, 2);
+    (studentsData.students || []).forEach(function (s) {
+      var row = document.createElement("tr");
+      row.innerHTML = "<td>" + (s.full_name || "—") + "</td><td>" + (s.internal_id || "—") + "</td>";
+      var cell = document.createElement("td");
+      (piRows || []).forEach(function (pi) {
+        var sel = document.createElement("select");
+        sel.className = "level-select";
+        sel.dataset.moduleStudentId = s.module_student_id;
+        sel.dataset.piId = pi.id;
+        sel.innerHTML = '<option value="">—</option><option value="1">Poor</option><option value="2">Inadequate</option><option value="3">Adequate</option><option value="4">Exemplary</option>';
+        var existing = (s.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
+        if (existing) sel.value = existing.level;
+        cell.appendChild(sel);
+      });
       row.appendChild(cell);
       studentsBody.appendChild(row);
-      return;
-    }
-
-    studentsResponse.students.forEach(function (student) {
-      const row = document.createElement("tr");
-      const assessmentsByPi = new Map();
-
-      student.assessments.forEach(function (assessment) {
-        assessmentsByPi.set(assessment.perf_indicator_id, assessment.level);
-      });
-
-      row.appendChild(renderCellText(student.full_name + " (" + student.internal_id + ")"));
-      row.appendChild(renderCellText(student.status));
-
-      activePis.forEach(function (pi) {
-        const cell = document.createElement("td");
-        cell.appendChild(selectForLevel(
-          student.module_student_id,
-          pi.id,
-          assessmentsByPi.get(pi.id)
-        ));
-        row.appendChild(cell);
-      });
-
-      studentsBody.appendChild(row);
     });
   }
 
-  function renderDistribution(assessmentsResponse) {
+  function renderDistribution(data) {
     distributionBody.innerHTML = "";
-
-    if (!activePis.length) {
-      distributionBody.innerHTML = '<p class="muted">Sin indicadores activos para distribuir.</p>';
-      return;
-    }
-
-    activePis.forEach(function (pi) {
-      const item = document.createElement("article");
-      item.className = "distribution-item";
-      const title = document.createElement("h4");
-      title.textContent = pi.code;
-      item.appendChild(title);
-
-      const levels = (assessmentsResponse.distribution || {})[pi.code] || {};
-      const list = document.createElement("dl");
-
-      [1, 2, 3, 4].forEach(function (level) {
-        const wrapper = document.createElement("div");
-        const term = document.createElement("dt");
-        const detail = document.createElement("dd");
-        term.textContent = "Nivel " + level;
-        detail.textContent = String(levels[String(level)] || levels[level] || 0);
-        wrapper.appendChild(term);
-        wrapper.appendChild(detail);
-        list.appendChild(wrapper);
-      });
-
-      item.appendChild(list);
-      distributionBody.appendChild(item);
+    var dist = data.distribution || {};
+    Object.keys(dist).forEach(function (piId) {
+      var d = dist[piId];
+      var row = document.createElement("tr");
+      row.innerHTML = "<td>" + (d.pi_code || "—") + "</td><td>" + (d.pi_description || "—") + "</td><td>" + d.Poor + "</td><td>" + d.Inadequate + "</td><td>" + d.Adequate + "</td><td>" + d.Exemplary + "</td>";
+      distributionBody.appendChild(row);
     });
   }
 
-  function renderAnalyses(qualitativeResponse) {
-    const existingByPi = new Map();
-    qualitativeResponse.analyses.forEach(function (item) {
-      existingByPi.set(item.perf_indicator_id, item.analysis_text);
-    });
-
+  function renderAnalyses(data) {
     analysisBody.innerHTML = "";
+    (piRows || []).forEach(function (pi) {
+      var existing = (data.analyses || []).find(function (a) { return a.perf_indicator_id === pi.id; });
+      var div = document.createElement("div");
+      div.innerHTML = '<label>' + pi.code + " — " + (pi.description || "") + '</label>';
+      var ta = document.createElement("textarea");
+      ta.dataset.piId = pi.id;
+      ta.maxLength = 2000;
+      ta.value = existing ? existing.analysis_text || "" : "";
+      div.appendChild(ta);
+      analysisBody.appendChild(div);
+    });
+  }
 
-    if (!activePis.length) {
-      analysisBody.innerHTML = '<p class="muted">Sin indicadores activos para analizar.</p>';
-      return;
-    }
+  function collectAssessments() {
+    return Array.from(document.querySelectorAll(".level-select")).filter(function (sel) { return sel.value !== ""; }).map(function (sel) {
+      return { module_student_id: Number(sel.dataset.moduleStudentId), perf_indicator_id: Number(sel.dataset.piId), level: Number(sel.value) };
+    });
+  }
 
-    activePis.forEach(function (pi) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "analysis-item";
-
-      const label = document.createElement("label");
-      label.textContent = pi.code;
-
-      const textarea = document.createElement("textarea");
-      textarea.dataset.perfIndicatorId = pi.id;
-      textarea.maxLength = 2000;
-      textarea.rows = 4;
-      textarea.value = existingByPi.get(pi.id) || "";
-
-      wrapper.appendChild(label);
-      wrapper.appendChild(textarea);
-      analysisBody.appendChild(wrapper);
+  function collectAnalyses() {
+    return Array.from(analysisBody.querySelectorAll("textarea")).filter(function (ta) { return ta.value.trim() !== ""; }).map(function (ta) {
+      return { perf_indicator_id: Number(ta.dataset.piId), analysis_text: ta.value };
     });
   }
 
   function allStudentsFullyGraded() {
-    const activeStudents = (latestStudentsResponse ? latestStudentsResponse.students : [])
-      .filter(function (student) {
-        return student.status === "active";
-      });
-
-    if (!activeStudents.length || !activePis.length) {
-      return false;
-    }
-
-    return activeStudents.every(function (student) {
-      return activePis.every(function (pi) {
-        const selector = '.level-select[data-module-student-id="' +
-          student.module_student_id + '"][data-perf-indicator-id="' + pi.id + '"]';
-        const select = document.querySelector(selector);
-        return Boolean(select && select.value);
-      });
+    return Array.from(document.querySelectorAll("tr")).every(function (row) {
+      var selects = row.querySelectorAll(".level-select");
+      return selects.length === 0 || Array.from(selects).every(function (s) { return s.value !== ""; });
     });
   }
 
   function allAnalysesComplete() {
-    if (!activePis.length) {
-      return false;
-    }
-
-    return activePis.every(function (pi) {
-      const textarea = analysisBody.querySelector(
-        'textarea[data-perf-indicator-id="' + pi.id + '"]'
-      );
-      return Boolean(textarea && textarea.value.trim());
-    });
+    return piRows.length === 0 || Array.from(analysisBody.querySelectorAll("textarea")).every(function (ta) { return ta.value.trim() !== ""; });
   }
 
   function updateWizardState() {
-    const gradesReady = allStudentsFullyGraded();
-    const analysisReady = allAnalysesComplete();
-
-    submitModuleBtn.disabled = !(allStudentsFullyGraded() && allAnalysesComplete());
-
-    submitReadiness.innerHTML = "";
-    [
-      ["Calificaciones", gradesReady],
-      ["Análisis cualitativo", analysisReady],
-    ].forEach(function (item) {
-      const li = document.createElement("li");
-      li.className = item[1] ? "ready" : "pending";
-      li.textContent = item[0] + ": " + (item[1] ? "completo" : "pendiente");
-      submitReadiness.appendChild(li);
-    });
-  }
-
-  function showStep(stepName) {
-    const nextIndex = stepOrder.indexOf(stepName);
-    if (nextIndex === -1) {
-      return;
-    }
-
-    currentStepIndex = nextIndex;
-
-    wizardPanels.forEach(function (panel) {
-      panel.hidden = panel.dataset.stepPanel !== stepName;
-    });
-
-    wizardSteps.forEach(function (step) {
-      const isCurrent = step.dataset.stepTarget === stepName;
-      if (isCurrent) {
-        step.setAttribute("aria-current", "step");
-      } else {
-        step.removeAttribute("aria-current");
-      }
-    });
-
-    wizardPrevBtn.disabled = currentStepIndex === 0;
-    wizardNextBtn.disabled = currentStepIndex === stepOrder.length - 1;
-    wizardNextBtn.textContent = currentStepIndex === stepOrder.length - 2 ? "Revisar envío" : "Siguiente";
-    updateWizardState();
-  }
-
-  function collectAssessments() {
-    return Array.from(document.querySelectorAll(".level-select"))
-      .filter(function (select) {
-        return select.value !== "";
-      })
-      .map(function (select) {
-        return {
-          module_student_id: Number(select.dataset.moduleStudentId),
-          perf_indicator_id: Number(select.dataset.perfIndicatorId),
-          level: Number(select.value),
-        };
-      });
-  }
-
-  function collectAnalyses() {
-    return Array.from(analysisBody.querySelectorAll("textarea"))
-      .filter(function (textarea) {
-        return textarea.value.trim() !== "";
-      })
-      .map(function (textarea) {
-        return {
-          perf_indicator_id: Number(textarea.dataset.perfIndicatorId),
-          analysis_text: textarea.value.trim(),
-        };
-      });
-  }
-
-  function enableActions() {
     saveAssessmentsBtn.disabled = false;
     saveQualitativeBtn.disabled = false;
-    updateWizardState();
+    submitModuleBtn.disabled = !allStudentsFullyGraded() || !allAnalysesComplete();
   }
 
-  function loadModule() {
-    if (!moduleId) {
-      setStatus("No se recibió module_id.", "error");
-      return;
-    }
+  async function loadModule() {
+    setStatus("Cargando modulo...");
+    try {
+      var client = assertSupabase();
+      var session = await requireAuthOrRedirect();
+      if (!session) return;
 
-    setStatus("Cargando datos del módulo…");
+      // Load module info
+      var { data: mod } = await client.from("modules").select("*, period:periods(rubric_id)").eq("id", moduleId).single();
+      if (!mod) { setStatus("Modulo no encontrado.", "error"); return; }
 
-    Promise.all([
-      fetchJson("/api/v1/modules/" + moduleId + "/students", { credentials: "same-origin" }),
-      fetchJson("/api/v1/modules/" + moduleId + "/assessments", { credentials: "same-origin" }),
-      fetchJson("/api/v1/modules/" + moduleId + "/qualitative", { credentials: "same-origin" }),
-    ]).then(function (responses) {
-      renderModuleSummary(responses[0]);
-      renderStudents(responses[0], responses[1]);
-      renderDistribution(responses[1]);
-      renderAnalyses(responses[2]);
+      // Load active PIs from the rubric
+      var { data: pis } = await client.from("perf_indicators").select("*").eq("rubric_id", mod.period.rubric_id).eq("is_active", true).order("position");
+      piRows = pis || [];
+
+      // Load module_students with their assessments
+      var { data: msRows } = await client.from("module_students").select("id, status, student:students(id, full_name, internal_id), assessments(perf_indicator_id, level)").eq("module_id", moduleId);
+      moduleStudents = (msRows || []).filter(function (r) { return r.status === "active"; });
+      activeStudentCount = moduleStudents.length;
+
+      // Load qualitative analyses
+      var { data: qualRows } = await client.from("module_analysis").select("perf_indicator_id, analysis_text").eq("module_id", moduleId);
+
+      // Shape data
+      var studentsData = {
+        students: moduleStudents.map(function (r) {
+          return {
+            module_student_id: r.id,
+            status: r.status,
+            full_name: (r.student && r.student.full_name) || "—",
+            internal_id: (r.student && r.student.internal_id) || "—",
+            assessments: (r.assessments || []).map(function (a) { return { perf_indicator_id: a.perf_indicator_id, level: a.level }; }),
+          };
+        }),
+      };
+
+      var dist = buildDistribution(moduleStudents.map(function (r) {
+        return { assessments: (r.assessments || []).map(function (a) { return { perf_indicator_id: a.perf_indicator_id, level: a.level }; }) };
+      }), piRows);
+
+      renderModuleSummary(studentsData);
+      renderStudents(studentsData);
+      renderDistribution({ distribution: dist });
+      renderAnalyses({ analyses: (qualRows || []).map(function (r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) });
       enableActions();
-      setStatus("Datos cargados. Estudiantes activos: " + responses[0].active_students + ".", "success");
-    }).catch(function (error) {
-      if (error.message !== "unauthorized") {
-        setStatus("No se pudo cargar el módulo: " + error.message, "error");
-      }
-    });
+      updateWizardState();
+      setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");
+    } catch (e) {
+      if (isAuthError(e)) { redirectToLogin(); return; }
+      setStatus("Error al cargar modulo: " + (e.message || e), "error");
+    }
   }
 
-  saveAssessmentsBtn.addEventListener("click", function () {
+  saveAssessmentsBtn.addEventListener("click", async function () {
     saveAssessmentsBtn.disabled = true;
-    setStatus("Guardando calificaciones…");
-
-    fetchJson("/api/v1/modules/" + moduleId + "/assessments", {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assessments: collectAssessments() }),
-    }).then(function () {
+    setStatus("Guardando calificaciones...");
+    try {
+      await requireAuthOrRedirect();
+      var payload = collectAssessments();
+      if (payload.length) {
+        var { error } = await assertSupabase().from("assessments").upsert(payload, { onConflict: "module_student_id,perf_indicator_id" });
+        if (error) throw error;
+      }
       setStatus("Calificaciones guardadas.", "success");
       updateWizardState();
-    }).catch(function (error) {
-      if (error.message !== "unauthorized") {
-        setStatus("No se pudieron guardar las calificaciones: " + error.message, "error");
-      }
-    }).finally(function () {
-      saveAssessmentsBtn.disabled = false;
-    });
+    } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); }
+    saveAssessmentsBtn.disabled = false;
   });
 
-  saveQualitativeBtn.addEventListener("click", function () {
+  saveQualitativeBtn.addEventListener("click", async function () {
     saveQualitativeBtn.disabled = true;
-    setStatus("Guardando análisis…");
-
-    fetchJson("/api/v1/modules/" + moduleId + "/qualitative", {
-      method: "PUT",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ analyses: collectAnalyses() }),
-    }).then(function () {
-      setStatus("Análisis guardado.", "success");
-      updateWizardState();
-    }).catch(function (error) {
-      if (error.message !== "unauthorized") {
-        setStatus("No se pudo guardar el análisis: " + error.message, "error");
+    setStatus("Guardando analisis...");
+    try {
+      await requireAuthOrRedirect();
+      var payload = collectAnalyses().map(function (a) { return { module_id: Number(moduleId), perf_indicator_id: a.perf_indicator_id, analysis_text: a.analysis_text }; });
+      if (payload.length) {
+        var { error } = await assertSupabase().from("module_analysis").upsert(payload, { onConflict: "module_id,perf_indicator_id" });
+        if (error) throw error;
       }
-    }).finally(function () {
-      saveQualitativeBtn.disabled = false;
-    });
+      setStatus("Analisis guardado.", "success");
+      updateWizardState();
+    } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); }
+    saveQualitativeBtn.disabled = false;
   });
 
-  submitModuleBtn.addEventListener("click", function () {
+  submitModuleBtn.addEventListener("click", async function () {
+    if (!allStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
     submitModuleBtn.disabled = true;
-    setStatus("Enviando módulo…");
-
-    fetchJson("/api/v1/modules/" + moduleId + "/submit", {
-      method: "PUT",
-      credentials: "same-origin",
-    }).then(function () {
-      setStatus("Módulo enviado.", "success");
-    }).catch(function (error) {
-      if (error.message !== "unauthorized") {
-        setStatus("No se pudo enviar el módulo: " + error.message, "error");
-      }
-      submitModuleBtn.disabled = false;
-    });
+    setStatus("Enviando modulo...");
+    try {
+      await requireAuthOrRedirect();
+      var { error } = await assertSupabase().from("modules").update({ status: "completed", submitted_at: new Date().toISOString() }).eq("id", moduleId);
+      if (error) throw error;
+      setStatus("Modulo enviado.", "success");
+    } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); submitModuleBtn.disabled = false; }
   });
 
-  studentsBody.addEventListener("change", function (event) {
-    if (event.target.classList.contains("level-select")) {
-      updateWizardState();
-    }
-  });
-
-  analysisBody.addEventListener("input", function (event) {
-    if (event.target.tagName === "TEXTAREA") {
-      updateWizardState();
-    }
-  });
-
-  wizardSteps.forEach(function (step) {
-    step.addEventListener("click", function () {
-      showStep(step.dataset.stepTarget);
-    });
-  });
-
-  wizardNextBtn.addEventListener("click", function () {
-    showStep(stepOrder[Math.min(currentStepIndex + 1, stepOrder.length - 1)]);
-  });
-
-  wizardPrevBtn.addEventListener("click", function () {
-    showStep(stepOrder[Math.max(currentStepIndex - 1, 0)]);
-  });
+  studentsBody.addEventListener("change", function (e) { if (e.target.classList.contains("level-select")) updateWizardState(); });
+  analysisBody.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA") updateWizardState(); });
+  wizardSteps.forEach(function (s) { s.addEventListener("click", function () { showStep(s.dataset.stepTarget); }); });
+  wizardNextBtn.addEventListener("click", function () { showStep(stepOrder[Math.min(currentStepIndex + 1, stepOrder.length - 1)]); });
+  wizardPrevBtn.addEventListener("click", function () { showStep(stepOrder[Math.max(currentStepIndex - 1, 0)]); });
 
   showStep("general");
   loadModule();
