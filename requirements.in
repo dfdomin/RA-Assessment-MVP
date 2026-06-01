@@ -1,0 +1,40 @@
+# Web framework
+fastapi[standard]
+uvicorn[standard]
+
+# Database
+sqlalchemy[asyncio]
+asyncpg
+alembic
+
+# Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+
+# Settings
+pydantic-settings
+
+# Rate limiting
+slowapi
+
+# Testing
+pytest
+pytest-asyncio
+pytest-playwright
+playwright
+httpx
+aiosqlite
+
+# HTML sanitization
+bleach
+
+# CSV/XLSX parsing
+openpyxl
+
+# PDF export
+weasyprint
+
+# Security tooling (dev / CI)
+bandit
+pip-audit

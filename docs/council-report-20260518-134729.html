@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>LLM Council - Infraestructura externa RA Assessment App</title>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #5b6472;
+      --line: #d8dee8;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --accent: #1e2843;
+      --yellow: #ffdf2d;
+      --green: #1f7a4d;
+      --warn: #8a5a00;
+      --blue: #2556a6;
+    }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 36px 20px 56px;
+    }
+    header, section, details {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 18px;
+      padding: 22px;
+    }
+    h1, h2, h3 {
+      margin: 0 0 12px;
+      color: var(--accent);
+      letter-spacing: 0;
+    }
+    h1 { font-size: 28px; }
+    h2 { font-size: 20px; }
+    h3 { font-size: 16px; }
+    p { margin: 0 0 12px; }
+    .tag {
+      display: inline-block;
+      background: var(--yellow);
+      color: #111827;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+    .verdict {
+      border-left: 5px solid var(--green);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+    .card strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 4px;
+    }
+    .agree { border-top: 4px solid var(--green); }
+    .scope { border-top: 4px solid var(--warn); }
+    .action { border-top: 4px solid var(--blue); }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .muted { color: var(--muted); }
+    ul { margin: 8px 0 0 20px; padding: 0; }
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 24px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">LLM Council</span>
+    <h1>Infraestructura externa para RA Assessment App</h1>
+    <p><strong>Pregunta:</strong> ¿Debe el proyecto empezar ahora tareas de infraestructura externa como PostgreSQL real/staging, Caddy/HTTP, hardening, fail2ban y backups para mejorar la calidad de pruebas, o seguir solo con features de aplicación?</p>
+    <p class="muted">Contexto clave: S1-S4 implementados, 174/174 tests locales pasan, pero 5 tests PostgreSQL siguen skipped porque falta <code>TEST_PG_URL</code>. S5 traerá carga masiva CSV/Excel y file adapter, donde PostgreSQL, backups y despliegue real importan más.</p>
+  </header>
+
+  <section class="verdict">
+    <h2>Chairman's Verdict</h2>
+    <h3>Where the Council Agrees</h3>
+    <p>El consejo fue unánime: iniciar infraestructura ahora, pero solo como habilitador estrecho de pruebas. El objetivo no es “terminar infraestructura”; es convertir supuestos saltados en evidencia ejecutable.</p>
+    <h3>Where the Council Clashes</h3>
+    <p>El desacuerdo real es el alcance. La visión expansiva ve una escalera completa de calidad: PostgreSQL, staging E2E, Caddy, TLS, backups y restore. La visión ejecutora advierte que ese camino puede convertirse en un proyecto ops sin fin. La resolución ganadora es secuenciar.</p>
+    <h3>Blind Spots the Council Caught</h3>
+    <p>Faltaban definición de done, timebox, ownership, política de secretos, disciplina de migraciones y estrategia de datos/reset. <code>TEST_PG_URL</code> debe apuntar a una base descartable o de pruebas, no a datos valiosos.</p>
+    <h3>The Recommendation</h3>
+    <p><strong>Empieza infraestructura externa ahora.</strong> No sigas acumulando features solo con confianza SQLite. Pero implementa una primera rebanada mínima: PostgreSQL staging, migraciones desde DB vacía, tests PG corriendo, un E2E con PostgreSQL y prueba de backup/restore antes de cerrar S5.</p>
+    <h3>The One Thing to Do First</h3>
+    <p><strong>Provisionar una base PostgreSQL 16 staging/test descartable y cablear <code>TEST_PG_URL</code> para que los cinco tests PostgreSQL actualmente skipped se ejecuten contra ella.</strong></p>
+  </section>
+
+  <section>
+    <h2>Agreement / Disagreement Map</h2>
+    <div class="grid">
+      <div class="card agree"><strong>Contrarian</strong>Iniciar ahora. SQLite da comfort metrics, no confiabilidad real.</div>
+      <div class="card agree"><strong>First Principles</strong>La decisión es sobre calidad de evidencia, no infra vs features.</div>
+      <div class="card scope"><strong>Expansionist</strong>Infra como acelerador institucional, pero con riesgo de ampliar alcance.</div>
+      <div class="card agree"><strong>Outsider</strong>Los 5 skips PostgreSQL evidencian el hueco de pruebas.</div>
+      <div class="card action"><strong>Executor</strong>Primer paso: PostgreSQL 16 staging + <code>TEST_PG_URL</code>.</div>
+    </div>
+  </section>
+
+  <details>
+    <summary>Advisor Responses</summary>
+    <h3>The Contrarian</h3>
+    <p>Sí, iniciar ahora, pero con staging mínimo. El riesgo mayor es seguir con features sobre confianza SQLite y descubrir tarde problemas de transacciones, constraints, tipos, migrations, pooling y encoding.</p>
+    <h3>The First Principles Thinker</h3>
+    <p>El problema real es la calidad de evidencia. La app debe probar el universo donde vivirá: PostgreSQL 16 detrás de Caddy con backups, no solo SQLite local.</p>
+    <h3>The Expansionist</h3>
+    <p>La infraestructura puede ser un acelerador de producto: crea una escalera entendible de confianza, especialmente antes de S5, donde importaciones y backups elevan el riesgo.</p>
+    <h3>The Outsider</h3>
+    <p>Desde fuera, la señal obvia son los 5 tests skipped. Iniciar infraestructura no debe significar pausar producto, sino crear el sustrato de pruebas faltante.</p>
+    <h3>The Executor</h3>
+    <p>Ruta inmediata: PostgreSQL staging, <code>TEST_PG_URL</code>, correr tests PG, agregar un E2E con PostgreSQL, luego Caddy smoke tests y backups antes del gate S5.</p>
+  </details>
+
+  <details>
+    <summary>Peer Review Highlights</summary>
+    <ul>
+      <li>La respuesta más fuerte fue la del Executor por convertir el veredicto en orden de ejecución.</li>
+      <li>La mayor debilidad fue la expansión excesiva de alcance: infraestructura puede volverse infinita si no se timeboxea.</li>
+      <li>Faltaba definir ownership, costos, secretos, reset de datos y qué tests permanecen SQLite vs cuáles deben ser PostgreSQL.</li>
+      <li>La primera base de pruebas debe ser descartable/test-owned para evitar destruir datos valiosos.</li>
+    </ul>
+  </details>
+
+  <footer>
+    Generated 2026-05-18 13:47 -0500 · RA Assessment App · Council on infrastructure timing
+  </footer>
+</main>
+</body>
+</html>

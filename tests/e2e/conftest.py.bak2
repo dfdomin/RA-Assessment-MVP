@@ -1,0 +1,148 @@
+import json
+import os
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+from urllib.request import urlopen
+
+import pytest
+from sqlalchemy import create_engine
+
+ROOT = Path(__file__).resolve().parents[2]
+PYTHON_EXEC = sys.executable
+
+
+def _find_free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _seed_admin(sync_db_url: str) -> None:
+    from src.core.security import hash_password
+    from src.db.base import Base
+    import src.models  # noqa: F401 — register all models with Base.metadata
+
+    sync_engine = create_engine(sync_db_url)
+    Base.metadata.create_all(sync_engine)
+
+    with sync_engine.begin() as conn:
+        from sqlalchemy import text
+
+        conn.execute(
+            text(
+                "INSERT INTO users (email, full_name, role, hashed_password, is_active, auth_provider) "
+                "VALUES (:email, :full_name, :role, :hashed_password, :is_active, :auth_provider)"
+            ),
+            {
+                "email": "admin@iub.edu.co",
+                "full_name": "Administrador Sistema",
+                "role": "admin",
+                "hashed_password": hash_password("Admin1234!"),
+                "is_active": True,
+                "auth_provider": "local",
+            },
+        )
+        conn.execute(
+            text(
+                "INSERT INTO users (email, full_name, role, hashed_password, is_active, auth_provider) "
+                "VALUES (:email, :full_name, :role, :hashed_password, :is_active, :auth_provider)"
+            ),
+            {
+                "email": "docente@iub.edu.co",
+                "full_name": "Docente Demo",
+                "role": "teacher",
+                "hashed_password": hash_password("Docente1234!"),
+                "is_active": True,
+                "auth_provider": "local",
+            },
+        )
+
+    sync_engine.dispose()
+
+
+@pytest.fixture
+def e2e_server():
+    port = _find_free_port()
+    tmpdir = tempfile.mkdtemp(prefix="ra_e2e_")
+    db_path = os.path.join(tmpdir, "e2e_test.db")
+    db_url = f"sqlite+aiosqlite:///{db_path}"
+    sync_url = f"sqlite:///{db_path}"
+
+    _seed_admin(sync_url)
+
+    env = {
+        **os.environ,
+        "APP_ENV": "test_e2e",
+        "DATABASE_URL": db_url,
+        "SECRET_KEY": "e2e-test-secret-key",
+        "ALLOWED_ORIGINS": json.dumps([f"http://localhost:{port}"]),
+    }
+
+    proc = subprocess.Popen(
+        [
+            PYTHON_EXEC,
+            "-m",
+            "uvicorn",
+            "src.api.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+        ],
+        cwd=str(ROOT),
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    base_url = f"http://localhost:{port}"
+
+    deadline = time.monotonic() + 15
+    ready = False
+    while time.monotonic() < deadline:
+        try:
+            urlopen(f"{base_url}/health", timeout=1)
+            ready = True
+            break
+        except Exception:
+            time.sleep(0.3)
+
+    if not ready:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        raise RuntimeError("E2E server did not start within 15s")
+
+    yield base_url
+
+    proc.send_signal(signal.SIGTERM)
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+@pytest.fixture
+def base_url_for_e2e(e2e_server) -> str:
+    return e2e_server
+
+
+@pytest.fixture
+def browser_context(browser, base_url_for_e2e):
+    context = browser.new_context(base_url=base_url_for_e2e)
+    try:
+        yield context
+    finally:
+        context.close()

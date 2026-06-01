@@ -1,0 +1,27 @@
+# Production Caddyfile template for RA Assessment App.
+# Copy to /etc/caddy/Caddyfile on the server after replacing the domain if needed.
+# Caddy obtains and renews HTTPS certificates automatically for this site.
+
+ra-assessment.iub.edu.co {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options DENY
+    }
+
+    handle /health {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        root * /var/www/ra-assessment/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}

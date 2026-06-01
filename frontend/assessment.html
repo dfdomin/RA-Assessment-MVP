@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <title>Calificación de módulo — RA Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body class="dashboard-layout">
+
+  <header class="site-header" role="banner">
+    <svg
+      class="logo"
+      viewBox="0 0 120 40"
+      aria-label="Institución Universitaria de Barranquilla"
+      role="img"
+      focusable="false"
+    >
+      <rect width="120" height="40" fill="#FFDF2D" rx="4" />
+      <text x="8" y="26" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#1E2843">IUB</text>
+    </svg>
+    <h1>Calificación de módulo</h1>
+  </header>
+
+  <main class="dashboard-main assessment-main">
+    <section class="dashboard-toolbar" aria-labelledby="assessment-title">
+      <div>
+        <a class="back-link" href="/dashboard.html">Volver al panel</a>
+        <h2 id="assessment-title">Evaluación de estudiantes</h2>
+        <p id="assessment-status" class="status-message" role="status" aria-live="polite">
+          Cargando módulo…
+        </p>
+      </div>
+      <button id="submit-module-btn" class="btn-primary compact-btn" type="button" disabled>
+        Enviar módulo
+      </button>
+    </section>
+
+    <nav class="wizard-steps" aria-label="Pasos de evaluación del módulo">
+      <button class="wizard-step" type="button" data-step-target="general" aria-current="step">
+        <span>1</span> Información
+      </button>
+      <button class="wizard-step" type="button" data-step-target="grading">
+        <span>2</span> Calificaciones
+      </button>
+      <button class="wizard-step" type="button" data-step-target="distribution">
+        <span>3</span> Distribución
+      </button>
+      <button class="wizard-step" type="button" data-step-target="analysis">
+        <span>4</span> Análisis
+      </button>
+      <button class="wizard-step" type="button" data-step-target="submit">
+        <span>5</span> Envío
+      </button>
+    </nav>
+
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="general" aria-labelledby="general-title">
+      <div class="modules-header">
+        <div>
+          <h3 id="general-title">Información general</h3>
+          <p class="muted">Revisa el alcance antes de registrar calificaciones.</p>
+        </div>
+      </div>
+      <dl id="module-summary" class="module-summary">
+        <div>
+          <dt>Módulo</dt>
+          <dd>Cargando…</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="grading" aria-labelledby="students-title" hidden>
+      <div class="modules-header">
+        <div>
+          <h3 id="students-title">Calificaciones por estudiante</h3>
+          <p class="muted">Selecciona un nivel de 1 a 4 para cada resultado activo.</p>
+        </div>
+        <button id="save-assessments-btn" class="btn-secondary" type="button" disabled>
+          Guardar calificaciones
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="modules-table assessment-table">
+          <thead id="students-head">
+            <tr>
+              <th scope="col">Estudiante</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="students-body">
+            <tr>
+              <td colspan="2">Cargando estudiantes…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="distribution" aria-labelledby="distribution-title" hidden>
+      <div class="modules-header">
+        <div>
+          <h3 id="distribution-title">Distribución de desempeño</h3>
+          <p class="muted">Consulta la concentración de niveles por indicador.</p>
+        </div>
+      </div>
+      <div id="distribution-body" class="distribution-grid">
+        <p class="muted">Cargando distribución…</p>
+      </div>
+    </section>
+
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="analysis" aria-labelledby="analysis-title" hidden>
+      <div class="modules-header">
+        <div>
+          <h3 id="analysis-title">Análisis cualitativo</h3>
+          <p class="muted">Registra una conclusión breve por indicador activo.</p>
+        </div>
+        <button id="save-qualitative-btn" class="btn-secondary" type="button" disabled>
+          Guardar análisis
+        </button>
+      </div>
+
+      <div id="analysis-body" class="analysis-list">
+        <p class="muted">Cargando indicadores…</p>
+      </div>
+    </section>
+
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="submit" aria-labelledby="submit-title" hidden>
+      <div class="modules-header">
+        <div>
+          <h3 id="submit-title">Confirmación y envío</h3>
+          <p class="muted">El envío se habilita cuando las calificaciones y el análisis estén completos.</p>
+        </div>
+      </div>
+      <ul id="submit-readiness" class="readiness-list" aria-live="polite">
+        <li>Calificaciones: pendiente</li>
+        <li>Análisis cualitativo: pendiente</li>
+      </ul>
+    </section>
+
+    <div class="wizard-actions" aria-label="Navegación del wizard">
+      <button id="wizard-prev-btn" class="btn-secondary" type="button" disabled>
+        Anterior
+      </button>
+      <button id="wizard-next-btn" class="btn-secondary" type="button">
+        Siguiente
+      </button>
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>© 2026 Institución Universitaria de Barranquilla · Todos los derechos reservados</p>
+  </footer>
+
+  <script src="/js/module_assessment.js"></script>
+</body>
+</html>

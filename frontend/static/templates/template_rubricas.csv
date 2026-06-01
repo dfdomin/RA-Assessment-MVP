@@ -1,0 +1,3 @@
+SO_codigo,SO_descripcion,PI_codigo,PI_descripcion,Poor_descriptor,Inadequate_descriptor,Adequate_descriptor,Exemplary_descriptor,peso_pct
+RA1,Aplica principios contables en registros financieros,PI1,Identifica documentos fuente,No identifica documentos fuente,Identifica algunos documentos con errores,Identifica documentos fuente correctamente,Identifica y valida documentos fuente con criterio profesional,50.00
+RA1,Aplica principios contables en registros financieros,PI2,Registra operaciones contables,No registra operaciones,Registra con errores significativos,Registra correctamente las operaciones,Registra con precisión y sustenta cada asiento,50.00

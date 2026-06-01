@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "pg: PostgreSQL staging tests enabled by TEST_PG_URL",
+    "e2e: Browser end-to-end tests enabled by E2E_BASE_URL",
+]
+
+[tool.bandit]
+targets = ["src/"]
+skips = []
+severity = "medium"
+
+[tool.bandit.assert_used]
+skips = ["**/tests/**"]

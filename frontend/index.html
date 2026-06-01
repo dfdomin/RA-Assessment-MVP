@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <title>Iniciar sesión — RA Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body>
+
+  <header class="site-header" role="banner">
+    <svg
+      class="logo"
+      viewBox="0 0 120 40"
+      aria-label="Institución Universitaria de Barranquilla"
+      role="img"
+      focusable="false"
+    >
+      <rect width="120" height="40" fill="#FFDF2D" rx="4" />
+      <text x="8" y="26" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#1E2843">IUB</text>
+    </svg>
+    <h1>Sistema de Evaluación de Resultados de Aprendizaje</h1>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="login-heading">
+      <h2 id="login-heading">Iniciar sesión</h2>
+
+      <div id="login-error" class="alert" role="alert"></div>
+
+      <form id="login-form" novalidate>
+        <div class="form-group">
+          <label for="email">
+            Correo institucional
+            <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            autocomplete="username"
+            required
+            placeholder="usuario@iub.edu.co"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">
+            Contraseña
+            <span class="required-mark" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-primary">
+          Ingresar
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>© 2026 Institución Universitaria de Barranquilla · Todos los derechos reservados</p>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>

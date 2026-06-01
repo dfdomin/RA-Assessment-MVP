@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>LLM Council — Lineas Propedeuticas</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2937; margin: 40px; line-height: 1.55; }
+    main { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 28px; margin-bottom: 6px; }
+    h2 { margin-top: 28px; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+    .meta { color: #6b7280; }
+    .verdict { background: #fff7ed; border: 1px solid #fed7aa; border-left: 5px solid #ea580c; padding: 18px; border-radius: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; background: #fff; }
+    details { border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; margin: 10px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>LLM Council — Lineas Propedeuticas y Resumen Ejecutivo</h1>
+  <p class="meta">Fecha: 2026-05-16</p>
+
+  <section class="verdict">
+    <h2>Veredicto</h2>
+    <p>No esta contemplado adecuadamente. El producto y el codigo estan modelados para assessment de un programa, no para una plataforma institucional con jerarquia <code>Modulo -> Programa -> Linea Propedeutica</code>.</p>
+    <p>Para soportarlo se requiere cambio mayor de dominio, permisos y reporting: entidades de programa/linea/ciclo, rol Decano o autoridad equivalente, y resumen ejecutivo agregado por linea.</p>
+  </section>
+
+  <h2>Acuerdos del Consejo</h2>
+  <div class="grid">
+    <div class="card"><strong>Falta modelo de dominio</strong><br>No existen Program, PropedeuticLine ni AcademicCycle.</div>
+    <div class="card"><strong>Falta rol ejecutivo</strong><br>Admin no equivale semanticamente a Decano.</div>
+    <div class="card"><strong>Falta reporte agregado</strong><br>Los reportes actuales son por periodo/programa, no por linea.</div>
+    <div class="card"><strong>Es cambio de alcance</strong><br>No conviene improvisarlo sobre Module/Period.</div>
+  </div>
+
+  <h2>Primer Paso</h2>
+  <p>Actualizar el PRD como cambio de alcance mayor: pasar de "v1 solo TGA" a plataforma institucional multi-programa, o registrar esta capacidad como sprint futuro independiente.</p>
+
+  <h2>Detalles</h2>
+  <details><summary>Contrarian</summary><p>Sin jerarquia persistente, cualquier resumen ejecutivo seria una convencion manual no auditable.</p></details>
+  <details><summary>First Principles</summary><p>La pregunta ejecutiva no puede responderse si los datos no conocen programa ni linea.</p></details>
+  <details><summary>Expansionist</summary><p>Esto abre una plataforma institucional con comparativos, tendencias, riesgos y drill-down.</p></details>
+  <details><summary>Outsider</summary><p>Si el sistema habla de lineas y decanos, esos conceptos deben existir en datos, permisos y pantallas.</p></details>
+  <details><summary>Executor</summary><p>Agregar entidades, migrar TGA al nuevo modelo, sumar rol ejecutivo, endpoints, docs y tests.</p></details>
+</main>
+</body>
+</html>

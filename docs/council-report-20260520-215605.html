@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Council Verdict — Local Production-Path Rehearsal</title>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --line: #d8dee8;
+      --soft: #f6f8fb;
+      --accent: #1e2843;
+      --yellow: #ffdf2d;
+      --green: #e8f7ef;
+      --red: #fff0f0;
+      --blue: #edf4ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: #ffffff;
+      line-height: 1.55;
+    }
+    header {
+      background: var(--accent);
+      color: white;
+      padding: 32px 24px;
+      border-bottom: 6px solid var(--yellow);
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 28px 24px 56px;
+    }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    h2 { margin-top: 34px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    h3 { margin-top: 22px; }
+    .subtitle { margin: 0; color: #dce5f4; }
+    .question, .verdict, .grid-card, details {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      padding: 18px;
+      margin: 16px 0;
+    }
+    .question { background: var(--soft); }
+    .verdict {
+      border-left: 6px solid var(--yellow);
+      box-shadow: 0 8px 28px rgba(30, 40, 67, 0.08);
+    }
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin: 16px 0;
+    }
+    .grid-card { margin: 0; }
+    .grid-card strong { display: block; margin-bottom: 6px; }
+    .yes { background: var(--green); }
+    .risk { background: var(--red); }
+    .scope { background: var(--blue); }
+    .advisor-map {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    .advisor-map th, .advisor-map td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+    .advisor-map th { background: var(--soft); }
+    .advisor-map tr:last-child td { border-bottom: none; }
+    details summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    code {
+      background: #eef2f7;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.95em;
+    }
+    ul { padding-left: 22px; }
+    footer {
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      margin-top: 40px;
+      padding-top: 18px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>LLM Council Verdict</h1>
+    <p class="subtitle">Local production-path rehearsal for RA Assessment App</p>
+  </header>
+  <main>
+    <section class="question">
+      <h2>Question</h2>
+      <p>Should the project rehearse locally the tasks that will later be done on the Hetzner server, and document the learned experience so future AI agents can repeat it safely?</p>
+    </section>
+
+    <section class="verdict">
+      <h2>Chairman's Verdict</h2>
+      <h3>Where the Council Agrees</h3>
+      <p>Do not interpret the proposal as “simulate the whole Hetzner server locally.” That would create false confidence. But the core instinct is right: rehearse locally the production-critical spine that can produce real evidence.</p>
+      <p>The useful local scope is PostgreSQL real behavior, PG-backed E2E, Caddy reverse proxy shape, real backup encryption, restore proof, and a runbook written while doing the work.</p>
+
+      <h3>Where the Council Clashes</h3>
+      <p>The clash is scope. The Expansionist wants a named local rehearsal milestone because it builds operator competence. The Contrarian warns that local Caddy, cron, firewall, DNS, TLS, and service supervision do not prove Hetzner behavior.</p>
+      <p>The resolution: accept the rehearsal, but narrow it to database, proxy, backup, restore, smoke tests, and runbook. Hardening, fail2ban, UFW, SSH, unattended upgrades, DNS, TLS issuance, and service supervision are server runbook items with server-side validation gates.</p>
+
+      <h3>Blind Spots Caught</h3>
+      <p>The runbook needs promotion gates: timestamps, command outputs, backup checksum, encrypted artifact proof, restore validation query, Caddy smoke response, failure notes, rollback checklist, secrets inventory, unresolved risk notes, and human approvals for destructive production commands.</p>
+
+      <h3>Recommendation</h3>
+      <p>Create a bounded S5 task named <strong>S5-05 Local Production-Path Rehearsal</strong>. It should prove PG E2E, local Caddy smoke, real GPG/rclone backup, fresh restore, one controlled failure, and an agent-usable runbook.</p>
+
+      <h3>One Thing to Do First</h3>
+      <p>Create <code>docs/ops/local-rehearsal.md</code> with this template for every step: <code>goal</code>, <code>local command</code>, <code>expected output</code>, <code>evidence artifact</code>, <code>failure seen</code>, <code>fix applied</code>, <code>production note</code>, <code>requires human approval?</code>.</p>
+    </section>
+
+    <h2>Agreement Map</h2>
+    <div class="signal-grid">
+      <div class="grid-card yes"><strong>High Agreement</strong>Rehearse locally, but only the production-critical path.</div>
+      <div class="grid-card risk"><strong>Main Risk</strong>“Everything locally” can become ops theater and false confidence.</div>
+      <div class="grid-card scope"><strong>Winning Scope</strong>PG E2E, Caddy smoke, GPG/rclone backup, restore, runbook, promotion gate.</div>
+    </div>
+
+    <table class="advisor-map">
+      <thead>
+        <tr><th>Advisor</th><th>Position</th><th>Key Contribution</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Contrarian</td><td>No to “everything”</td><td>Local is not Hetzner; do not simulate hardening/TLS/fail2ban locally.</td></tr>
+        <tr><td>First Principles</td><td>Yes, narrowed</td><td>The real problem is future-agent execution without improvisation.</td></tr>
+        <tr><td>Expansionist</td><td>Yes, milestone</td><td>Local rehearsal creates operator competence and reusable agent memory.</td></tr>
+        <tr><td>Outsider</td><td>Yes, deployment-critical path</td><td>Runbook must mark local-only vs server-exact and produce artifacts.</td></tr>
+        <tr><td>Executor</td><td>Yes, tight S5 task</td><td>Definition of done: PG E2E, Caddy smoke, encrypted backup, restore, runbook.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Advisor Responses</h2>
+    <details>
+      <summary>The Contrarian</summary>
+      <p>This proposal is too broad and will almost certainly turn into ops theater. Local is not Hetzner: Docker Desktop is not a CAX11 VM, local networking is not public internet exposure, local cron is not systemd, and local Caddy smoke tests are not real TLS, DNS, firewall, renewal, logs, and failure modes.</p>
+      <p>Verdict: yes to narrow operational rehearsal; no to “everything locally.” Close backup/restore properly, document it ruthlessly, then return to S5 product work.</p>
+    </details>
+    <details>
+      <summary>The First Principles Thinker</summary>
+      <p>The real problem is not local/prod parity. The real problem is whether a future agent can execute deployment, backup, restore, and smoke verification without improvising under pressure on the Hetzner box.</p>
+      <p>Every rehearsal must produce a tested script, verified command sequence, or runbook section. No learning that lives only in memory.</p>
+    </details>
+    <details>
+      <summary>The Expansionist</summary>
+      <p>Local rehearsal is not just risk reduction; it manufactures future operator competence. Weird GPG/rclone issues and restore dry runs become agent training data in the form of a runbook.</p>
+      <p>Define a Local Ops Dress Rehearsal inside S5, but do not perfectly emulate Hetzner.</p>
+    </details>
+    <details>
+      <summary>The Outsider</summary>
+      <p>Rehearse the deployment-critical path, not the whole future server life. Write one runbook while doing it, not after. Every command should be annotated as local-only or server-exact.</p>
+      <p>Without logs, restore proof, known differences, and rollback notes, the rehearsal is theater.</p>
+    </details>
+    <details>
+      <summary>The Executor</summary>
+      <p>Create a tight S5 subtask called “local prod-path rehearsal.” Stop after real PG, PG E2E, local Caddy reverse proxy, backup with real GPG/rclone, fresh restore, and runbook.</p>
+      <p>Do not simulate UFW, fail2ban, SSH hardening, systemd edge cases, Hetzner firewalling, or full server bootstrap yet.</p>
+    </details>
+
+    <h2>Peer Review Highlights</h2>
+    <details>
+      <summary>What the reviewers added</summary>
+      <ul>
+        <li>Best response: mostly the Executor, with the Outsider close behind.</li>
+        <li>Missing guardrail: separate local-safe commands from destructive production commands.</li>
+        <li>Add a promotion gate before Hetzner: evidence, approvals, rollback, secrets inventory, unresolved risks.</li>
+        <li>Add failure injection: missing env var, wrong credentials, failed restore, broken target, bad rclone path.</li>
+        <li>Version the runbook against the exact app commit, env template, and script versions.</li>
+      </ul>
+    </details>
+
+    <footer>
+      Generated 2026-05-20 21:56:05 -0500. Full transcript: <code>docs/council-transcript-20260520-215605.md</code>.
+    </footer>
+  </main>
+</body>
+</html>

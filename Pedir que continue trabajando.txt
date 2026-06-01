@@ -1,0 +1,46 @@
+############CLAUDECODE#########
+RA Assessment App — Resume work.
+Read these two files to orient yourself:
+
+memory/PROJECT_STATE.md  ← current project state
+
+memory/NEXT_STEPS.md     ← pending tasks ordered by priority
+
+Then, implement the next pending task from the current phase.
+Do not ask for confirmation; begin immediately.
+
+Upon completion, update memory/PROJECT_STATE.md with what you implemented and mark the completed tasks in memory/NEXT_STEPS.md. Additionally, use memory/SESSION_LOG.md to document research updates and track session token usage.
+
+
+############CODEX##############
+
+RA Assessment App — Resume work.
+
+Works for Codex or Claude Code.
+
+Use memory efficiently:
+- Read `memory/PROJECT_STATE.md`.
+- Read `memory/NEXT_STEPS.md`.
+- Do not read full `memory/SESSION_LOG.md`; only inspect its last 10 lines if needed for append format.
+
+Implement the next pending task from the current phase.
+Do not ask for confirmation; begin immediately.
+
+Workflow:
+- Use TDD when changing code.
+- Inspect relevant existing code before editing.
+- Do not revert unrelated changes.
+- Run focused tests, then the relevant full suite.
+- If tests cannot run, explain why.
+
+After completion:
+- Update `memory/PROJECT_STATE.md`.
+- Mark completed items in `memory/NEXT_STEPS.md`.
+- Append a concise entry to `memory/SESSION_LOG.md` with: date/time/session, task, files changed, tests, key decisions, blockers, lessons, and token note.
+
+Token note rule:
+- Do not invent exact token counts.
+- If unavailable, write: “Exact token count not exposed by runtime.”
+- Optionally classify usage as small / medium / large.
+
+Only read the full `SESSION_LOG.md` if I explicitly ask for historical research synthesis.

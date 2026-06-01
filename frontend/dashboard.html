@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <title>Panel principal — RA Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/css/main.css" />
+</head>
+<body class="dashboard-layout">
+
+  <header class="site-header" role="banner">
+    <svg
+      class="logo"
+      viewBox="0 0 120 40"
+      aria-label="Institución Universitaria de Barranquilla"
+      role="img"
+      focusable="false"
+    >
+      <rect width="120" height="40" fill="#FFDF2D" rx="4" />
+      <text x="8" y="26" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#1E2843">IUB</text>
+    </svg>
+    <h1>Panel principal</h1>
+  </header>
+
+  <main class="dashboard-main">
+    <section class="dashboard-toolbar" aria-labelledby="dashboard-title">
+      <div>
+        <h2 id="dashboard-title">Módulos asignados</h2>
+        <p id="welcome-msg">Cargando información de usuario…</p>
+      </div>
+      <button id="logout-btn" class="btn-secondary" type="button">Cerrar sesión</button>
+    </section>
+
+    <section class="modules-panel" aria-labelledby="modules-title">
+      <div class="modules-header">
+        <div>
+          <h3 id="modules-title">Progreso por período</h3>
+          <p class="muted">Consulta los módulos visibles para tu rol y su avance de calificación.</p>
+        </div>
+        <div class="period-filter">
+          <label for="period-select">Período</label>
+          <select id="period-select" disabled>
+            <option value="">Cargando períodos…</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="modules-status" class="status-message" role="status" aria-live="polite">
+        Cargando módulos…
+      </p>
+
+      <div class="table-wrap" aria-live="polite">
+        <table id="modules-table" class="modules-table">
+          <thead>
+            <tr>
+              <th scope="col">Módulo</th>
+              <th scope="col">Grupo</th>
+              <th scope="col">Docente</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Progreso</th>
+              <th scope="col">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="modules-body">
+            <tr>
+              <td colspan="6">Selecciona un período para cargar módulos.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="leader-panel" class="leader-panel" aria-labelledby="leader-title" hidden>
+      <div class="leader-header">
+        <div>
+          <h3 id="leader-title">Panel del líder</h3>
+          <p class="muted">Revisa el avance consolidado, el reporte ABET y el análisis por PI.</p>
+        </div>
+        <div class="leader-actions" aria-label="Acciones del período">
+          <button id="view-report-btn" class="btn-secondary" type="button">Ver reporte</button>
+          <button id="close-period-btn" class="btn-secondary" type="button">Cerrar período</button>
+          <button id="send-reminder-btn" class="btn-secondary" type="button">Enviar recordatorio</button>
+        </div>
+      </div>
+
+      <div class="period-progress" aria-label="Progreso de módulos completados">
+        <div class="period-progress-meta">
+          <span>Módulos completados</span>
+          <strong id="period-progress-text">0 de 0</strong>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <span id="period-progress-bar" class="progress-bar" style="width: 0%"></span>
+        </div>
+      </div>
+
+      <div id="report-preview" class="report-preview" aria-live="polite">
+        Selecciona un período para consultar el resumen ejecutivo.
+      </div>
+
+      <form id="leader-analysis-form" class="leader-analysis-form">
+        <div class="section-heading">
+          <h4>Análisis del líder</h4>
+          <button id="save-leader-analysis-btn" class="btn-primary compact" type="submit">
+            Guardar análisis
+          </button>
+        </div>
+        <div id="leader-analysis-list" class="leader-analysis-list">
+          <p class="muted">Selecciona un período para cargar los indicadores.</p>
+        </div>
+        <p id="leader-analysis-status" class="status-message" role="status" aria-live="polite"></p>
+      </form>
+
+      <form id="leader-report-form" class="leader-analysis-form">
+        <div class="section-heading">
+          <h4>Informe del líder</h4>
+          <div class="leader-actions">
+            <button id="save-leader-report-btn" class="btn-primary compact" type="submit">
+              Guardar informe
+            </button>
+            <button id="leader-report-pdf-btn" class="btn-secondary compact" type="button">
+              PDF
+            </button>
+            <button id="leader-report-docx-btn" class="btn-secondary compact" type="button">
+              DOCX
+            </button>
+          </div>
+        </div>
+        <div id="leader-report-list" class="leader-analysis-list">
+          <p class="muted">Selecciona un período para cargar el informe.</p>
+        </div>
+        <p id="leader-report-status" class="status-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>© 2026 Institución Universitaria de Barranquilla · Todos los derechos reservados</p>
+  </footer>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>
