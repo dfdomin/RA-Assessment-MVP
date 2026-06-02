@@ -1,8 +1,10 @@
-# PROJECT_STATE.md — RA Assessment App
+# PROJECT_STATE.md — RA Assessment App / MVP
 
-**Última actualización**: 2026-05-27 (sesión 42 — INFRA-04 backup evidence prep)
-**Sprint activo**: S5 — F15/F16 Carga Masiva Admin + Ports & Adapters + backups/infra prep (S1 + S1.5 + S2 + S3 + S4 completados; E2E-PG-02 ✅; S5-01 CSV templates ✅; S5-02 bulk imports ✅; S5-03 SyncService/file adapter ✅; S5-04 backup script ✅; S5-05 XLSX distribución ✅; S5-06 runbook INFRA-01 ✅; INFRA-01 evidence template ✅; INFRA-02 Caddy template/evidence ✅; INFRA-03 fail2ban template/evidence ✅; INFRA-04 backup evidence template ✅)
-**S0**: ✅ | **S1**: ✅ 38 tests | **S1.5 multi-programa**: ✅ 54/54 tests | **S2**: ✅ S2-01 a S2-05 + FE + E2E API/PG/PW implementados | **S3**: ✅ S3-01 + S3-02 + S3-03 | **S4**: S4-01 ✅ + S4-02 ✅ + S4-03 ✅ + S4-04 ✅ + S4-05 ✅ + S4-06 ✅ + S4-07 ✅ | **S5**: S5-01 templates ✅ + S5-02 bulk imports ✅ + S5-03 F16 sync ✅ + S5-04 backup script ✅ + S5-05 XLSX distribución ✅ + S5-06 runbook INFRA-01 ✅ + INFRA-01/02/03/04 evidence templates ✅ | **201/201 tests locales + PG opt-in 5/5 passing contra PostgreSQL 16 real**
+**Última actualización**: 2026-06-02 (sesión Hermes — migración MVP + población masiva de datos)
+**Stack actual**: Supabase (PostgreSQL + Auth + RLS) + GitHub Pages (HTML/CSS/JS vanilla)
+**Stack original**: FastAPI + PostgreSQL + Hetzner CAX11 (migrado a MVP el 2026-06-01)
+
+> ⚠️ **Dos versiones coexisten**: La versión original FastAPI (carpeta `src/`, `tests/`, 201 tests) está en el repo pero **no es el stack activo**. El stack activo es Supabase + GitHub Pages. Ver `handoff-ra-mvp.md` en `~/Downloads/` para el contexto de migración.
 
 > Este archivo puede copiarse directamente al contexto de una nueva sesión de Claude o Codex para retomar el trabajo sin pérdida de contexto.
 

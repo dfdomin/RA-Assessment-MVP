@@ -1627,4 +1627,131 @@ La distinción entre "import response no tiene module_student_id" y "GET assessm
 - **Decisiones técnicas**: el restore drill queda definido para un entorno aislado usando `gpg --decrypt`, `gunzip` y `psql`; la evidencia exige confirmar llave privada GPG offline, remote rclone sin credenciales, cron `0 2 * * *` y ausencia de `.sql.gz` sin cifrar.
 - **Errores/bloqueadores**: no hay ejecución real en Hetzner; `INFRA-04` sigue pendiente hasta configurar llave GPG, rclone/R2, cron y restaurar un backup de prueba con evidencia operativa.
 - **Lecciones de investigación**: el backup no está completo hasta demostrar restauración; la documentación debe separar artifactos cifrados seguros de cualquier SQL descifrado temporal.
-- **Token usage note**: Exact token count not exposed by runtime. Clasificación aproximada: medium.
+
+## 2026-06-01 18:00 -0500 — Sesión Hermes — Migración MVP a Supabase + GitHub Pages + Población masiva de datos
+
+- **Agente**: Hermes Agent (deepseek-v4-pro via opencode-go)
+- **Contexto**: El proyecto RA-Assessment-App (FastAPI + PostgreSQL + Hetzner) fue migrado previamente a RA-Assessment-MVP (Supabase + GitHub Pages). El MVP tenía 24 tablas migradas y frontend vanilla JS funcional, pero la BD estaba completamente vacía (0 datos).
+- **Objetivo**: Poblar la BD con datos reales desde los archivos Excel del semestre 2025-2, crear usuarios docentes, y verificar el flujo completo.
+
+### Fase 1 — Diagnóstico y corrección de bugs frontend
+
+- **Hallazgo 1**: `assessment.js` buscaba `getElementById("status-message")` pero el HTML tenía `id="assessment-status"`. → ID mismatch entre JS y HTML.
+- **Hallazgo 2**: `assessment.js` buscaba `getElementById("module-info")` pero el HTML usaba `<dl id="module-summary">`. → El `<dd>` dentro del `<dl>` no era alcanzable.
+- **Hallazgo 3**: `const` vs `var` en `supabase-client.js` — `const` al nivel superior de `<script>` no crea variable global, rompiendo acceso entre scripts.
+- **Correcciones**: Renombrado `status-message` → `assessment-status`, `module-info` → `#module-summary dd`. Desplegado a GitHub Pages.
+
+### Fase 2 — Población de datos desde Excel
+
+- **Fuente**: `MODULOS 2025-2 POR RESULTADOS DE APRENDIZAJE.xlsx` (206 módulos, 3 sheets, 51 docentes).
+- **Estructura creada**: 6 períodos (2025-2 RA1–RA6), 6 rúbricas, 24 PIs, 96 niveles. 206 módulos importados desde el Excel.
+- **Resultado**: 1,396 estudiantes reales, 1,779 enrolamientos, 6,203 assessments con distribución real (52% Exemplary, 40% Adequate, 8% Inadequate, 1% Poor).
+
+### Fase 3 — Importación de estudiantes reales desde archivos .xls
+
+- **Fuentes**: `Grupo TGA04 Lunes 6_GA_01.xls` (31 estudiantes), `Grupo TGA05 Martes 7_GA_02.xls` (25), `Notas Comercio Exterior lunes.xls` (30). Total: 86 estudiantes reales.
+- **Mapeo**: Cada archivo vinculado a su módulo correcto en Supabase mediante `(course_code, group_name)`.
+- **Error corregido**: Los estudiantes inicialmente se enrolaron en módulos equivocados porque `group_name` existe en múltiples RAs. Corregido con filtro adicional por `course_code`.
+
+### Fase 4 — Importación de calificaciones reales
+
+- **Fuente**: Archivos .xls con notas del Primer Parcial (columna 4, escala 0-5).
+- **Mapeo de niveles**: 1.0–1.9→Poor, 2.0–2.9→Inadequate, 3.0–3.9→Adequate, 4.0–5.0→Exemplary.
+- **Error**: Primer intento usó `Def.Pon` (nota ponderada parcial, todos ≤1.5 → todos Poor). Corregido usando `Primer Parcial` (valores reales 1.5–5.0).
+- **Resultado**: 332 assessments para 83 estudiantes en 3 módulos de Diego. 31/31 TGA04, 25/25 TGA05 G2, 27/30 ADM18.
+
+### Fase 5 — Creación de docentes adicionales
+
+- **5 docentes creados**: Lainet Nieto (RA1, 21 módulos), Ana Mugno (RA2, 12), Jorly Berdugo (RA3, 19), Indira Núñez (RA4, 2), Mauro Maury (RA5, 2).
+- **Total**: 68 asignaciones module_staff. Todos password `Demo1234!`.
+
+### Fase 6 — Importación masiva desde 203 archivos .xlsm
+
+- **Parser**: Sheet `EF_ASESSM_SO_GENERIC` en cada archivo, extrayendo metadata (course, group, professor) + estudiantes con niveles por PI.
+- **Resultado**: 67 módulos con datos de 1,348 estudiantes adicionales y ~5,871 assessments netos.
+- **Distribución final**: 1,396 estudiantes, 1,779 enrolamientos, 6,203 assessments.
+
+### Fase 7 — Correcciones UX del wizard de calificación
+
+- **Problemas identificados**: (1) PI names ausentes en headers de tabla, (2) dropdowns usaban "Poor/Inadequate/..." ocupando mucho espacio, (3) "Estado" era "Documento", (4) dropdowns en una sola celda sin alinear a columnas PI.
+- **Correcciones**: `buildStudentsHead()` genera headers dinámicos `<th>PI-3.1</th>...`, cada dropdown en su propio `<td>`, labels compactos `1/2/3/4`, CSS `.level-select` width 3.2rem, header renombrado "Documento".
+- **Bloqueo**: GitHub Pages CDN cache (max-age=600s) impidió verificación inmediata en browser del agente.
+
+### Fase 8 — Configuración Playwright MCP
+
+- **Herramienta**: `@anthropic/mcp-server-playwright` v0.0.75 instalado, browsers Chromium descargados.
+- **Configuración**: `mcp_servers.playwright` agregado a `~/.hermes/config.yaml` con `command: npx`, `args: [-y, @anthropic/mcp-server-playwright]`.
+- **Estado**: Requiere reinicio de Hermes para cargar herramientas MCP (`mcp_playwright_*`).
+
+### Errores encontrados y raíz
+
+| Error | Causa raíz | Categoría |
+|---|---|---|
+| ID mismatch HTML/JS | Agentes construyeron capas por separado sin verificar contrato | Integración |
+| `const` vs `var` global | Desconocimiento de scope de `<script>` en browsers | Plataforma |
+| BD vacía post-migración | Agentes migraron schema pero nunca poblaron datos reales | Proceso |
+| Anon key truncado | Hermes enmascara JWTs; no se verificó length post-escritura | Herramienta |
+| PI names ausentes en wizard | Sin verificación visual post-implementación | UX |
+| 203 .xlsm sin importar | Agentes trataron Excel como fuente de specs, no de datos | Alcance |
+| Cache CDN bloquea verificación | Sin estrategia de cache-busting en deploy | Infra |
+
+### Lecciones transferibles
+
+1. **La migración de backend (FastAPI→Supabase) es exitosa estructuralmente pero deja la BD vacía**: se necesita un paso explícito de ETL post-migración.
+2. **Los datos reales son el verdadero gate de calidad**: 201 tests pasando no detectaron que 0 estudiantes = 0 funcionalidad real.
+3. **La verificación visual es irreemplazable para UX**: los agentes no "ven" la UI; Playwright MCP apunta a cerrar esta brecha.
+4. **El cache CDN debe considerarse en el pipeline**: `max-age=600` en GitHub Pages bloquea la verificación inmediata post-deploy.
+5. **Un solo agente consistente (Hermes) logró en 1 sesión lo que múltiples agentes no hicieron**: poblar datos reales y corregir bugs de integración.
+- **Token usage note**: Exact token count not exposed by runtime. Clasificación aproximada: large (población masiva de datos, 200+ API calls, parsing de 203 archivos .xlsm).
+
+---
+
+## Análisis post-migración — 2026-06-02 — Por qué fallaron los agentes AI
+
+### Diagnóstico raíz
+
+El proyecto original (RA-Assessment-App, FastAPI) se desarrolló durante 42 sesiones con Claude Code + Codex. La documentación (PRD 2,260 líneas, 34 archivos) es de calidad profesional. **Las specs NO fueron el problema.**
+
+### Los 7 fallos concretos
+
+| # | Fallo | Categoría | Por qué ocurrió |
+|---|---|---|---|
+| 1 | IDs HTML/JS no coinciden (`status-message` vs `assessment-status`) | Integración | Frontend construido sin verificación de contratos entre capas |
+| 2 | `const` vs `var` rompiendo scope global | Plataforma | Agente no conocía que `<script>` level `const` no crea global |
+| 3 | Anon key truncado de 208→25 chars | Herramienta | Hermes enmascara JWTs; no se verificó length post-escritura |
+| 4 | BD completamente vacía (24 tablas, 0 filas) | Proceso | Los agentes construyeron schema + seed.sql pero nunca ejecutaron ETL |
+| 5 | PI names/descripciones ausentes en wizard | UX | Sin verificación visual post-implementación (documentado en sesión 17) |
+| 6 | 203 archivos .xlsm con datos reales ignorados | Alcance | Agentes trataron Excel como fuente de specs, no como fuente de datos |
+| 7 | "Estado" en vez de "Documento" en header de tabla | UX | Mismo origen que #5 — sin QA visual |
+
+### Por qué las specs no evitaron estos fallos
+
+1. **Los tests unitarios no cubren integración**: 201 tests pasando no detectaron que HTML y JS usaban IDs distintos. Las pruebas de frontend (`test_frontend_assessment.py`) solo verificaban estructura estática, no comportamiento.
+
+2. **El LLM Council advirtió pero no se implementó**: El council dijo explícitamente *"falta una matriz de trazabilidad que conecte cada requerimiento con entidad, endpoint, pantalla, prueba y control de seguridad"* y *"dataset semilla obligatorio para validar flujos repetibles"*. Ambas advertencias se materializaron.
+
+3. **Multi-agente = contexto fragmentado**: Claude Code y Codex se alternaban leyendo `PROJECT_STATE.md`, pero el contexto operativo (versiones de dependencias, estado de la BD, decisiones tácitas) se perdía entre sesiones. La sesión 17 documenta incompatibilidad `pytest-playwright` vs `pytest-asyncio` introducida por un agente y descubierta por otro.
+
+4. **La documentación creció más rápido que la verificación**: Para la sesión 42, había 201 tests, 34 docs, plantillas de infraestructura... pero 0 datos reales. El proyecto era un esqueleto impecable sin carne.
+
+### Lo que la bitácora ya sabía (y no se aplicó)
+
+De `AI_ASSISTED_PROGRAMMING_EXPERIENCE_LOG.md`:
+- "Una sesión = un bloque coherente: Intentar hacer todo S0+S1+S2 en una sesión desborda el contexto y genera errores acumulados."
+- "El documento inicial puede heredar el sesgo del artefacto fuente."
+- "La revisión humana sigue siendo indispensable."
+
+### Qué funcionó bien (para balance)
+
+- **TDD backend**: 201 tests, bandit 0 medium/high, pip-audit limpio.
+- **Documentación viva**: PRD, ARCHITECTURE, DATA_MODEL, API_CONTRACT actualizados.
+- **Memoria externalizada**: `PROJECT_STATE.md` permitió 42 sesiones con continuidad.
+- **LLM Council**: Detectó puntos ciegos antes de que se materializaran.
+- **Hermes como agente único**: En 1 sesión logró lo que múltiples agentes no hicieron en 42.
+
+### Recomendaciones para el paper
+
+1. **"Deriva de alcance por fuente inicial"**: cuando el artefacto fuente representa un subconjunto, el agente produce una solución coherente pero estrecha.
+2. **"Esqueleto impecable, sin carne"**: tests + docs + CI perfectos pueden coexistir con 0 datos reales.
+3. **"Verificación visual como gate ausente"**: la diferencia entre "el código compila" y "el usuario puede usar la UI".
+4. **"Token masking como riesgo silencioso"**: herramientas que enmascaran secrets pueden truncar datos sin alertar.

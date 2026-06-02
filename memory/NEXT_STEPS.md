@@ -1,14 +1,47 @@
-# NEXT_STEPS.md — RA Assessment App
+# NEXT_STEPS.md — RA Assessment App / MVP
 
-**Última actualización**: 2026-05-27 (sesión 42 — INFRA-04 backup evidence prep)
-**Sprint activo**: S5 — F15/F16 Carga Masiva Admin + Ports & Adapters + backups/infra prep (`S5-01` templates ✅; `S5-02` bulk import endpoints ✅; `S5-03` SyncService/file adapter ✅; `S5-04` backup script ✅; `S5-05` XLSX distribución ✅; `S5-06` runbook INFRA-01 ✅; INFRA-01 evidence template ✅; INFRA-02 Caddy template/evidence ✅; INFRA-03 fail2ban template/evidence ✅; INFRA-04 backup evidence template ✅)
-**S1**: ✅ 38/38 tests | **S1.5**: ✅ 54/54 | **S2**: ✅ API + PG + FE + Playwright base | **S3**: ✅ S3-01 + S3-02 + S3-03 | **S4**: S4-01 ✅ + S4-02 ✅ + S4-03 ✅ + S4-04 ✅ + S4-05 ✅ + S4-06 ✅ + S4-07 ✅ | **S5**: S5-01 ✅ + S5-02 ✅ + S5-03 ✅ + S5-04 ✅ + S5-05 ✅ + S5-06 ✅ + INFRA-01/02/03/04 evidence templates ✅ → **201/201 tests locales + PG opt-in 5/5 passing contra PostgreSQL 16 real**
+**Última actualización**: 2026-06-02 (sesión Hermes — post-migración, post-población de datos)
+**Stack activo**: Supabase + GitHub Pages (MVP)
+**Stack original**: FastAPI + Hetzner (conservado en `src/`, no activo)
 
-> Las tareas están ordenadas por prioridad y dependencia. Cada tarea es atómica (< 2 horas). Una tarea tiene criterio de done verificable antes de marcarla como completada.
+> ⚠️ Las tareas abajo son para el **MVP (Supabase + GitHub Pages)**. El backend original FastAPI está congelado.
 
 ---
 
-## ✅ Completado en S0 (base técnica)
+## 🔴 Alta prioridad — MVP (corregir hoy)
+
+### H-01 — Cache-busting en GitHub Pages
+- **Problema**: `max-age=600` en CDN bloquea verificación inmediata post-deploy. Browser cachea JS/CSS viejo.
+- **Solución**: Agregar `?v={{ git_commit_sha }}` a los `<script>` y `<link>` en los HTML.
+- **Criterio de done**: Hard refresh muestra código nuevo sin esperar 10 min.
+
+### H-02 — Activar Playwright MCP
+- **Problema**: Sin tests E2E visuales. Los bugs de integración HTML/JS pasaron desapercibidos.
+- **Solución**: Reiniciar Hermes para cargar `mcp_playwright_*` tools. Crear test E2E para wizard + dashboard.
+- **Criterio de done**: `mcp_playwright_navigate` + `mcp_playwright_screenshot` funcionales.
+
+### H-03 — Completar asignación de docentes a módulos
+- **Problema**: Solo 8 usuarios tienen `module_staff`. 59 módulos con estudiantes no tienen docente asignado.
+- **Solución**: Crear auth users para los 15 docentes principales con más módulos.
+- **Criterio de done**: Dashboard muestra ≥50 módulos con nombre de docente real.
+
+### H-04 — Verificar fix del wizard (PI headers compactos)
+- **Problema**: Fix desplegado pero no verificado por cache CDN.
+- **Solución**: Hard refresh (`Cmd+Shift+R`) en assessment.html?module_id=49.
+- **Criterio de done**: Headers muestran `PI-3.1 | PI-3.2 | PI-3.3 | PI-3.4`, dropdowns compactos con `1/2/3/4`.
+
+## 🟡 Media prioridad — Siguiente sesión
+
+- M-01: Importar TGA05 7_GA_G1 (falta archivo de estudiantes/notas)
+- M-02: Agregar `GRANT INSERT ON public.users TO authenticated` con policy RLS para romper deadlock de seed
+- M-03: Completar leader_analysis para todos los PIs de RA3 con datos agregados
+- M-04: Probar flujo completo: docente califica → submit → líder ve reporte → exportar PDF
+
+## 🟢 Baja prioridad — Backlog
+
+- B-01: Migrar `test_frontend_*.py` a usar Playwright real en vez de chequeos estáticos
+- B-02: Implementar F07 (reporte ABET PDF/XLSX) en el frontend Supabase
+- B-03: Implementar F14 (informe del líder PDF/DOCX) en el frontend Supabase
 
 Los siguientes bloques de S1 ya están implementados:
 - S1-01 a S1-05 (estructura, config, db/base) → `src/` completo
