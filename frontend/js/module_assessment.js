@@ -86,6 +86,24 @@
     return dist;
   }
 
+  function buildStudentsHead() {
+    var headRow = document.querySelector("#students-head tr");
+    // Remove old PI headers if any
+    headRow.querySelectorAll(".pi-header").forEach(function(h) { h.remove(); });
+    // Add PI headers
+    (piRows || []).forEach(function (pi) {
+      var th = document.createElement("th");
+      th.scope = "col";
+      th.className = "pi-header";
+      th.title = pi.description || pi.code;
+      th.textContent = pi.code;
+      headRow.appendChild(th);
+    });
+    // Update colspan on the empty-state row
+    var emptyRow = studentsBody.querySelector("tr:only-child td[colspan]");
+    if (emptyRow) emptyRow.colSpan = 2 + (piRows || []).length;
+  }
+
   function renderModuleSummary() {
     moduleInfo.textContent = "Modulo " + moduleId + " — " + activeStudentCount + " estudiantes activos";
   }
@@ -95,18 +113,19 @@
     (studentsData.students || []).forEach(function (s) {
       var row = document.createElement("tr");
       row.innerHTML = "<td>" + (s.full_name || "—") + "</td><td>" + (s.internal_id || "—") + "</td>";
-      var cell = document.createElement("td");
       (piRows || []).forEach(function (pi) {
+        var cell = document.createElement("td");
         var sel = document.createElement("select");
         sel.className = "level-select";
+        sel.title = pi.code + ": " + (pi.description || "");
         sel.dataset.moduleStudentId = s.module_student_id;
         sel.dataset.piId = pi.id;
-        sel.innerHTML = '<option value="">—</option><option value="1">Poor</option><option value="2">Inadequate</option><option value="3">Adequate</option><option value="4">Exemplary</option>';
+        sel.innerHTML = '<option value="">—</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>';
         var existing = (s.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
         if (existing) sel.value = existing.level;
         cell.appendChild(sel);
+        row.appendChild(cell);
       });
-      row.appendChild(cell);
       studentsBody.appendChild(row);
     });
   }
@@ -180,6 +199,9 @@
       // Load active PIs from the rubric
       var { data: pis } = await client.from("perf_indicators").select("*").eq("rubric_id", mod.period.rubric_id).eq("is_active", true).order("position");
       piRows = pis || [];
+
+      // Build dynamic PI column headers
+      buildStudentsHead();
 
       // Load module_students with their assessments
       var { data: msRows } = await client.from("module_students").select("id, status, student:students(id, full_name, internal_id), assessments(perf_indicator_id, level)").eq("module_id", moduleId);

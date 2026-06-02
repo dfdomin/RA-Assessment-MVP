@@ -269,6 +269,28 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(30, 40, 67, 0.15);
 }
 
+/* Compact level-select dropdowns in assessment table */
+.assessment-table .level-select {
+  width: 3.2rem;
+  min-width: 3.2rem;
+  padding: 0.25rem 0.15rem;
+  font-size: 0.8rem;
+  text-align: center;
+  text-align-last: center;
+}
+
+.assessment-table th.pi-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.4rem 0.2rem;
+  text-align: center;
+  white-space: nowrap;
+  writing-mode: horizontal-tb;
+  max-width: 5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .status-message {
   margin: 1rem 0;
   color: var(--color-muted);
