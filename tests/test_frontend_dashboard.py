@@ -39,6 +39,7 @@ def test_dashboard_js_renders_real_progress_and_actions():
     assert "Calificar" in js
     assert "pickDefaultPeriodId" in js
     assert "filterModulesForRole" in js
+    assert "currentUser.id" in js
     assert "Selecciona otro período en el filtro" in js
 
 

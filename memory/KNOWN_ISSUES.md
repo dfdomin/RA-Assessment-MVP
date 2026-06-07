@@ -10,9 +10,11 @@
 - Cache-busting en GitHub Pages — script `scripts/inject-cache-bust.sh` + workflow CI
 - RLS seed deadlock en `public.users` — migración `0010_users_rls_seed.sql`
 - Módulos sin docente asignado — migración `0011_auto_assign_module_staff.sql`
+- Dashboard docente mostraba otro docente en columna "Docente" — `normalizeTeacher()` ahora prioriza `currentUser.id`
 
 ## Abiertos
 
+- **Recuperar contraseña por correo institucional**: el login (`frontend/index.html` + `auth.js`) solo permite email/contraseña; no hay enlace ni flujo "¿Olvidó su contraseña?". Pendiente: UI en login + `supabase.auth.resetPasswordForEmail()` restringido a dominios `@iub.edu.co` (y plantilla/correo configurado en Supabase Auth).
 - **OneDrive sync**: el repo vive bajo CloudStorage; puede afectar `.venv`, Playwright y rendimiento de git. Mover a `~/Projects/` para desarrollo activo.
 - **Paridad reportes**: Edge Functions generan exportaciones simplificadas (no WeasyPrint/openpyxl). Validar formato institucional con stakeholders IUB.
 - **Cierre de período**: validación server-side completa (módulos pendientes, análisis líder) pendiente de Edge Function `period-close`.

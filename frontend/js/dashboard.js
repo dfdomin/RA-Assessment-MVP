@@ -179,6 +179,12 @@
   function normalizeTeacher(m) {
     const staff = (m && m.module_staff) || [];
     if (!staff.length) return null;
+    if (currentUser) {
+      const mine = staff.find(function (s) { return s.user_id === currentUser.id; });
+      if (mine) {
+        return { id: mine.user_id, full_name: (mine.users && mine.users.full_name) || "—" };
+      }
+    }
     const f = staff[0];
     return { id: f.user_id, full_name: (f.users && f.users.full_name) || "—" };
   }

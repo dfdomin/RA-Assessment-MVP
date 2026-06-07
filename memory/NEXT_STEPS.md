@@ -35,6 +35,7 @@
 
 ## 🟢 Baja prioridad — Backlog
 
+- B-00: **Recuperar contraseña** — enlace en login, flujo Supabase Auth por correo `@iub.edu.co`, página de reset y redirect post-cambio
 - B-01: Migrar `test_frontend_*.py` a usar Playwright real en vez de chequeos estáticos
 - B-02: Implementar F07 (reporte ABET PDF/XLSX) en el frontend Supabase
 - B-03: Implementar F14 (informe del líder PDF/DOCX) en el frontend Supabase
