@@ -4,7 +4,7 @@
  * Cargar antes que cualquier otro modulo JS.
  */
 var   SUPABASE_URL = 'https://whjjervbojyktkhvvmte.supabase.co';
-var   SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndoamplcnZib2p5a3RraHZ2bXRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzMzM0MzgsImV4cCI6MjA5NTkwOTQzOH0.wgnOFx980NFXGs2pvNTxo6PnabHSx9_pV-UFKWYB2Xs';
+var   SUPABASE_ANON_KEY = 'sb_publishable_H0K8qn0Jgqk5VgI-goiKsw_EXaiNoHN';
 
 var   supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {

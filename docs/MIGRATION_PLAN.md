@@ -358,45 +358,45 @@ jobs:
 ## 11. Orden de Ejecución (28 tareas)
 
 ### Bloque A — Setup Supabase (4 tareas)
-- [ ] A1. Crear proyecto Supabase (free tier)
-- [ ] A2. Instalar Supabase CLI local
-- [ ] A3. Escribir migraciones SQL para 20 tablas
-- [ ] A4. Ejecutar migraciones y verificar schema
+- [x] A1. Crear proyecto Supabase (free tier)
+- [x] A2. Instalar Supabase CLI local
+- [x] A3. Escribir migraciones SQL para 20 tablas
+- [x] A4. Ejecutar migraciones y verificar schema
 
 ### Bloque B — Auth y Core (5 tareas)
-- [ ] B1. Configurar Supabase Auth en frontend (signIn, signOut, session)
-- [ ] B2. Reescribir frontend/js/auth.js con Supabase
-- [ ] B3. Migrar seed data (admin, líder, docente)
-- [ ] B4. Adaptar frontend/js/dashboard.js — queries de períodos/módulos
-- [ ] B5. Escribir RLS policies para users, periods, modules
+- [x] B1. Configurar Supabase Auth en frontend (signIn, signOut, session)
+- [x] B2. Reescribir frontend/js/auth.js con Supabase
+- [x] B3. Migrar seed data (admin, líder, docente)
+- [x] B4. Adaptar frontend/js/dashboard.js — queries de períodos/módulos
+- [x] B5. Escribir RLS policies para users, periods, modules
 
 ### Bloque C — CRUD Módulos y Calificaciones (4 tareas)
-- [ ] C1. Adaptar frontend/js/module_assessment.js
-- [ ] C2. Escribir RLS policies para assessments, module_analysis
-- [ ] C3. Adaptar wizard de calificación (5 pasos)
-- [ ] C4. Adaptar import de estudiantes (Edge Function)
+- [x] C1. Adaptar frontend/js/module_assessment.js
+- [x] C2. Escribir RLS policies para assessments, module_analysis
+- [x] C3. Adaptar wizard de calificación (5 pasos)
+- [x] C4. Adaptar import de estudiantes (Edge Function `bulk-import`)
 
 ### Bloque D — Features de líder (4 tareas)
-- [ ] D1. Adaptar leader_analysis en dashboard
-- [ ] D2. Adaptar action_plans en dashboard
-- [ ] D3. Adaptar cierre/re-apertura de período
-- [ ] D4. Adaptar recordatorios (Edge Function)
+- [x] D1. Adaptar leader_analysis en dashboard
+- [x] D2. Adaptar action_plans en dashboard
+- [x] D3. Adaptar cierre/re-apertura de período (cliente; validación server pendiente)
+- [x] D4. Adaptar recordatorios (insert en `reminder_log`)
 
 ### Bloque E — Reportes (4 tareas)
-- [ ] E1. Edge Function reporte ABET PDF
-- [ ] E2. Edge Function reporte ABET XLSX
-- [ ] E3. Edge Function informe líder PDF/DOCX
-- [ ] E4. Adaptar frontend para descarga de reportes
+- [x] E1. Edge Function reporte ABET PDF
+- [x] E2. Edge Function reporte ABET XLSX
+- [x] E3. Edge Function informe líder PDF/DOCX
+- [x] E4. Adaptar frontend para descarga de reportes (`frontend/js/api.js`)
 
 ### Bloque F — Carga Masiva y Admin (3 tareas)
-- [ ] F1. Edge Function bulk-import (CSV/XLSX)
-- [ ] F2. Adaptar frontend admin para carga masiva
-- [ ] F3. Edge Function habeas-data
+- [x] F1. Edge Function bulk-import (CSV/XLSX)
+- [ ] F2. Adaptar frontend admin para carga masiva (UI admin pendiente)
+- [x] F3. Edge Function habeas-data
 
 ### Bloque G — Deploy y QA (4 tareas)
-- [ ] G1. Configurar GitHub Actions → Pages
+- [x] G1. Configurar GitHub Actions → Pages
 - [ ] G2. Verificar deploy en https://dfdomin.github.io/RA-Assessment-MVP/
-- [ ] G3. Adaptar tests E2E Playwright para Supabase
+- [x] G3. Adaptar tests frontend/E2E para Supabase (estáticos + scaffold live)
 - [ ] G4. Mobile-first audit + WCAG 2.1 AA
 
 ---

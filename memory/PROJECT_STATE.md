@@ -1,10 +1,22 @@
 # PROJECT_STATE.md — RA Assessment App / MVP
 
-**Última actualización**: 2026-06-02 (sesión Hermes — migración MVP + población masiva de datos)
-**Stack actual**: Supabase (PostgreSQL + Auth + RLS) + GitHub Pages (HTML/CSS/JS vanilla)
-**Stack original**: FastAPI + PostgreSQL + Hetzner CAX11 (migrado a MVP el 2026-06-01)
+**Última actualización**: 2026-06-07 (completar migración MVP — docs, Edge Functions, CI)
+**Stack actual**: Supabase (PostgreSQL + Auth + RLS + Edge Functions) + GitHub Pages
+**Stack original**: FastAPI + PostgreSQL + Hetzner — **congelado** en `src/` (ver `src/LEGACY.md`)
 
-> ⚠️ **Dos versiones coexisten**: La versión original FastAPI (carpeta `src/`, `tests/`, 201 tests) está en el repo pero **no es el stack activo**. El stack activo es Supabase + GitHub Pages. Ver `handoff-ra-mvp.md` en `~/Downloads/` para el contexto de migración.
+> ⚠️ **Dos versiones coexisten**: FastAPI (`src/`, 201 tests) es **referencia legacy**. El stack activo es Supabase + GitHub Pages. Progreso migración: ~60 % → bloques A–E completados; F2/G2/G4 pendientes.
+
+### Estado MVP (Supabase) — resumen
+
+| Componente | Estado |
+|------------|--------|
+| Migraciones SQL + RLS | ✅ 11 migraciones |
+| Frontend Supabase JS | ✅ auth, dashboard, wizard |
+| Edge Functions | ✅ report-abet, report-leader, bulk-import, habeas-data, sanitize |
+| GitHub Actions | ✅ deploy.yml + tests.yml |
+| Tests frontend MVP | ✅ assert Supabase patterns (no FastAPI fetch) |
+| Paridad reportes institucional | 🟡 export simplificado vs WeasyPrint |
+| UI admin carga masiva | 🔴 pendiente F2 |
 
 > Este archivo puede copiarse directamente al contexto de una nueva sesión de Claude o Codex para retomar el trabajo sin pérdida de contexto.
 

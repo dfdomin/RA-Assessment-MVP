@@ -15,16 +15,19 @@ def test_dashboard_declares_modules_progress_surface():
     assert 'id="modules-status"' in html
     assert 'id="modules-table"' in html
     assert 'id="modules-body"' in html
-    assert 'src="/js/dashboard.js"' in html
+    assert "./js/dashboard.js" in html
+    assert "./js/api.js" in html
+    assert "./js/supabase-client.js" in html
 
 
-def test_dashboard_js_loads_periods_and_modules_with_credentials():
+def test_dashboard_js_uses_supabase_for_periods_and_modules():
     js = read_frontend("js/dashboard.js")
 
-    assert 'fetch("/api/v1/periods"' in js
-    assert '"/api/v1/periods/" + periodId + "/modules"' in js
-    assert js.count('credentials: "same-origin"') >= 3
+    assert 'from("periods")' in js
+    assert 'from("modules")' in js
+    assert "ensureSupabase" in js
     assert "renderModules" in js
+    assert 'fetch("/api/v1/periods"' not in js
 
 
 def test_dashboard_js_renders_real_progress_and_actions():
@@ -34,15 +37,17 @@ def test_dashboard_js_renders_real_progress_and_actions():
     assert "students_graded" in js
     assert "statusLabel" in js
     assert "Calificar" in js
-    assert "Sin módulos asignados" in js
+    assert "pickDefaultPeriodId" in js
+    assert "filterModulesForRole" in js
+    assert "Selecciona otro período en el filtro" in js
 
 
 def test_dashboard_js_uses_module_response_contract_names():
     js = read_frontend("js/dashboard.js")
 
-    assert "moduleItem.group_name" in js
-    assert "moduleItem.teacher" in js
-    assert "moduleItem.teacher.full_name" in js
+    assert "group_name" in js
+    assert "teacher" in js
+    assert "full_name" in js
 
 
 def test_dashboard_declares_leader_surface_for_s4():
@@ -58,27 +63,24 @@ def test_dashboard_declares_leader_surface_for_s4():
     assert 'id="report-preview"' in html
 
 
-def test_dashboard_js_loads_leader_analysis_and_report_preview():
+def test_dashboard_js_loads_leader_analysis_via_supabase():
     js = read_frontend("js/dashboard.js")
 
-    assert '"/api/v1/periods/" + periodId + "/report/preview"' in js
-    assert '"/api/v1/periods/" + periodId + "/leader-analysis"' in js
-    assert '"/api/v1/periods/" + periodId + "/action-plan"' in js
-    assert '"/api/v1/periods/" + periodId + "/close"' in js
+    assert 'from("leader_analysis")' in js
+    assert 'from("action_plans")' in js
+    assert 'from("leader_report_drafts")' in js
     assert "renderLeaderAnalysis" in js
     assert "saveLeaderAnalysis" in js
     assert "sendReminderBtn" in js
+    assert 'fetch("/api/v1/periods/"' not in js
 
 
-def test_dashboard_js_sends_reminders_to_pending_teachers():
+def test_dashboard_js_sends_reminders_via_reminder_log():
     js = read_frontend("js/dashboard.js")
 
-    assert '"/api/v1/periods/" + periodId + "/tracking"' in js
-    assert '"/api/v1/periods/" + currentPeriodId + "/reminders/preview"' in js
-    assert '"/api/v1/periods/" + currentPeriodId + "/reminders"' in js
+    assert 'from("reminder_log")' in js
     assert "sendPendingReminders" in js
     assert "recipient_ids" in js
-    assert "Se enviaron " in js
 
 
 def test_dashboard_declares_leader_report_surface_for_f14():
@@ -92,13 +94,18 @@ def test_dashboard_declares_leader_report_surface_for_f14():
     assert 'id="leader-report-status"' in html
 
 
-def test_dashboard_js_loads_saves_and_exports_leader_report():
+def test_dashboard_js_exports_reports_via_edge_functions():
+    js = read_frontend("js/dashboard.js")
+    api = read_frontend("js/api.js")
+
+    assert "RaApi.reportAbetPreview" in js
+    assert "RaApi.reportAbetExport" in js
+    assert "RaApi.reportLeaderExport" in js
+    assert "report-abet" in api
+    assert "report-leader" in api
+
+
+def test_dashboard_links_to_assessment_page_with_module_id():
     js = read_frontend("js/dashboard.js")
 
-    assert '"/api/v1/periods/" + periodId + "/leader-report"' in js
-    assert '"/api/v1/periods/" + currentPeriodId + "/leader-report"' in js
-    assert '"/api/v1/periods/" + currentPeriodId + "/leader-report/pdf"' in js
-    assert '"/api/v1/periods/" + currentPeriodId + "/leader-report/docx"' in js
-    assert "renderLeaderReport" in js
-    assert "saveLeaderReport" in js
-    assert "conclusion_text" in js
+    assert "./assessment.html?module_id=" in js

@@ -1,0 +1,94 @@
+name: Visual Review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "scripts/visual_review.py"
+
+jobs:
+  review-local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Serve static site
+        run: |
+          python3 -m http.server 8765 &
+          sleep 2
+
+      - name: Run visual review (unauthenticated views)
+        run: python scripts/visual_review.py --base-url http://127.0.0.1:8765 --browser chromium
+
+      - name: Upload review artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-review-local
+          path: reviews/
+
+  review-github-pages:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run visual review against GitHub Pages
+        run: |
+          python scripts/visual_review.py \
+            --base-url https://dfdomin.github.io/RA-Assessment-MVP \
+            --browser chromium
+
+      - name: Upload GH Pages review
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-review-ghpages
+          path: reviews/
+
+  review-authenticated:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.REVIEW_EMAIL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install chromium
+
+      - name: Run authenticated review
+        env:
+          REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+          REVIEW_PASSWORD: ${{ secrets.REVIEW_PASSWORD }}
+        run: |
+          python scripts/visual_review.py \
+            --base-url https://dfdomin.github.io/RA-Assessment-MVP \
+            --browser chromium
+
+      - name: Upload authenticated review
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-review-auth
+          path: reviews/

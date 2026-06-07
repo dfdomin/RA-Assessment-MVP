@@ -102,11 +102,24 @@
     periodProgressBar.style.width = (total ? Math.round((completed / total) * 100) : 0) + "%";
   }
 
+  function emptyModulesMessage() {
+    const periodName = selectedPeriodName();
+    if (currentUser && currentUser.role === "teacher") {
+      return "Sin módulos asignados en " + periodName + ". Selecciona otro período en el filtro.";
+    }
+    return "Sin módulos en " + periodName + ".";
+  }
+
   function renderModules(modules) {
     currentModules = modules;
     modulesBody.innerHTML = "";
     updatePeriodProgress(modules);
-    if (!modules.length) { renderEmpty("Sin modulos asignados."); setStatus("Sin modulos.", "info"); return; }
+    if (!modules.length) {
+      const message = emptyModulesMessage();
+      renderEmpty(message);
+      setStatus(message, "info");
+      return;
+    }
     modules.forEach(function(m) {
       const row = document.createElement("tr");
       const actionHref = "./assessment.html?module_id=" + m.id;
@@ -118,7 +131,49 @@
       ac.appendChild(a); row.appendChild(ac);
       modulesBody.appendChild(row);
     });
-    setStatus("Modulos cargados: " + modules.length + ".", "success");
+    setStatus("Módulos cargados: " + modules.length + ".", "success");
+  }
+
+  async function teacherPeriodIds() {
+    if (!currentUser || currentUser.role !== "teacher") return null;
+    const { data, error } = await ensureSupabase()
+      .from("module_staff")
+      .select("module_id, modules!inner(period_id)")
+      .eq("user_id", currentUser.id);
+    if (error) throw error;
+    const ids = new Set();
+    (data || []).forEach(function (row) {
+      if (row.modules && row.modules.period_id != null) ids.add(String(row.modules.period_id));
+    });
+    return ids;
+  }
+
+  async function periodsWithModules() {
+    const { data, error } = await ensureSupabase().from("modules").select("period_id");
+    if (error) throw error;
+    const ids = new Set();
+    (data || []).forEach(function (row) {
+      if (row.period_id != null) ids.add(String(row.period_id));
+    });
+    return ids;
+  }
+
+  function pickDefaultPeriodId(periods, periodIdsWithData) {
+    if (!periods.length) return "";
+    if (periodIdsWithData && periodIdsWithData.size) {
+      const match = periods.find(function (p) { return periodIdsWithData.has(String(p.id)); });
+      if (match) return String(match.id);
+    }
+    return String(periods[0].id);
+  }
+
+  function filterModulesForRole(rows) {
+    if (!currentUser || currentUser.role !== "teacher") return rows || [];
+    return (rows || []).filter(function (row) {
+      return (row.module_staff || []).some(function (staff) {
+        return staff.user_id === currentUser.id;
+      });
+    });
   }
 
   function normalizeTeacher(m) {
@@ -139,8 +194,8 @@
       currentUser = profile;
       welcomeMsg.textContent = "Hola, " + safeText(profile.full_name) + " (" + safeText(profile.role) + ")";
       leaderPanel.hidden = !isLeader();
-      leaderReportPdfBtn.hidden = true;
-      leaderReportDocxBtn.hidden = true;
+      leaderReportPdfBtn.hidden = !isLeader();
+      leaderReportDocxBtn.hidden = !isLeader();
       return true;
     } catch (e) { console.error(e); welcomeMsg.textContent = "No se pudo cargar."; return false; }
   }
@@ -193,8 +248,9 @@
       const sb = ensureSupabase();
       const { data: rows, error } = await sb.from("modules").select("*, module_staff(user_id, users(full_name))").eq("period_id", periodId).order("course_code").order("group_name");
       if (error) throw error;
+      const visibleRows = filterModulesForRole(rows);
       const piIds = await getActivePis(periodId);
-      const modules = (rows || []).map(function(r) {
+      const modules = visibleRows.map(function(r) {
         const m = Object.assign({}, r);
         m.teacher = normalizeTeacher(r);
         m.students_active = 0;
@@ -213,9 +269,17 @@
     reportPreview.textContent = "Cargando...";
     try {
       await requireSession();
+      if (typeof RaApi !== "undefined") {
+        const report = await RaApi.reportAbetPreview(Number(periodId));
+        const moduleCount = (report.modules_summary || []).length;
+        reportPreview.textContent =
+          selectedPeriodName() + " · " + safeText(report.student_outcome && report.student_outcome.code) +
+          " · " + moduleCount + " módulos con estudiantes activos";
+        return;
+      }
       const { data: p } = await ensureSupabase().from("periods").select("*, student_outcomes(code)").eq("id", periodId).single();
       reportPreview.textContent = selectedPeriodName() + " · " + safeText(p && p.student_outcomes && p.student_outcomes.code);
-    } catch(e) { reportPreview.textContent = "Error."; }
+    } catch(e) { reportPreview.textContent = "Error al cargar reporte."; }
   }
 
   function mergeAnalysis(actionPlanData, leaderAnalysisData) {
@@ -349,21 +413,42 @@
   }
 
   async function loadPeriods() {
-    setStatus("Cargando periodos...");
+    setStatus("Cargando períodos...");
     try {
       await requireSession();
       const { data: periods, error } = await ensureSupabase().from("periods").select("*").order("created_at", { ascending: false });
       if (error) throw error;
       periodSelect.innerHTML = "";
-      if (!periods || !periods.length) { periodSelect.disabled = true; periodSelect.appendChild(new Option("Sin periodos", "")); return; }
-      periods.forEach(function(p) { periodSelect.appendChild(new Option(p.name, p.id)); });
+      if (!periods || !periods.length) {
+        periodSelect.disabled = true;
+        periodSelect.appendChild(new Option("Sin períodos", ""));
+        return;
+      }
+      periods.forEach(function (p) { periodSelect.appendChild(new Option(p.name, p.id)); });
       periodSelect.disabled = false;
-      await loadModules(periodSelect.value);
-    } catch(e) { periodSelect.innerHTML = '<option value="">Error</option>'; }
+      let periodIdsWithData = await teacherPeriodIds();
+      if (!periodIdsWithData && currentUser && (currentUser.role === "leader" || currentUser.role === "admin")) {
+        periodIdsWithData = await periodsWithModules();
+      }
+      const defaultPeriodId = pickDefaultPeriodId(periods, periodIdsWithData);
+      periodSelect.value = defaultPeriodId;
+      currentPeriodId = defaultPeriodId;
+      await loadModules(defaultPeriodId);
+    } catch (e) { periodSelect.innerHTML = '<option value="">Error</option>'; }
   }
 
   periodSelect.addEventListener("change", function() { currentPeriodId = periodSelect.value; loadModules(periodSelect.value); });
-  viewReportBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
+  viewReportBtn.addEventListener("click", async function() {
+    if (!currentPeriodId) return;
+    try {
+      await requireSession();
+      if (typeof RaApi === "undefined") { setStatus("API no disponible.", "error"); return; }
+      await RaApi.reportAbetExport(Number(currentPeriodId), "xlsx");
+      setStatus("Reporte ABET descargado.", "success");
+    } catch (e) {
+      setStatus("Error al exportar reporte.", "error");
+    }
+  });
   closePeriodBtn.addEventListener("click", async function() {
     if (!currentPeriodId) return;
     if ((currentModules || []).some(function(m) { return m.status !== "completed"; })) { setStatus("Modulos pendientes.", "error"); return; }
@@ -372,8 +457,26 @@
   sendReminderBtn.addEventListener("click", sendPendingReminders);
   leaderAnalysisForm.addEventListener("submit", saveLeaderAnalysis);
   leaderReportForm.addEventListener("submit", saveLeaderReport);
-  leaderReportPdfBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
-  leaderReportDocxBtn.addEventListener("click", function() { setStatus("Reportes disponibles proximamente", "info"); });
+  leaderReportPdfBtn.addEventListener("click", async function() {
+    if (!currentPeriodId) return;
+    try {
+      await requireSession();
+      await RaApi.reportLeaderExport(Number(currentPeriodId), "pdf");
+      setLeaderReportStatus("Informe PDF descargado.", "success");
+    } catch (e) {
+      setLeaderReportStatus("Error al exportar PDF.", "error");
+    }
+  });
+  leaderReportDocxBtn.addEventListener("click", async function() {
+    if (!currentPeriodId) return;
+    try {
+      await requireSession();
+      await RaApi.reportLeaderExport(Number(currentPeriodId), "docx");
+      setLeaderReportStatus("Informe DOCX descargado.", "success");
+    } catch (e) {
+      setLeaderReportStatus("Error al exportar DOCX.", "error");
+    }
+  });
   logoutBtn.addEventListener("click", async function() { try { await ensureSupabase().auth.signOut(); } catch(e) {} window.location.replace("./index.html"); });
 
   leaderPanel.hidden = true;

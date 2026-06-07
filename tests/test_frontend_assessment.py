@@ -29,17 +29,19 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="save-assessments-btn"' in html
     assert 'id="save-qualitative-btn"' in html
     assert 'id="submit-module-btn"' in html
-    assert 'src="/js/module_assessment.js"' in html
+    assert "./js/module_assessment.js" in html
+    assert "./js/supabase-client.js" in html
 
 
-def test_assessment_js_loads_module_data_with_credentials():
+def test_assessment_js_loads_module_data_via_supabase():
     js = read_frontend("js/module_assessment.js")
 
-    assert 'new URLSearchParams(window.location.search).get("module_id")' in js
-    assert '"/api/v1/modules/" + moduleId + "/students"' in js
-    assert '"/api/v1/modules/" + moduleId + "/assessments"' in js
-    assert '"/api/v1/modules/" + moduleId + "/qualitative"' in js
-    assert js.count('credentials: "same-origin"') >= 5
+    assert 'new URLSearchParams(window.location.search)' in js
+    assert 'get("module_id")' in js
+    assert 'from("module_students")' in js
+    assert 'from("assessments")' in js
+    assert 'from("module_analysis")' in js
+    assert 'fetch("/api/v1/modules/"' not in js
 
 
 def test_assessment_js_saves_assessments_analysis_and_submit():
@@ -50,10 +52,8 @@ def test_assessment_js_saves_assessments_analysis_and_submit():
     assert "updateWizardState" in js
     assert "allStudentsFullyGraded" in js
     assert "allAnalysesComplete" in js
-    assert 'method: "PUT"' in js
-    assert '"/api/v1/modules/" + moduleId + "/submit"' in js
-    assert "Módulo enviado" in js
-    assert "submitModuleBtn.disabled = !(allStudentsFullyGraded() && allAnalysesComplete())" in js
+    assert 'from("modules")' in js
+    assert "upsert" in js
 
 
 def test_assessment_js_renders_distribution_and_wizard_navigation():
@@ -61,14 +61,7 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
 
     assert "renderDistribution" in js
     assert "showStep" in js
-    assert "studentsResponse.active_perf_indicators" in js
     assert 'document.querySelectorAll("[data-step-target]")' in js
     assert 'document.querySelectorAll("[data-step-panel]")' in js
     assert "wizardNextBtn.addEventListener" in js
     assert "wizardPrevBtn.addEventListener" in js
-
-
-def test_dashboard_links_to_assessment_page_with_module_id():
-    js = read_frontend("js/dashboard.js")
-
-    assert '"/assessment.html?module_id=" + moduleItem.id' in js

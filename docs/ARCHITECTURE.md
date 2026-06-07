@@ -1,17 +1,75 @@
-# ARCHITECTURE.md — RA Assessment App
+# ARCHITECTURE.md — RA Assessment App / MVP
 
-**Versión del documento**: 1.0  
-**Fecha**: 2026-05-15  
-**Referencia PRD**: v2.2  
+**Versión del documento**: 2.0 (MVP Supabase)  
+**Fecha**: 2026-06-07  
+**Referencia PRD**: v2.3  
 **Audiencia**: Desarrolladores, DevOps, revisores de arquitectura
 
 > Un desarrollador que lea este documento debe entender el sistema en 10 minutos, sin necesidad de leer el PRD ni ningún otro documento.
 
 ---
 
+## 0. Arquitectura activa — RA-Assessment-MVP (Supabase)
+
+**Stack activo** en este repositorio (junio 2026):
+
+| Capa | Tecnología |
+|------|------------|
+| Frontend | HTML/CSS/JS vanilla en `frontend/` — Supabase JS client v2 (CDN) |
+| API datos | Supabase PostgREST + Row Level Security |
+| Auth | Supabase Auth (`auth.users` → `public.users`) |
+| Lógica compleja | Edge Functions Deno en `supabase/functions/` |
+| Base de datos | PostgreSQL en Supabase (`supabase/migrations/`) |
+| Hosting | GitHub Pages (`.github/workflows/deploy.yml`) |
+| Referencia legacy | FastAPI en `src/` — ver [`src/LEGACY.md`](../src/LEGACY.md) |
+
+```mermaid
+graph TB
+    Browser["Navegador"]
+    GHPages["GitHub Pages\nfrontend/*.html"]
+    SupaAuth["Supabase Auth"]
+    PostgREST["PostgREST + RLS"]
+    EdgeFn["Edge Functions\nreport / import / habeas"]
+    PG["PostgreSQL"]
+
+    Browser --> GHPages
+    Browser --> SupaAuth
+    Browser --> PostgREST
+    Browser --> EdgeFn
+    SupaAuth --> PG
+    PostgREST --> PG
+    EdgeFn --> PG
+```
+
+### Edge Functions
+
+| Función | Propósito | Puerto desde |
+|---------|-----------|--------------|
+| `sanitize` | Limpieza HTML + safe_cell_value | `src/services/sanitize.py` |
+| `report-abet` | Preview JSON + export PDF/XLSX | `src/services/report.py` |
+| `report-leader` | Export PDF/DOCX informe líder | `src/services/leader_report.py` |
+| `bulk-import` | Carga masiva CSV/XLSX | `src/services/parser.py` |
+| `habeas-data` | Consulta y supresión Ley 1581 | `src/api/routers/admin.py` |
+
+### Seguridad MVP
+
+- **RLS** reemplaza `verify_module_ownership()` y `require_role()` del FastAPI
+- Funciones helper: `user_has_role()`, `is_module_teacher()` en migración `0008_rls_policies.sql`
+- Edge Functions validan JWT del caller y re-verifican rol antes de operaciones admin
+
+### Deploy
+
+1. `git push` a `main` → GitHub Actions inyecta cache-bust (`scripts/inject-cache-bust.sh`) → GitHub Pages
+2. Migraciones SQL → `supabase db push` (manual o CI con secrets)
+3. Edge Functions → `supabase functions deploy`
+
+---
+
 ## 1. Descripción del Sistema
 
 La **RA Assessment App** reemplaza un flujo manual de Excel/VBA que el programa de Tecnología en Gestión Administrativa (TGA) de la IUB usa para el assessment de Resultados de Aprendizaje (RA/SO) requeridos por ABET. El sistema permite a los docentes registrar calificaciones por estudiante, escribir análisis cualitativos y al líder del programa consolidar resultados, generar reportes ABET formales y gestionar el ciclo completo desde una interfaz web.
+
+### Stack legacy (referencia — `src/`)
 
 **Stack principal**: FastAPI (Python 3.12) + PostgreSQL 16 + HTML/JS estático  
 **Infraestructura**: Hetzner CAX11 ARM64 (~€4.29/mes) + Caddy 2 (TLS automático)  

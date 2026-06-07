@@ -28,6 +28,7 @@ build/
 
 /tmp/
 /reports/generated/
+reviews/
 
 # Supabase
 supabase/.temp/

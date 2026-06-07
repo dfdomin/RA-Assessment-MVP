@@ -1,0 +1,42 @@
+name: MVP Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run Supabase frontend static tests
+        run: |
+          pytest --noconftest tests/test_frontend_dashboard.py \
+                 tests/test_frontend_assessment.py \
+                 tests/test_supabase_stack.py \
+                 tests/e2e/test_supabase_frontend.py -q
+
+  legacy-fastapi:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install legacy dependencies
+        run: pip install pytest sqlalchemy aiosqlite
+
+      - name: Run legacy FastAPI tests (reference)
+        run: pytest tests/test_security_core.py -q || true

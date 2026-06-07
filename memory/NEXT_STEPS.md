@@ -1,6 +1,6 @@
 # NEXT_STEPS.md — RA Assessment App / MVP
 
-**Última actualización**: 2026-06-02 (sesión Hermes — post-migración, post-población de datos)
+**Última actualización**: 2026-06-07 (completar migración — Edge Functions, CI, docs)
 **Stack activo**: Supabase + GitHub Pages (MVP)
 **Stack original**: FastAPI + Hetzner (conservado en `src/`, no activo)
 
@@ -10,20 +10,16 @@
 
 ## 🔴 Alta prioridad — MVP (corregir hoy)
 
-### H-01 — Cache-busting en GitHub Pages
-- **Problema**: `max-age=600` en CDN bloquea verificación inmediata post-deploy. Browser cachea JS/CSS viejo.
-- **Solución**: Agregar `?v={{ git_commit_sha }}` a los `<script>` y `<link>` en los HTML.
-- **Criterio de done**: Hard refresh muestra código nuevo sin esperar 10 min.
+### H-01 — Cache-busting en GitHub Pages ✅
+- **Implementado**: `scripts/inject-cache-bust.sh` + placeholder `BUILD_SHA` en HTML; workflow `deploy.yml` inyecta `${{ github.sha }}`.
 
 ### H-02 — Activar Playwright MCP
 - **Problema**: Sin tests E2E visuales. Los bugs de integración HTML/JS pasaron desapercibidos.
 - **Solución**: Reiniciar Hermes para cargar `mcp_playwright_*` tools. Crear test E2E para wizard + dashboard.
 - **Criterio de done**: `mcp_playwright_navigate` + `mcp_playwright_screenshot` funcionales.
 
-### H-03 — Completar asignación de docentes a módulos
-- **Problema**: Solo 8 usuarios tienen `module_staff`. 59 módulos con estudiantes no tienen docente asignado.
-- **Solución**: Crear auth users para los 15 docentes principales con más módulos.
-- **Criterio de done**: Dashboard muestra ≥50 módulos con nombre de docente real.
+### H-03 — Completar asignación de docentes a módulos ✅ (SQL)
+- **Implementado**: migración `0011_auto_assign_module_staff.sql` (round-robin). Pendiente: crear auth users reales para docentes sin cuenta.
 
 ### H-04 — Verificar fix del wizard (PI headers compactos)
 - **Problema**: Fix desplegado pero no verificado por cache CDN.
@@ -33,7 +29,7 @@
 ## 🟡 Media prioridad — Siguiente sesión
 
 - M-01: Importar TGA05 7_GA_G1 (falta archivo de estudiantes/notas)
-- M-02: Agregar `GRANT INSERT ON public.users TO authenticated` con policy RLS para romper deadlock de seed
+- M-02: ✅ `0010_users_rls_seed.sql` — GRANT INSERT + policies self/admin
 - M-03: Completar leader_analysis para todos los PIs de RA3 con datos agregados
 - M-04: Probar flujo completo: docente califica → submit → líder ve reporte → exportar PDF
 
