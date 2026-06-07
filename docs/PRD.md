@@ -1,6 +1,7 @@
 # PRD — RA Assessment App
-**Version**: 2.2
-**Fecha**: 2026-05-15
+**Version**: 2.4
+**Fecha**: 2026-06-07
+**Changelog v2.4**: Jerarquía institucional de tres niveles documentada a partir del mapeo real `MODULOS 2025-2 POR RESULTADOS DE APRENDIZAJE.xlsx` (206 módulos, 2 líneas propedéuticas, 5 programas, 27 combinaciones programa×RA, 11 líderes consolidadores). Rol **Administrador** redefinido como **Líder de Medición** (consolida informes ejecutivos por línea; no califica). Rol **Líder** redefinido como **Líder consolidador de RA** (una persona distinta por combinación programa×RA). Módulos multi-RA: un mismo curso puede contribuir a varios RAs en el mismo cuatrimestre; cada RA genera un envío independiente hacia su líder asignado; el enrutamiento al líder es **automático y transparente** para el docente. Dominio institucional de correo: **`@unibarranquilla.edu.co`** (único válido para login, recuperación de contraseña, `mailto:` y contacto con líder). Campo canónico: `public.users.email` (sincronizado con `auth.users.email`). UX docente (F05): desde el **paso 1 (Información general)** mostrar líder consolidador del RA + correo; repetir en paso Enviar con sugerencia de notificación por correo. Ciclo de medición = un cuatrimestre académico (ej. `2025-2`); el archivo de mapeo siempre corresponde a un solo cuatrimestre. Pendiente de propagar a `DATA_MODEL.md`, `ROLE_PERMISSION_MATRIX.md`, `API_CONTRACT.md`, `MIGRATION_PLAN.md` (ver `memory/NEXT_STEPS.md` H-05).
 **Changelog v2.3**: Incorporación de F17 (Reporte Ejecutivo por Línea Propedéutica — institucional). Enmienda de §12: múltiples programas pasan de "fuera de alcance v1" a "estructura de datos modelada en v1, UI multi-programa en v2". Decisión arquitectónica tomada tras LLM Council (2026-05-16): no se crea rol `dean` en v1; el reporte institucional es exportable por Admin/Líder.
 **Changelog v2.2**: Incorporación de requerimientos de la Guía de Usabilidad y Estilos IUB (DG-TSI-09-V4) como sección #18. Actualizaciones menores en secciones #9, #11, #13 y #14 para alineación.
 **Changelog v2.1**: Incorporacion de features F12 (Microsoft OIDC nice-to-have), F13 (seguimiento y notificacion de docentes), F14 (informe del lider regenerable en PDF/DOCX), F15 (carga masiva y creacion individual para administrador). Controles de seguridad de las nuevas features alineados con Google Cloud Well-Architected Framework: Security by Design, Zero Trust, Shift-Left, Preemptive Cyber Defense.
@@ -13,12 +14,12 @@
 
 ## 1. Contexto y Problema
 
-El programa lleva actualmente el proceso de assessment de Resultados de Aprendizaje (RA/SO) en un archivo Excel (.xlsm) con macros VBA. El proceso actual requiere que el lider de programa:
+El programa lleva actualmente el proceso de assessment de Resultados de Aprendizaje (RA/SO) en archivos Excel (.xlsm con macros VBA + hojas de mapeo operativo). El proceso institucional real (validado en `MODULOS 2025-2 POR RESULTADOS DE APRENDIZAJE.xlsx`) funciona así:
 
-1. Distribuya fisicamente el archivo a cada docente
-2. Cada docente pega calificaciones, informacion general y analisis cualitativo mediante botones de macro
-3. El lider consolida manualmente todos los archivos
-4. Ejecuta macros que eliminan filas vacias, ocultan columnas sin datos y genera el reporte final
+1. El decano define **qué RAs de cada programa** se medirán en el cuatrimestre (ej. `2025-2`). Esa decisión queda en el **archivo de mapeo**: docente, programa, módulo, grupo, RA(s) a medir y **líder consolidador por cada RA**.
+2. Cada docente completa calificaciones y análisis cualitativo para su(s) módulo(s) y los envía (en Excel: pegar en hojas y devolver archivos).
+3. Por cada combinación **programa × RA**, el **líder consolidador asignado** recibe los módulos de ese RA, consolida distribución y análisis, y genera el informe de ese RA (hoy: copiar/pegar manual entre archivos).
+4. El **líder de medición** (Administrador del sistema) consolida un **informe ejecutivo por línea propedéutica**, agregando todos los RAs medidos de los programas de esa línea (dos informes en 2025-2: línea CE-TGLI-ANI y línea TGA-INE).
 
 **Problemas del flujo actual:**
 - No hay control de versiones: multiples copias del archivo circulan por correo
@@ -42,30 +43,105 @@ Reemplazar el flujo Excel/VBA con una aplicacion web que:
 
 ## 3. Roles de Usuario
 
-| Rol | Descripcion |
-|---|---|
-| **Docente** | Ingresa calificaciones por estudiante y analisis cualitativo para su(s) modulo(s) |
-| **Lider de Programa** | Gestiona periodos, configura rubricas, supervisa avance, genera reporte final |
-| **Administrador** | Gestiona usuarios, programas y configuracion del sistema |
+| Rol técnico (`users.role`) | Nombre institucional | Responsabilidad |
+|---|---|---|
+| `teacher` | **Docente** | Califica estudiantes y redacta análisis cualitativo **por módulo y por RA asignado**. No consolida informes. |
+| `leader` | **Líder consolidador de RA** | Por cada combinación **programa × RA** que le fue asignada en el mapeo: supervisa módulos, consolida resultados, redacta análisis del líder (F07/F14) y genera el informe de ese RA. **No califica** salvo que además esté en `module_staff` como evaluador. Una persona distinta por cada RA/programa (11 personas en 2025-2). |
+| `admin` | **Líder de medición** | Supervisa el ciclo completo del cuatrimestre. **No califica.** Consolida el **informe ejecutivo por línea propedéutica** (F17) a partir de los informes de RA entregados por los líderes consolidadores. Además: carga masiva inicial (F15), usuarios, reapertura de períodos (F06). |
+
+### 3.1 Jerarquía de informes (tres niveles)
+
+```
+Cuatrimestre académico (ej. 2025-2)          ← un archivo de mapeo = un cuatrimestre
+  └── Línea propedéutica (2 en 2025-2)
+        └── Programa (5 en 2025-2)
+              └── RA medido (subconjunto elegido por el decano; no todos los RA siempre)
+                    └── Módulos (curso + grupo + docente)
+                          └── Envío del docente (calificaciones + análisis por PI)
+                    └── Informe consolidado del líder de RA (1 por programa × RA)
+              └── Informe ejecutivo de línea (1 por línea propedéutica — Líder de medición)
+```
+
+**Fuente de verdad del mapeo:** `MODULOS {cuatrimestre} POR RESULTADOS DE APRENDIZAJE.xlsx`. Columnas operativas: `GRUPO`, `CODIGO`, `MÓDULO`, `DOCENTE`, `PROGRAMA`, `RA1`…`RA6` (marca `X`), `LIDER DE MEDICION DEL RA` (una línea por RA marcado, ej. `RA3 - JORLY BERDUGO` / `RA5 - J. PERTUZ`).
+
+**Datos reales 2025-2:** 206 módulos físicos → 305 asignaciones módulo×RA (75 módulos miden 2 o 3 RAs); 27 combinaciones programa×RA; 51 docentes; 11 líderes consolidadores.
+
+**Líneas propedéuticas 2025-2 (hojas del mapeo):**
+
+| Hoja Excel | Línea | Programas incluidos |
+|---|---|---|
+| `RA CE TGLI ANI` | Comercio exterior / logística internacional | Comercio Exterior, TG Logística Internacional, Adm. Negocios Internacionales |
+| `RA TGA INE` | Inteligencia de negocios | TG Administrativa, Inteligencia de Negocios |
 
 ---
 
 ## 4. Estructura de Dominio
 
-Mapeada directamente del archivo Excel:
+Mapeada del archivo de mapeo y del Excel de assessment (.xlsm):
 
 ```
-Periodo Academico (cuatrimestre)
-  └── Student Outcome / RA (ej. RA1: Aplicar principios de contabilidad…)
-        └── Rubrica
-              └── Performance Indicator - PI (ej. PI1, PI2… hasta PI-15)
-                    └── Niveles de desempeno: Poor | Inadequate | Adequate | Exemplary
-        └── Modulo (curso asignado al periodo, hasta 15 por periodo)
-              └── Grupo + Docente + N Estudiantes
-                    └── Estudiante (ID, N ID, Nombre)
-                          └── Calificacion por PI (Poor | Inadequate | Adequate | Exemplary)
-              └── Analisis Cualitativo (texto libre por PI)
+Cuatrimestre academico (ej. 2025-2)           -- contenedor del ciclo de medicion
+  └── Linea propedeutica
+        └── Programa
+              └── RA medido en este cuatrimestre (subconjunto definido por el decano)
+                    └── Rubrica / PIs del RA
+                    └── Lider consolidador asignado (programa × RA)
+                    └── Modulo (curso + grupo + docente calificador)
+                          └── Estudiante → Calificacion por PI
+                          └── Analisis cualitativo por PI (docente)
+                    └── Informe consolidado del lider (analisis + distribucion + plan de accion)
+              └── Informe ejecutivo de linea (lider de medicion / admin)
 ```
+
+### 4.1 Módulos multi-RA (regla crítica)
+
+Un mismo módulo físico (mismo `CODIGO` + `GRUPO`) puede medir **varios RAs** en el mismo cuatrimestre (36 % de los módulos en 2025-2). Ejemplo real: `ADM17 · 1_CE_G1` mide RA3, RA4 y RA5 con líderes distintos (Jorly / Juan Roa / J. Pertuz).
+
+**Comportamiento requerido en la app:**
+
+- El docente completa **un envío independiente por cada RA** que su módulo debe medir (wizard distinto o contexto explícito `módulo + RA`).
+- Cada envío se enruta al **líder consolidador de ese RA** para ese programa — no a un único líder del módulo.
+- El docente **no** envía "un solo paquete" repartido manualmente entre líderes; el sistema separa automáticamente por RA según el mapeo.
+- **Para el docente, el destino del envío es transparente**: no elige líder ni programa de consolidación; solo ve **qué RA debe evaluar** y el estado de su medición.
+
+**Correo institucional (`public.users.email`):**
+
+| Requisito | Detalle |
+|---|---|
+| Dominio obligatorio | `@unibarranquilla.edu.co` |
+| Campo en BD | `public.users.email` VARCHAR(254) UNIQUE — fuente canónica para UI, `mailto:` y recuperación de contraseña |
+| Sincronización | Debe coincidir con `auth.users.email` (Supabase Auth) para login y `resetPasswordForEmail()` |
+| Alta de usuarios | F15 / mapeo / admin: siempre registrar correo institucional real; vincular nombre del mapeo Excel → fila `users` por email |
+| Validación | Login y recuperación de contraseña rechazan dominios distintos a `@unibarranquilla.edu.co` |
+
+**UX docente — paso 1 Información general (por cada RA):**
+
+Al **iniciar** la evaluación, antes de calificar, el docente debe ver quién es su contacto para dudas:
+
+| Elemento | Contenido |
+|---|---|
+| RA en evaluación | Ej. `RA3 — Analizar información documental…` |
+| Módulo y grupo | Curso que está evaluando |
+| Líder consolidador | Nombre completo (desde mapeo → `users.full_name`) |
+| Correo del líder | `users.email` del líder (`@unibarranquilla.edu.co`), con enlace `mailto:` |
+| Nota | *"Para inquietudes sobre esta medición, contacte a su líder consolidador."* |
+
+**UX docente — paso Enviar (por cada RA):**
+
+Tras completar calificaciones y análisis, se repite líder + correo y se añade:
+
+| Elemento adicional | Contenido |
+|---|---|
+| Mensaje sugerido | *"Se recomienda enviar un correo a su líder consolidador informando que completó la medición de este RA."* |
+| Acción opcional | `mailto:` precargado (módulo, grupo, RA, cuatrimestre) |
+
+El docente **no** elige destinatario ni conoce la lógica de consolidación; debe saber **qué RA medir**, **a quién consultar durante** la evaluación y **a quién avisar al terminar**.
+
+**UX administrativa / líder consolidador:**
+
+En dashboard de líder (F08) y líder de medición (F08b) es obligatorio ver **qué líder consolidador corresponde a cada programa×RA** y su correo, para seguimiento y avisos a docentes pendientes.
+
+Ejemplo: si un módulo mide RA1 (líder Marta) y RA5 (líder Indira), el docente hace **dos envíos** en el mismo cuatrimestre `2025-2`; cada paso Enviar muestra el líder y correo de **ese RA**; el sistema alimenta el informe correspondiente sin intervención del docente.
 
 ### Nivel de desempeno y escala de puntuacion (mapeado de `Data_Assessment_TGA_RA1_2024-2.xlsm`)
 
@@ -297,17 +373,29 @@ Esta vista existe en dos contextos:
 ### F05 — Navegacion entre Modulos (Wizard)
 **Origen VBA**: Boton `Next_Group` / `CommandButton4` — ocultaba hoja actual y mostraba la siguiente
 
-Para el lider: vista de todos los modulos del periodo con estado de completitud.
-Para el docente: interfaz en pasos (stepper):
+Para el lider consolidador: vista de los modulos de su programa×RA con estado de completitud.
+Para el docente: interfaz en pasos (stepper), **una instancia por cada RA** que el modulo debe medir en el cuatrimestre:
 
 ```
-[ Info General ] → [ Lista de Estudiantes ] → [ Revisar Rubrica ] → [ Calificaciones ] → [ Analisis ] → [ Enviar ]
+[ Info General ] → [ Calificaciones ] → [ Distribucion ] → [ Analisis ] → [ Enviar ]
 ```
+
+**Paso Info General (docente):** ademas del curso y grupo, muestra **el RA de esta sesion**, el **lider consolidador** (nombre + correo `@unibarranquilla.edu.co` desde `users.email`) y nota de contacto para inquietudes. Si el modulo es multi-RA, el dashboard lista entradas separadas ("Calificar RA3", "Calificar RA5", etc.).
+
+**Paso Enviar (docente):** cuando calificaciones y analisis estan completos, repite lider + correo y anade:
+- Nombre del **lider consolidador** asignado a ese programa×RA (desde mapeo → `users`)
+- **Correo institucional** del lider (`@unibarranquilla.edu.co`) junto al nombre
+- Mensaje: *"Se recomienda enviar un correo a su lider consolidador informando que completo la medicion de este RA."*
+- Boton o enlace `mailto:` opcional con asunto sugerido: `[RA Assessment] Medicion completada — {RA} — {modulo} — {grupo} — 2025-2`
+- El envio en la app (boton Enviar) registra `completed` en el sistema; el correo al lider es **complementario** (v1 sin SMTP automatico), pero la UI lo facilita
 
 **Criterios de aceptacion:**
 - El docente puede navegar libremente entre pasos sin perder datos
 - El paso "Enviar" esta deshabilitado hasta que todos los estudiantes activos tengan los PIs activos calificados y todos los analisis cualitativos esten escritos
-- El lider ve un indicador por modulo: `Pendiente | En progreso | Completado`
+- Tras enviar, el docente ve confirmacion con el nombre y correo del lider ya mostrados en el paso
+- El enrutamiento al lider consolidador ocurre en backend; el docente no selecciona destinatario
+- Modulo multi-RA: cada RA tiene su propio flujo Enviar con lider y correo distintos si el mapeo asi lo define
+- El lider consolidador ve indicador por modulo×RA: `Pendiente | En progreso | Completado`
 
 ---
 
@@ -386,35 +474,60 @@ Ver F11 mas abajo.
 
 ---
 
-### F08 — Dashboard del Lider
-**Origen**: No existia en el Excel; compensaba revisando manualmente cada hoja
+### F08 — Dashboard del Lider consolidador de RA
+**Origen**: No existia en el Excel; compensaba revisando manualmente cada hoja y copiando informes entre archivos
 
-Vista principal del lider:
-- Periodo activo con fechas de inicio y cierre
-- Barra de progreso: X de Y modulos completados
-- Tabla de modulos: estado | docente | ultimo cambio | accion
-- Botones rapidos: Ver reporte | Cerrar periodo | Enviar recordatorio (ver F13)
+Vista principal del **líder consolidador** (`leader`), filtrada por las combinaciones **programa × RA** asignadas a esa persona en el mapeo del cuatrimestre:
+
+- Cuatrimestre activo (ej. `2025-2`) y RA(s) bajo su responsabilidad (ej. solo `Comercio Exterior · RA3`)
+- Barra de progreso: X de Y módulos completados **para ese RA y programa**
+- Tabla de módulos: estado | docente | progreso | acción **Revisar** (no Calificar)
+- Botones: Ver reporte ABET (F07) | Guardar análisis del líder | Exportar informe (F14) | Enviar recordatorio (F13)
+- El líder **no** ve módulos de RAs que no le fueron asignados, aunque pertenezcan al mismo programa
+
+**Criterios de aceptación:**
+- Un líder con varias asignaciones (ej. Jorly: RA3 en CE y TGLI) ve un selector o pestañas por programa×RA
+- El dashboard muestra qué falta antes de poder cerrar el informe de ese RA
 
 ---
 
-### F09 — Gestion de Periodos Academicos
+### F08b — Dashboard del Líder de medición (Administrador)
+**Origen**: consolidación manual del informe ejecutivo por línea propedéutica
 
-El lider crea un periodo academico:
-- Nombre (ej. "TGA RA1 2024-2")
-- SO/RA evaluado (seleccion de rubrica)
-- Fecha de inicio y cierre de captura
-- Modulos: asignar curso + docente + grupo para cada modulo (hasta 15)
+Vista principal del **líder de medición** (`admin`):
+
+- Cuatrimestre activo (`2025-2`) con panorama de **las dos líneas propedéuticas**
+- Por línea: programas incluidos, RAs medidos, estado de cada informe de líder consolidador (pendiente / en progreso / listo)
+- Acción principal: **Generar informe ejecutivo de línea** (F17) cuando los informes por RA estén completos
+- **Sin** botón Calificar; **sin** tabla masiva de todos los módulos sin contexto
+- Acciones secundarias: carga masiva F15, reapertura F06, gestión de usuarios
+
+---
+
+### F09 — Gestion del ciclo de medicion (cuatrimestre)
+
+El **ciclo de medicion** corresponde a **un cuatrimestre academico** (ej. `2025-2`). El archivo de mapeo `MODULOS {cuatrimestre} POR RESULTADOS DE APRENDIZAJE.xlsx` define todo el ciclo:
+
+- Que programas participan
+- Que RAs se miden por programa (subconjunto elegido por el decano)
+- Que modulos (curso + grupo) aportan evidencia a cada RA
+- Que docente califica cada modulo
+- Que lider consolidador recibe cada combinacion programa × RA
+
+La importacion del mapeo (F15 / `bulk-import`) crea o actualiza las asignaciones del cuatrimestre. Internamente cada **RA medido dentro de un programa** puede modelarse como un periodo de captura (ej. `2025-2 · Comercio Exterior · RA3`), siempre **dentro del mismo cuatrimestre** — no son cuatrimestres distintos.
 
 **Criterios de aceptacion:**
-- Un periodo puede clonarse del anterior para agilizar la configuracion
-- Al crear el periodo, cada docente asignado recibe notificacion por email
-- El sistema no permite crear un periodo sin al menos 1 modulo con docente asignado
+- Un cuatrimestre puede clonarse del anterior para agilizar la configuracion del mapeo
+- Al publicar el mapeo, cada docente y cada lider consolidador recibe visibilidad de sus asignaciones
+- Un modulo multi-RA genera tantas asignaciones de evaluacion como RAs tenga marcados
+- El sistema no permite activar un RA sin al menos 1 modulo con docente asignado
 
 ---
 
 ### F10 — Autenticacion y Control de Acceso
 
 - Login con email institucional + contrasena
+- **Dominio de correo obligatorio**: `@unibarranquilla.edu.co`. El email de login debe existir en `public.users.email` y coincidir con `auth.users.email`. Usado para: autenticacion, recuperacion de contraseña (B-00), enlaces `mailto:` al lider consolidador, notificaciones futuras (F13)
 - JWT con expiracion de 8 horas (sesion de trabajo), almacenado en cookie httpOnly
 - Roles: Admin | Lider | Docente; verificados en cada endpoint mediante dependencia FastAPI `require_role()`
 - **Rate limiting en `/auth/login`**: maximo 5 intentos por IP por minuto (slowapi). Los intentos fallidos se registran en el security audit log para correlacion con fail2ban
@@ -776,19 +889,28 @@ GET  /admin/sync/log       -- historial de sincronizaciones (fuente, fecha, cont
 
 ### F17 — Reporte Ejecutivo por Línea Propedéutica (Institucional)
 
-> **Sprint**: S7 (post-despliegue TGA v1). La estructura de datos se modela en v1; el router y el PDF se implementan en v2.  
-> **Decisión arquitectónica**: LLM Council 2026-05-16 — no se crea rol `dean` en v1; el reporte es exportable por Admin o Líder.
+> **Sprint**: MVP+ (prioridad alta para demo ante facultad). La estructura de datos se modela en v1; UI pendiente en frontend Supabase.  
+> **Responsable principal**: rol `admin` (Líder de medición). El Decano define qué RAs se miden; el líder de medición consolida el ejecutivo.
 
-Esta feature permite generar un **resumen ejecutivo de Resultados de Aprendizaje agregado por Línea Propedéutica** a nivel institucional — para uso del Decano de Facultad, el Vicerrector Académico o quien haga sus veces ante organismos de acreditación (CNA, ABET, MEN).
+Esta feature permite generar un **resumen ejecutivo de Resultados de Aprendizaje agregado por Línea Propedéutica** dentro de un cuatrimestre — reemplazando el copy-paste manual de informes de RA en un Excel maestro.
 
-**Contexto institucional**: la IUB organiza sus programas en líneas propedéuticas que articulan ciclos de formación:
+**Prerequisito:** todos los informes de líder consolidador (F07/F14) de los RAs medidos en los programas de esa línea deben estar completos o el dashboard debe indicar cuáles faltan.
+
+**Líneas propedéuticas operativas 2025-2** (según mapeo institucional):
+
+| Línea (hoja Excel) | Programas | Informe ejecutivo |
+|---|---|---|
+| **CE — TGLI — ANI** | Comercio Exterior, TG Logística Internacional, Adm. Negocios Internacionales | 1 PDF por cuatrimestre |
+| **TGA — INE** | TG Administrativa, Inteligencia de Negocios | 1 PDF por cuatrimestre |
+
+**Contexto institucional ampliado** (otras líneas futuras):
 
 | Línea | Ciclo Técnico | Ciclo Tecnológico | Ciclo Profesional |
 |---|---|---|---|
-| **A — Informática/Telecomunicaciones** | Técnico en Telecomunicaciones | Tecnología en Telemática | Ingeniería Telemática |
-| **B — Gestión Administrativa** | — | Tecnología en Gestión Administrativa (TGA) ← *v1* | Inteligencia de Negocios |
+| **Informática/Telecomunicaciones** | Técnico en Telecomunicaciones | Tecnología en Telemática | Ingeniería Telemática |
+| **Gestión / Negocios** | Comercio Exterior (CTP) | TGA, TGLI, etc. | Adm. Negocios Int., Inteligencia de Negocios |
 
-El alcance es **institucional completo** — no limitado a la FCCEA. Cada programa tiene sus propios SOs/RAs, pero el informe ejecutivo agrega indicadores comparables entre programas de la misma línea.
+El alcance es **institucional** — no limitado a una sola facultad. Cada programa tiene sus propios RAs; el informe ejecutivo agrega los RAs **medidos en ese cuatrimestre** entre programas de la misma línea.
 
 **Jerarquía de datos (modelada en v1, UI en v2):**
 
@@ -2137,7 +2259,7 @@ Criterios de aceptación derivados de la sección 4.3 de la Guía:
 
 | Campo | Placeholder de ejemplo |
 |---|---|
-| Email institucional (login) | `docente@iub.edu.co` |
+| Email institucional (login) | `docente@unibarranquilla.edu.co` |
 | ID interno del estudiante (carga manual) | `Ej: 20241001` |
 | Número de documento | `Ej: 1234567890` |
 | Nombre completo del estudiante | `Ej: García Pérez, María` |

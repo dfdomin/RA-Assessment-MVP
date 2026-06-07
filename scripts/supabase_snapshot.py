@@ -35,10 +35,10 @@ def main() -> None:
     users = fetch("users", {"select": "id,email,full_name,role,is_active", "order": "role.asc,email.asc"})
     staff = fetch("module_staff", {"select": "module_id,user_id"})
     periods = fetch("periods", {"select": "id,name,status", "order": "created_at.desc"})
-    modules = fetch(
-        "modules",
+    evaluations = fetch(
+        "module_ra_evaluations",
         {
-            "select": "id,course_code,course_name,group_name,period_id,module_staff(user_id,users(email)),module_students(id,status)",
+            "select": "id,period_id,status,module:modules(id,course_code,course_name,group_name,program_id,module_staff(user_id,users(email)),module_students(id,status))",
         },
     )
 
@@ -55,18 +55,22 @@ def main() -> None:
     docente_modules = staff_by_user.get(docente["id"], 0) if docente else 0
 
     modules_enriched = []
-    for m in modules:
+    for ev in evaluations:
+        m = ev.get("module") or {}
         active = sum(1 for ms in (m.get("module_students") or []) if ms.get("status") == "active")
         teachers_assigned = [
             (s.get("users") or {}).get("email") for s in (m.get("module_staff") or [])
         ]
         modules_enriched.append(
             {
-                "module_id": m["id"],
-                "period_id": m["period_id"],
+                "evaluation_id": ev["id"],
+                "module_id": m.get("id"),
+                "period_id": ev.get("period_id"),
+                "status": ev.get("status"),
                 "course_code": m.get("course_code"),
                 "course_name": m.get("course_name"),
                 "group_name": m.get("group_name"),
+                "program_id": m.get("program_id"),
                 "active_students": active,
                 "teachers": [t for t in teachers_assigned if t],
             }

@@ -1,6 +1,6 @@
 # NEXT_STEPS.md — RA Assessment App / MVP
 
-**Última actualización**: 2026-06-07 (completar migración — Edge Functions, CI, docs)
+**Última actualización**: 2026-06-07 (jerarquía institucional 3 niveles — PRD v2.4)
 **Stack activo**: Supabase + GitHub Pages (MVP)
 **Stack original**: FastAPI + Hetzner (conservado en `src/`, no activo)
 
@@ -26,6 +26,24 @@
 - **Solución**: Hard refresh (`Cmd+Shift+R`) en assessment.html?module_id=49.
 - **Criterio de done**: Headers muestran `PI-3.1 | PI-3.2 | PI-3.3 | PI-3.4`, dropdowns compactos con `1/2/3/4`.
 
+### H-05 — Propagar PRD v2.4 a documentación de especificaciones
+- **Hecho**: `docs/PRD.md` v2.4; `docs/DATA_MODEL.md` v1.1 (`measurement_cycles`, `ra_consolidator_assignments`, `users.email`, `modules.program_id`); migración `0012_measurement_mapping.sql`; `scripts/seed_consolidators_from_mapping.py`.
+- **Pendiente** (en este orden):
+  1. ~~`docs/DATA_MODEL.md`~~ ✅
+  2. `docs/ROLE_PERMISSION_MATRIX.md` — admin no califica; leader scoped por programa×RA del mapeo.
+  3. `docs/API_CONTRACT.md` — endpoints F08b, import mapeo, wizard con contexto `module_id + ra`.
+  4. `docs/MIGRATION_PLAN.md` — import 206 módulos / 305 asignaciones desde Excel; F17 en MVP.
+  5. `docs/ARCHITECTURE.md` — flujo docente → líder RA → líder medición.
+  6. `memory/KNOWN_ISSUES.md` — brecha MVP vs mapeo real.
+- **Análisis de referencia**: `reviews/mapping_2025-2_analysis.json`
+- **Criterio de done**: los seis documentos reflejan PRD v2.4 sin contradicciones.
+
+### H-06 — Dashboard admin (F08b) + módulos multi-RA en wizard
+- **Hecho (parcial)**: `admin-panel` por 2 líneas; admin sin tabla Calificar; wizard paso 1 + Enviar con líder/correo/`mailto:` vía `ra_consolidator_assignments`; login valida `@unibarranquilla.edu.co`.
+- **Hecho (modelo)**: migración `0013_normalize_measurement_model.sql` (`module_ra_evaluations`, `modules` físico, `module_analysis` por evaluación, tablas líder con `program_id`); frontend usa `evaluation_id` y selector de programa para líder.
+- **Pendiente**: `db push` migraciones `0012` + `0013` en cloud; seed consolidadores; import Excel → módulos físicos + evaluaciones; F17 export ejecutivo.
+- **Criterio de done**: docente multi-RA ve 2+ filas por RA; líder escribe análisis por programa; admin ve 27 asignaciones programa×RA.
+
 ## 🟡 Media prioridad — Siguiente sesión
 
 - M-01: Importar TGA05 7_GA_G1 (falta archivo de estudiantes/notas)
@@ -35,7 +53,7 @@
 
 ## 🟢 Baja prioridad — Backlog
 
-- B-00: **Recuperar contraseña** — enlace en login, flujo Supabase Auth por correo `@iub.edu.co`, página de reset y redirect post-cambio
+- B-00: **Recuperar contraseña** — enlace en login, flujo Supabase Auth por correo `@unibarranquilla.edu.co`, página de reset y redirect post-cambio
 - B-01: Migrar `test_frontend_*.py` a usar Playwright real en vez de chequeos estáticos
 - B-02: Implementar F07 (reporte ABET PDF/XLSX) en el frontend Supabase
 - B-03: Implementar F14 (informe del líder PDF/DOCX) en el frontend Supabase

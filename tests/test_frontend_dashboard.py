@@ -24,7 +24,7 @@ def test_dashboard_js_uses_supabase_for_periods_and_modules():
     js = read_frontend("js/dashboard.js")
 
     assert 'from("periods")' in js
-    assert 'from("modules")' in js
+    assert 'from("module_ra_evaluations")' in js
     assert "ensureSupabase" in js
     assert "renderModules" in js
     assert 'fetch("/api/v1/periods"' not in js
@@ -38,7 +38,7 @@ def test_dashboard_js_renders_real_progress_and_actions():
     assert "statusLabel" in js
     assert "Calificar" in js
     assert "pickDefaultPeriodId" in js
-    assert "filterModulesForRole" in js
+    assert "filterEvaluationsForRole" in js
     assert "currentUser.id" in js
     assert "Selecciona otro período en el filtro" in js
 
@@ -106,7 +106,36 @@ def test_dashboard_js_exports_reports_via_edge_functions():
     assert "report-leader" in api
 
 
-def test_dashboard_links_to_assessment_page_with_module_id():
+def test_dashboard_links_to_assessment_page_with_evaluation_id():
     js = read_frontend("js/dashboard.js")
 
-    assert "./assessment.html?module_id=" in js
+    assert "./assessment.html?evaluation_id=" in js
+
+
+def test_dashboard_declares_admin_measurement_panel():
+    html = read_frontend("dashboard.html")
+    js = read_frontend("js/dashboard.js")
+
+    assert 'id="admin-panel"' in html
+    assert 'id="admin-lines"' in html
+    assert "loadAdminDashboard" in js
+    assert "isAdmin" in js
+    assert "MEASUREMENT_LINES" in js
+    assert "ra_consolidator_assignments" in js
+
+
+def test_dashboard_hides_modules_panel_for_admin():
+    js = read_frontend("js/dashboard.js")
+
+    assert "modulesPanel.hidden = admin" in js
+    assert "adminPanel.hidden = !admin" in js
+
+
+def test_dashboard_leader_scopes_by_program():
+    html = read_frontend("dashboard.html")
+    js = read_frontend("js/dashboard.js")
+
+    assert 'id="program-select"' in html
+    assert "currentProgramId" in js
+    assert "program_id" in js
+    assert "loadLeaderPrograms" in js

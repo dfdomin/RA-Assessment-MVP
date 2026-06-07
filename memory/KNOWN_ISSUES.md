@@ -14,7 +14,9 @@
 
 ## Abiertos
 
-- **Recuperar contraseña por correo institucional**: el login (`frontend/index.html` + `auth.js`) solo permite email/contraseña; no hay enlace ni flujo "¿Olvidó su contraseña?". Pendiente: UI en login + `supabase.auth.resetPasswordForEmail()` restringido a dominios `@iub.edu.co` (y plantilla/correo configurado en Supabase Auth).
+- **Modelo normalizado (2026-06-07)**: `0013` corrige módulos multi-RA (`module_ra_evaluations`) y alcance líder por `program_id`. Pendiente aplicar en Supabase cloud e importar Excel (206 módulos / 305 evaluaciones). Edge functions de reportes aún asumen alcance solo `period_id`.
+- **Dominio de correo desalineado**: producción y tests usan `@iub.edu.co`; dominio institucional real es **`@unibarranquilla.edu.co`**. Pendiente: migrar cuentas Auth + `public.users.email`, validar dominio en login/recuperación, poblar emails de los 11 líderes consolidadores del mapeo 2025-2.
+- **Recuperar contraseña por correo institucional**: el login (`frontend/index.html` + `auth.js`) solo permite email/contraseña; no hay enlace ni flujo "¿Olvidó su contraseña?". Pendiente: UI en login + `supabase.auth.resetPasswordForEmail()` restringido a `@unibarranquilla.edu.co` (plantilla Supabase Auth).
 - **OneDrive sync**: el repo vive bajo CloudStorage; puede afectar `.venv`, Playwright y rendimiento de git. Mover a `~/Projects/` para desarrollo activo.
 - **Paridad reportes**: Edge Functions generan exportaciones simplificadas (no WeasyPrint/openpyxl). Validar formato institucional con stakeholders IUB.
 - **Cierre de período**: validación server-side completa (módulos pendientes, análisis líder) pendiente de Edge Function `period-close`.

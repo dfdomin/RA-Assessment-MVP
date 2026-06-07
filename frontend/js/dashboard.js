@@ -4,6 +4,7 @@
   const welcomeMsg = document.getElementById("welcome-msg");
   const logoutBtn = document.getElementById("logout-btn");
   const periodSelect = document.getElementById("period-select");
+  const programSelect = document.getElementById("program-select");
   const modulesStatus = document.getElementById("modules-status");
   const modulesBody = document.getElementById("modules-body");
   const leaderPanel = document.getElementById("leader-panel");
@@ -21,9 +22,37 @@
   const leaderReportStatus = document.getElementById("leader-report-status");
   const leaderReportPdfBtn = document.getElementById("leader-report-pdf-btn");
   const leaderReportDocxBtn = document.getElementById("leader-report-docx-btn");
+  const adminPanel = document.getElementById("admin-panel");
+  const adminLines = document.getElementById("admin-lines");
+  const adminStatus = document.getElementById("admin-status");
+  const modulesPanel = document.getElementById("modules-panel");
+
+  const MEASUREMENT_LINES = [
+    {
+      key: "ce",
+      title: "Línea CE — TGLI — ANI",
+      blurb: "Comercio Exterior · Logística Internacional · Adm. Negocios Internacionales",
+      programMatch: function (name) {
+        var n = (name || "").toLowerCase();
+        return n.indexOf("comercio") >= 0 || n.indexOf("logíst") >= 0 || n.indexOf("logist") >= 0
+          || n.indexOf("negocios intern") >= 0 || n.indexOf("neg. neg") >= 0;
+      },
+    },
+    {
+      key: "tga",
+      title: "Línea TGA — INE",
+      blurb: "TG Administrativa · Inteligencia de Negocios",
+      programMatch: function (name) {
+        var n = (name || "").toLowerCase();
+        return n.indexOf("gestión administrativa") >= 0 || n.indexOf("gestion administrativa") >= 0
+          || n.indexOf("tga") >= 0 || n.indexOf("inteligencia de negocios") >= 0;
+      },
+    },
+  ];
 
   let currentUser = null;
   let currentPeriodId = "";
+  let currentProgramId = "";
   let currentModules = [];
   let currentTrackingRows = [];
 
@@ -82,6 +111,116 @@
   }
 
   function isLeader() { return currentUser && currentUser.role === "leader"; }
+  function isAdmin() { return currentUser && currentUser.role === "admin"; }
+
+  function setAdminStatus(message, kind) {
+    if (!adminStatus) return;
+    adminStatus.textContent = message;
+    adminStatus.className = "status-message" + (kind ? " " + kind : "");
+  }
+
+  function moduleStatsForPeriod(periodId, allEvaluations, programId) {
+    var rows = (allEvaluations || []).filter(function (e) {
+      if (String(e.period_id) !== String(periodId)) return false;
+      if (programId && e.module && String(e.module.program_id) !== String(programId)) return false;
+      return true;
+    });
+    var completed = rows.filter(function (e) { return e.status === "completed"; }).length;
+    return { total: rows.length, completed: completed };
+  }
+
+  async function loadAdminDashboard() {
+    if (!adminLines) return;
+    adminLines.innerHTML = "<p class=\"muted\">Cargando…</p>";
+    setAdminStatus("Cargando panorama del cuatrimestre…");
+    try {
+      await requireSession();
+      var sb = ensureSupabase();
+      var cycle = null;
+      var cycleRes = await sb.from("measurement_cycles").select("id, code, name").eq("code", "2025-2").maybeSingle();
+      if (!cycleRes.error) cycle = cycleRes.data;
+
+      var assignments = [];
+      if (cycle) {
+        var assignRes = await sb.from("ra_consolidator_assignments")
+          .select("program_id, student_outcome_id, program:programs(name), student_outcome:student_outcomes(code), consolidator:users(full_name, email)")
+          .eq("cycle_id", cycle.id);
+        if (!assignRes.error) assignments = assignRes.data || [];
+      }
+
+      var periodsRes = await sb.from("periods").select("id, name, student_outcome_id, student_outcomes(code)").order("name");
+      var periods = periodsRes.data || [];
+      var evalRes = await sb.from("module_ra_evaluations")
+        .select("id, period_id, status, module:modules(program_id)");
+      var allEvaluations = evalRes.data || [];
+
+      adminLines.innerHTML = "";
+      MEASUREMENT_LINES.forEach(function (line) {
+        var card = document.createElement("article");
+        card.className = "admin-line-card";
+        var heading = document.createElement("header");
+        heading.innerHTML = "<h4>" + line.title + "</h4><p class=\"muted\">" + line.blurb + "</p>";
+        card.appendChild(heading);
+
+        var list = document.createElement("ul");
+        list.className = "admin-ra-list";
+
+        var lineAssignments = assignments.filter(function (a) {
+          return line.programMatch(a.program && a.program.name);
+        });
+
+        if (!lineAssignments.length) {
+          periods.forEach(function (p) {
+            var stats = moduleStatsForPeriod(p.id, allEvaluations);
+            if (!stats.total) return;
+            var raCode = (p.student_outcomes && p.student_outcomes.code) || p.name;
+            var li = document.createElement("li");
+            li.textContent = raCode + " · " + stats.completed + "/" + stats.total + " módulos completados · líder: pendiente mapeo";
+            list.appendChild(li);
+          });
+        } else {
+          lineAssignments.forEach(function (a) {
+            var raCode = (a.student_outcome && a.student_outcome.code) || "RA";
+            var period = periods.find(function (p) { return p.student_outcome_id === a.student_outcome_id; });
+            var stats = period ? moduleStatsForPeriod(period.id, allEvaluations, a.program_id) : { total: 0, completed: 0 };
+            var leader = a.consolidator || {};
+            var li = document.createElement("li");
+            var prog = (a.program && a.program.name) || "Programa";
+            li.textContent = prog + " · " + raCode + " — "
+              + stats.completed + "/" + stats.total + " módulos · Líder: "
+              + safeText(leader.full_name) + " <" + safeText(leader.email) + ">";
+            list.appendChild(li);
+          });
+        }
+
+        if (!list.children.length) {
+          var empty = document.createElement("p");
+          empty.className = "muted";
+          empty.textContent = "Sin mediciones cargadas para esta línea.";
+          card.appendChild(empty);
+        } else {
+          card.appendChild(list);
+        }
+
+        var actions = document.createElement("p");
+        actions.className = "admin-line-actions muted";
+        actions.textContent = "Informe ejecutivo de línea (F17): disponible cuando los informes por RA estén completos.";
+        card.appendChild(actions);
+        adminLines.appendChild(card);
+      });
+
+      var cycleLabel = cycle ? cycle.name : "2025-2";
+      if (!assignments.length) {
+        setAdminStatus(cycleLabel + " — ejecute scripts/seed_consolidators_from_mapping.py para cargar líderes del Excel.", "info");
+      } else {
+        setAdminStatus(cycleLabel + " — " + assignments.length + " asignaciones programa×RA cargadas.", "success");
+      }
+    } catch (e) {
+      console.error(e);
+      adminLines.innerHTML = "<p class=\"muted\">Error al cargar panorama administrativo.</p>";
+      setAdminStatus("Error al cargar consolidación.", "error");
+    }
+  }
 
   function selectedPeriodName() {
     const option = periodSelect.options[periodSelect.selectedIndex];
@@ -91,7 +230,7 @@
   function renderEmpty(message) {
     modulesBody.innerHTML = "";
     const row = document.createElement("tr"), cell = document.createElement("td");
-    cell.colSpan = 6; cell.textContent = message;
+    cell.colSpan = 7; cell.textContent = message;
     row.appendChild(cell); modulesBody.appendChild(row);
   }
 
@@ -122,8 +261,8 @@
     }
     modules.forEach(function(m) {
       const row = document.createElement("tr");
-      const actionHref = "./assessment.html?module_id=" + m.id;
-      [safeText(m.course_name), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
+      const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id;
+      [safeText(m.course_name), safeText(m.ra_code), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
         .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
       const ac = document.createElement("td"), a = document.createElement("a");
       a.className = "table-action"; a.href = actionHref;
@@ -138,18 +277,21 @@
     if (!currentUser || currentUser.role !== "teacher") return null;
     const { data, error } = await ensureSupabase()
       .from("module_staff")
-      .select("module_id, modules!inner(period_id)")
+      .select("module_id, modules!inner(module_ra_evaluations(period_id))")
       .eq("user_id", currentUser.id);
     if (error) throw error;
     const ids = new Set();
     (data || []).forEach(function (row) {
-      if (row.modules && row.modules.period_id != null) ids.add(String(row.modules.period_id));
+      var evals = row.modules && row.modules.module_ra_evaluations;
+      (evals || []).forEach(function (ev) {
+        if (ev.period_id != null) ids.add(String(ev.period_id));
+      });
     });
     return ids;
   }
 
   async function periodsWithModules() {
-    const { data, error } = await ensureSupabase().from("modules").select("period_id");
+    const { data, error } = await ensureSupabase().from("module_ra_evaluations").select("period_id");
     if (error) throw error;
     const ids = new Set();
     (data || []).forEach(function (row) {
@@ -167,10 +309,11 @@
     return String(periods[0].id);
   }
 
-  function filterModulesForRole(rows) {
+  function filterEvaluationsForRole(rows) {
     if (!currentUser || currentUser.role !== "teacher") return rows || [];
     return (rows || []).filter(function (row) {
-      return (row.module_staff || []).some(function (staff) {
+      const mod = row.module || {};
+      return (mod.module_staff || []).some(function (staff) {
         return staff.user_id === currentUser.id;
       });
     });
@@ -199,9 +342,16 @@
       if (pe) throw pe;
       currentUser = profile;
       welcomeMsg.textContent = "Hola, " + safeText(profile.full_name) + " (" + safeText(profile.role) + ")";
-      leaderPanel.hidden = !isLeader();
-      leaderReportPdfBtn.hidden = !isLeader();
-      leaderReportDocxBtn.hidden = !isLeader();
+      var admin = isAdmin();
+      if (adminPanel) adminPanel.hidden = !admin;
+      if (modulesPanel) modulesPanel.hidden = admin;
+      leaderPanel.hidden = !isLeader() || admin;
+      leaderReportPdfBtn.hidden = !isLeader() || admin;
+      leaderReportDocxBtn.hidden = !isLeader() || admin;
+      if (programSelect) programSelect.hidden = !isLeader() || admin;
+      if (admin && document.getElementById("dashboard-title")) {
+        document.getElementById("dashboard-title").textContent = "Líder de medición";
+      }
       return true;
     } catch (e) { console.error(e); welcomeMsg.textContent = "No se pudo cargar."; return false; }
   }
@@ -246,29 +396,78 @@
     return msIds.filter(function(id) { return (counts.get(id) || new Set()).size === piIds.length; }).length;
   }
 
+  async function loadLeaderPrograms(periodId) {
+    if (!programSelect || !isLeader()) return;
+    programSelect.innerHTML = "";
+    programSelect.disabled = true;
+    if (!periodId || !currentUser) return;
+    try {
+      const sb = ensureSupabase();
+      const { data: period } = await sb.from("periods").select("student_outcome_id, cycle_id").eq("id", periodId).single();
+      if (!period) return;
+      let assignQuery = sb.from("ra_consolidator_assignments")
+        .select("program_id, program:programs(id, name)")
+        .eq("consolidator_user_id", currentUser.id)
+        .eq("student_outcome_id", period.student_outcome_id);
+      if (period.cycle_id) assignQuery = assignQuery.eq("cycle_id", period.cycle_id);
+      const { data: rows } = await assignQuery;
+      if (!rows.length) {
+        programSelect.appendChild(new Option("Sin programas asignados", ""));
+        return;
+      }
+      rows.forEach(function (a) {
+        const prog = a.program || {};
+        programSelect.appendChild(new Option(prog.name || ("Programa " + a.program_id), a.program_id));
+      });
+      programSelect.disabled = false;
+      currentProgramId = String(rows[0].program_id);
+      programSelect.value = currentProgramId;
+    } catch (e) {
+      console.error(e);
+      programSelect.appendChild(new Option("Error al cargar programas", ""));
+    }
+  }
+
   async function loadModules(periodId) {
     if (!periodId) { renderEmpty("Selecciona un periodo."); return; }
     setStatus("Cargando..."); renderEmpty("Cargando...");
     try {
       await requireSession();
       const sb = ensureSupabase();
-      const { data: rows, error } = await sb.from("modules").select("*, module_staff(user_id, users(full_name))").eq("period_id", periodId).order("course_code").order("group_name");
+      if (isLeader()) await loadLeaderPrograms(periodId);
+      const { data: rows, error } = await sb.from("module_ra_evaluations")
+        .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))")
+        .eq("period_id", periodId)
+        .order("course_code", { foreignTable: "modules" })
+        .order("group_name", { foreignTable: "modules" });
       if (error) throw error;
-      const visibleRows = filterModulesForRole(rows);
+      let visibleRows = filterEvaluationsForRole(rows);
+      if (isLeader() && currentProgramId) {
+        visibleRows = visibleRows.filter(function (row) {
+          return row.module && String(row.module.program_id) === String(currentProgramId);
+        });
+      }
       const piIds = await getActivePis(periodId);
-      const modules = visibleRows.map(function(r) {
-        const m = Object.assign({}, r);
-        m.teacher = normalizeTeacher(r);
+      const modules = visibleRows.map(function (r) {
+        const mod = r.module || {};
+        const m = Object.assign({}, mod);
+        m.evaluation_id = r.id;
+        m.status = r.status;
+        m.ra_code = (r.period && r.period.student_outcome && r.period.student_outcome.code) || "—";
+        m.teacher = normalizeTeacher(mod);
         m.students_active = 0;
         m.students_graded = 0;
         return m;
       });
-      await Promise.all(modules.map(async function(m) {
-        try { m.students_active = await countActive(m.id); m.students_graded = await countGraded(m.id, piIds); } catch(e) { console.error(e); }
+      await Promise.all(modules.map(async function (m) {
+        try {
+          m.students_active = await countActive(m.id);
+          m.students_graded = await countGraded(m.id, piIds);
+        } catch (e) { console.error(e); }
       }));
       renderModules(modules);
-      if (isLeader()) await loadLeaderDashboard(periodId);
-    } catch(e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
+      if (isLeader() && currentProgramId) await loadLeaderDashboard(periodId);
+    } catch (e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
   }
 
   async function loadReportPreview(periodId) {
@@ -320,8 +519,12 @@
         const { data } = await sb.from("perf_indicators").select("id, code").eq("rubric_id", p.rubric_id).eq("is_active", true).order("position");
         pis = data || [];
       }
-      const { data: plans } = await sb.from("action_plans").select("perf_indicator_id, action_type, perf_indicators(code)").eq("period_id", periodId);
-      const { data: analyses } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId);
+      if (!currentProgramId) {
+        leaderAnalysisList.innerHTML = '<p class="muted">Selecciona un programa en el panel del líder.</p>';
+        return;
+      }
+      const { data: plans } = await sb.from("action_plans").select("perf_indicator_id, action_type, perf_indicators(code)").eq("period_id", periodId).eq("program_id", currentProgramId);
+      const { data: analyses } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId).eq("program_id", currentProgramId);
       const planMap = {}; (plans || []).forEach(function(r) { planMap[r.perf_indicator_id] = r; });
       const items = mergeAnalysis(
         { plans: pis.map(function(pi) { const ex = planMap[pi.id]; return { perf_indicator_id: pi.id, pi_code: pi.code, standard: "—", suggested_action_type: (ex && ex.action_type) || "preventive" }; }) },
@@ -332,16 +535,33 @@
   }
 
   async function loadLeaderDashboard(periodId) {
-    await loadTracking(periodId); await loadReportPreview(periodId); await loadLeaderAnalysis(periodId); await loadLeaderReport(periodId);
+    if (!currentProgramId) return;
+    await loadTracking(periodId);
+    await loadReportPreview(periodId);
+    await loadLeaderAnalysis(periodId);
+    await loadLeaderReport(periodId);
   }
 
   async function loadTracking(periodId) {
     currentTrackingRows = [];
+    if (!currentProgramId) return;
     try {
       await requireSession();
-      const { data } = await ensureSupabase().from("modules").select("id, status, course_name, group_name, module_staff(user_id, users(full_name)), module_students(count)").eq("period_id", periodId);
-      currentTrackingRows = (data || []).map(function(r) { return { id: r.id, status: r.status, course_name: r.course_name, group_name: r.group_name, teacher: normalizeTeacher(r) }; });
-    } catch(e) { currentTrackingRows = []; }
+      const { data } = await ensureSupabase().from("module_ra_evaluations")
+        .select("id, status, module:modules(id, course_name, group_name, program_id, module_staff(user_id, users(full_name)), module_students(count))")
+        .eq("period_id", periodId);
+      currentTrackingRows = (data || []).filter(function (r) {
+        return r.module && String(r.module.program_id) === String(currentProgramId);
+      }).map(function (r) {
+        return {
+          id: r.module.id,
+          status: r.status,
+          course_name: r.module.course_name,
+          group_name: r.module.group_name,
+          teacher: normalizeTeacher(r.module),
+        };
+      });
+    } catch (e) { currentTrackingRows = []; }
   }
 
   function pendingIds() {
@@ -366,10 +586,19 @@
   async function saveLeaderAnalysis(event) {
     event.preventDefault();
     if (!currentPeriodId) return;
-    const rows = Array.from(leaderAnalysisList.querySelectorAll("textarea[data-pi-id]")).map(function(t) { return { period_id: Number(currentPeriodId), perf_indicator_id: Number(t.dataset.piId), analysis_text: t.value, updated_by: currentUser ? currentUser.id : null }; });
+    if (!currentProgramId) { setLeaderAnalysisStatus("Selecciona un programa.", "error"); return; }
+    const rows = Array.from(leaderAnalysisList.querySelectorAll("textarea[data-pi-id]")).map(function (t) {
+      return {
+        period_id: Number(currentPeriodId),
+        program_id: Number(currentProgramId),
+        perf_indicator_id: Number(t.dataset.piId),
+        analysis_text: t.value,
+        updated_by: currentUser ? currentUser.id : null,
+      };
+    });
     try {
       await requireSession();
-      const { error } = await ensureSupabase().from("leader_analysis").upsert(rows, { onConflict: "period_id,perf_indicator_id" });
+      const { error } = await ensureSupabase().from("leader_analysis").upsert(rows, { onConflict: "period_id,program_id,perf_indicator_id" });
       if (error) throw error;
       setLeaderAnalysisStatus("Guardado.", "success");
     } catch(e) { setLeaderAnalysisStatus("Error.", "error"); }
@@ -397,8 +626,12 @@
         const { data } = await sb.from("perf_indicators").select("id, code, description").eq("rubric_id", p.rubric_id).eq("is_active", true).order("position");
         pis = data || [];
       }
-      const { data: la } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId);
-      const { data: dr } = await sb.from("leader_report_drafts").select("perf_indicator_id, conclusion_text").eq("period_id", periodId);
+      if (!currentProgramId) {
+        leaderReportList.innerHTML = '<p class="muted">Selecciona un programa en el panel del líder.</p>';
+        return;
+      }
+      const { data: la } = await sb.from("leader_analysis").select("perf_indicator_id, analysis_text").eq("period_id", periodId).eq("program_id", currentProgramId);
+      const { data: dr } = await sb.from("leader_report_drafts").select("perf_indicator_id, conclusion_text").eq("period_id", periodId).eq("program_id", currentProgramId);
       const laMap = {}; (la || []).forEach(function(r) { laMap[r.perf_indicator_id] = r.analysis_text; });
       const drMap = {}; (dr || []).forEach(function(r) { drMap[r.perf_indicator_id] = r.conclusion_text; });
       renderLeaderReport(pis.map(function(pi) { return { perf_indicator_id: pi.id, pi_code: pi.code, pi_description: pi.description, leader_analysis: laMap[pi.id] || "", conclusion_text: drMap[pi.id] || "" }; }));
@@ -408,10 +641,19 @@
   async function saveLeaderReport(event) {
     event.preventDefault();
     if (!currentPeriodId) return;
-    const rows = Array.from(leaderReportList.querySelectorAll("textarea[data-pi-id]")).map(function(t) { return { period_id: Number(currentPeriodId), perf_indicator_id: Number(t.dataset.piId), conclusion_text: t.value, updated_by: currentUser ? currentUser.id : null }; });
+    if (!currentProgramId) { setLeaderReportStatus("Selecciona un programa.", "error"); return; }
+    const rows = Array.from(leaderReportList.querySelectorAll("textarea[data-pi-id]")).map(function (t) {
+      return {
+        period_id: Number(currentPeriodId),
+        program_id: Number(currentProgramId),
+        perf_indicator_id: Number(t.dataset.piId),
+        conclusion_text: t.value,
+        updated_by: currentUser ? currentUser.id : null,
+      };
+    });
     try {
       await requireSession();
-      const { error } = await ensureSupabase().from("leader_report_drafts").upsert(rows, { onConflict: "period_id,perf_indicator_id" });
+      const { error } = await ensureSupabase().from("leader_report_drafts").upsert(rows, { onConflict: "period_id,program_id,perf_indicator_id" });
       if (error) throw error;
       setLeaderReportStatus("Guardado.", "success");
       await loadLeaderReport(currentPeriodId);
@@ -443,7 +685,16 @@
     } catch (e) { periodSelect.innerHTML = '<option value="">Error</option>'; }
   }
 
-  periodSelect.addEventListener("change", function() { currentPeriodId = periodSelect.value; loadModules(periodSelect.value); });
+  periodSelect.addEventListener("change", function () {
+    currentPeriodId = periodSelect.value;
+    loadModules(periodSelect.value);
+  });
+  if (programSelect) {
+    programSelect.addEventListener("change", function () {
+      currentProgramId = programSelect.value;
+      if (currentPeriodId) loadModules(currentPeriodId);
+    });
+  }
   viewReportBtn.addEventListener("click", async function() {
     if (!currentPeriodId) return;
     try {
@@ -486,5 +737,13 @@
   logoutBtn.addEventListener("click", async function() { try { await ensureSupabase().auth.signOut(); } catch(e) {} window.location.replace("./index.html"); });
 
   leaderPanel.hidden = true;
-  loadUser().then(function(loaded) { if (loaded) loadPeriods().then(function() { currentPeriodId = periodSelect.value; }); });
+  if (adminPanel) adminPanel.hidden = true;
+  loadUser().then(function (loaded) {
+    if (!loaded) return;
+    if (isAdmin()) {
+      loadAdminDashboard();
+      return;
+    }
+    loadPeriods().then(function () { currentPeriodId = periodSelect.value; });
+  });
 })();

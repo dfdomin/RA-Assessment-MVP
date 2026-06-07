@@ -2,9 +2,10 @@
   "use strict";
 
   var params = new URLSearchParams(window.location.search);
-  var moduleId = params.get("module_id");
-  if (!moduleId) {
-    document.body.innerHTML = '<p style="padding:2rem">Falta module_id en la URL.</p>';
+  var evaluationId = params.get("evaluation_id");
+  var legacyModuleId = params.get("module_id");
+  if (!evaluationId && !legacyModuleId) {
+    document.body.innerHTML = '<p style="padding:2rem">Falta evaluation_id en la URL.</p>';
     return;
   }
 
@@ -12,7 +13,13 @@
   var wizardPanels = Array.from(document.querySelectorAll("[data-step-panel]"));
   var wizardNextBtn = document.getElementById("wizard-next-btn");
   var wizardPrevBtn = document.getElementById("wizard-prev-btn");
-  var moduleInfo = document.querySelector("#module-summary dd");
+  var summaryRa = document.getElementById("summary-ra");
+  var summaryModule = document.getElementById("summary-module");
+  var summaryLeader = document.getElementById("summary-leader");
+  var summaryLeaderEmail = document.getElementById("summary-leader-email");
+  var submitLeaderNotice = document.getElementById("submit-leader-notice");
+  var submitLeaderName = document.getElementById("submit-leader-name");
+  var submitLeaderEmail = document.getElementById("submit-leader-email");
   var studentsBody = document.getElementById("students-body");
   var distributionBody = document.getElementById("distribution-body");
   var analysisBody = document.getElementById("analysis-body");
@@ -27,8 +34,10 @@
   var piRows = [];
   var activeStudentCount = 0;
   var currentModule = null;
+  var currentEvaluation = null;
+  var currentConsolidator = null;
+  var currentRaLabel = "";
 
-  // Criterios ABET: etiqueta en español para la UI; valor interno en BD (1–4); puntaje de referencia (1, 2, 4, 5).
   var LEVEL_CRITERIA = [
     { dbValue: 1, labelEs: "Deficiente", distKey: "Deficiente", score: 1 },
     { dbValue: 2, labelEs: "Insuficiente", distKey: "Insuficiente", score: 2 },
@@ -111,9 +120,7 @@
 
   function buildStudentsHead() {
     var headRow = document.querySelector("#students-head tr");
-    // Remove old PI headers if any
-    headRow.querySelectorAll(".pi-header").forEach(function(h) { h.remove(); });
-    // Add PI headers
+    headRow.querySelectorAll(".pi-header").forEach(function (h) { h.remove(); });
     (piRows || []).forEach(function (pi) {
       var th = document.createElement("th");
       th.scope = "col";
@@ -122,18 +129,99 @@
       th.textContent = pi.code;
       headRow.appendChild(th);
     });
-    // Update colspan on the empty-state row
     var emptyRow = studentsBody.querySelector("tr:only-child td[colspan]");
     if (emptyRow) emptyRow.colSpan = 2 + (piRows || []).length;
+  }
+
+  function buildMailtoLink(leader, mod, raCode) {
+    if (!leader || !leader.email) return "#";
+    var code = mod && mod.course_code ? mod.course_code : "";
+    var group = mod && mod.group_name ? mod.group_name : "";
+    var subject = "[RA Assessment] Medición completada — " + raCode + " — " + code + " — " + group;
+    var body = "Estimado/a " + (leader.full_name || "líder consolidador") + ",\n\n"
+      + "Completé la medición del RA " + raCode + " para el módulo " + code
+      + (group ? " (grupo " + group + ")" : "") + ".\n\nSaludos.";
+    return "mailto:" + encodeURIComponent(leader.email)
+      + "?subject=" + encodeURIComponent(subject)
+      + "&body=" + encodeURIComponent(body);
+  }
+
+  function renderLeaderContact(leader, raCode, mod) {
+    var name = leader && leader.full_name ? leader.full_name : "No asignado en el mapeo";
+    var email = leader && leader.email ? leader.email : "";
+    if (summaryRa) summaryRa.textContent = currentRaLabel || raCode || "—";
+    if (summaryLeader) summaryLeader.textContent = name;
+    if (summaryLeaderEmail) {
+      if (email) {
+        summaryLeaderEmail.innerHTML = "";
+        var link = document.createElement("a");
+        link.href = buildMailtoLink(leader, mod, raCode);
+        link.textContent = email;
+        summaryLeaderEmail.appendChild(link);
+      } else {
+        summaryLeaderEmail.textContent = "—";
+      }
+    }
+    if (submitLeaderNotice) submitLeaderNotice.hidden = !leader;
+    if (submitLeaderName) submitLeaderName.textContent = name;
+    if (submitLeaderEmail) {
+      if (email) {
+        submitLeaderEmail.href = buildMailtoLink(leader, mod, raCode);
+        submitLeaderEmail.textContent = email;
+      } else {
+        submitLeaderEmail.removeAttribute("href");
+        submitLeaderEmail.textContent = "—";
+      }
+    }
   }
 
   function renderModuleSummary(mod) {
     var code = mod && mod.course_code ? mod.course_code : "";
     var name = mod && mod.course_name ? mod.course_name : "";
     var group = mod && mod.group_name ? mod.group_name : "";
-    var title = code && name ? code + " — " + name : (name || code || "Módulo " + moduleId);
+    var title = code && name ? code + " — " + name : (name || code || "Módulo");
     if (group) title += " · Grupo " + group;
-    moduleInfo.textContent = title + " — " + activeStudentCount + " estudiantes activos";
+    title += " — " + activeStudentCount + " estudiantes activos";
+    if (summaryModule) summaryModule.textContent = title;
+    var so = mod && mod.period && mod.period.student_outcome;
+    var raCode = so && so.code ? so.code : "";
+    currentRaLabel = raCode && so && so.description
+      ? raCode + " — " + so.description
+      : raCode || "—";
+    renderLeaderContact(currentConsolidator, raCode, mod);
+  }
+
+  async function loadConsolidatorInfo(client, mod) {
+    var period = mod && mod.period;
+    if (!period || !period.cycle_id || !period.student_outcome) return null;
+    var programId = mod.program_id || period.student_outcome.program_id;
+    if (!programId) return null;
+    try {
+      var res = await client.from("ra_consolidator_assignments")
+        .select("consolidator:users(full_name, email)")
+        .eq("cycle_id", period.cycle_id)
+        .eq("program_id", programId)
+        .eq("student_outcome_id", period.student_outcome.id)
+        .maybeSingle();
+      if (res.error || !res.data) return null;
+      return res.data.consolidator || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function resolveEvaluationId(client) {
+    if (evaluationId) return Number(evaluationId);
+    if (!legacyModuleId) return null;
+    var { data, error } = await client.from("module_ra_evaluations")
+      .select("id")
+      .eq("module_id", legacyModuleId)
+      .order("id")
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    evaluationId = String(data.id);
+    return data.id;
   }
 
   function renderStudents(studentsData) {
@@ -236,27 +324,37 @@
       var session = await requireAuthOrRedirect();
       if (!session) return;
 
-      // Load module info
-      var { data: mod } = await client.from("modules").select("*, period:periods(rubric_id)").eq("id", moduleId).single();
-      if (!mod) { setStatus("Módulo no encontrado.", "error"); return; }
-      currentModule = mod;
+      var resolvedId = await resolveEvaluationId(client);
+      if (!resolvedId) { setStatus("Evaluación no encontrada.", "error"); return; }
 
-      // Load active PIs from the rubric
-      var { data: pis } = await client.from("perf_indicators").select("*").eq("rubric_id", mod.period.rubric_id).eq("is_active", true).order("position");
+      var { data: evaluation } = await client.from("module_ra_evaluations")
+        .select("id, status, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+        .eq("id", resolvedId)
+        .single();
+      if (!evaluation || !evaluation.module) { setStatus("Módulo no encontrado.", "error"); return; }
+
+      currentEvaluation = evaluation;
+      currentModule = evaluation.module;
+      currentModule.period = evaluation.period || currentModule.period;
+      currentConsolidator = await loadConsolidatorInfo(client, currentModule);
+
+      var rubricId = currentModule.period && currentModule.period.rubric_id;
+      var { data: pis } = await client.from("perf_indicators").select("*").eq("rubric_id", rubricId).eq("is_active", true).order("position");
       piRows = pis || [];
 
-      // Build dynamic PI column headers
       buildStudentsHead();
 
-      // Load module_students with their assessments
-      var { data: msRows } = await client.from("module_students").select("id, status, student:students(id, full_name, internal_id), assessments(perf_indicator_id, level)").eq("module_id", moduleId);
+      var moduleId = currentModule.id;
+      var { data: msRows } = await client.from("module_students")
+        .select("id, status, student:students(id, full_name, internal_id), assessments(perf_indicator_id, level)")
+        .eq("module_id", moduleId);
       moduleStudents = (msRows || []).filter(function (r) { return r.status === "active"; });
       activeStudentCount = moduleStudents.length;
 
-      // Load qualitative analyses
-      var { data: qualRows } = await client.from("module_analysis").select("perf_indicator_id, analysis_text").eq("module_id", moduleId);
+      var { data: qualRows } = await client.from("module_analysis")
+        .select("perf_indicator_id, analysis_text")
+        .eq("module_ra_evaluation_id", resolvedId);
 
-      // Shape data
       var studentsData = {
         students: moduleStudents.map(function (r) {
           return {
@@ -307,9 +405,12 @@
     setStatus("Guardando analisis...");
     try {
       await requireAuthOrRedirect();
-      var payload = collectAnalyses().map(function (a) { return { module_id: Number(moduleId), perf_indicator_id: a.perf_indicator_id, analysis_text: a.analysis_text }; });
+      var evalId = currentEvaluation && currentEvaluation.id;
+      var payload = collectAnalyses().map(function (a) {
+        return { module_ra_evaluation_id: Number(evalId), perf_indicator_id: a.perf_indicator_id, analysis_text: a.analysis_text };
+      });
       if (payload.length) {
-        var { error } = await assertSupabase().from("module_analysis").upsert(payload, { onConflict: "module_id,perf_indicator_id" });
+        var { error } = await assertSupabase().from("module_analysis").upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
         if (error) throw error;
       }
       setStatus("Analisis guardado.", "success");
@@ -324,7 +425,10 @@
     setStatus("Enviando módulo...");
     try {
       await requireAuthOrRedirect();
-      var { error } = await assertSupabase().from("modules").update({ status: "completed", submitted_at: new Date().toISOString() }).eq("id", moduleId);
+      var evalId = currentEvaluation && currentEvaluation.id;
+      var { error } = await assertSupabase().from("module_ra_evaluations")
+        .update({ status: "completed", submitted_at: new Date().toISOString() })
+        .eq("id", evalId);
       if (error) throw error;
       setStatus("Módulo enviado.", "success");
     } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); submitModuleBtn.disabled = false; }

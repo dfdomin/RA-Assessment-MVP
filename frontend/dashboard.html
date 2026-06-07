@@ -38,7 +38,18 @@
       <button id="logout-btn" class="btn-secondary" type="button">Cerrar sesión</button>
     </section>
 
-    <section class="modules-panel" aria-labelledby="modules-title">
+    <section id="admin-panel" class="admin-panel" aria-labelledby="admin-title" hidden>
+      <div class="admin-header">
+        <div>
+          <h3 id="admin-title">Consolidación por línea propedéutica</h3>
+          <p class="muted">Seguimiento del cuatrimestre activo y estado de informes por RA.</p>
+        </div>
+      </div>
+      <p id="admin-status" class="status-message" role="status" aria-live="polite">Cargando panorama…</p>
+      <div id="admin-lines" class="admin-lines" aria-live="polite"></div>
+    </section>
+
+    <section id="modules-panel" class="modules-panel" aria-labelledby="modules-title">
       <div class="modules-header">
         <div>
           <h3 id="modules-title">Progreso por período</h3>
@@ -61,6 +72,7 @@
           <thead>
             <tr>
               <th scope="col">Módulo</th>
+              <th scope="col">RA</th>
               <th scope="col">Grupo</th>
               <th scope="col">Docente</th>
               <th scope="col">Estado</th>
@@ -70,7 +82,7 @@
           </thead>
           <tbody id="modules-body">
             <tr>
-              <td colspan="6">Selecciona un período para cargar módulos.</td>
+              <td colspan="7">Selecciona un período para cargar módulos.</td>
             </tr>
           </tbody>
         </table>
@@ -82,6 +94,12 @@
         <div>
           <h3 id="leader-title">Panel del líder</h3>
           <p class="muted">Revisa el avance consolidado, el reporte ABET y el análisis por PI.</p>
+        </div>
+        <div class="period-filter leader-program-filter">
+          <label for="program-select">Programa</label>
+          <select id="program-select" disabled>
+            <option value="">Cargando programas…</option>
+          </select>
         </div>
         <div class="leader-actions" aria-label="Acciones del período">
           <button id="view-report-btn" class="btn-secondary" type="button">Ver reporte</button>

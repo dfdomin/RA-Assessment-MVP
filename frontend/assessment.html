@@ -70,10 +70,25 @@
       </div>
       <dl id="module-summary" class="module-summary">
         <div>
+          <dt>RA en evaluación</dt>
+          <dd id="summary-ra">Cargando…</dd>
+        </div>
+        <div>
           <dt>Módulo</dt>
-          <dd>Cargando…</dd>
+          <dd id="summary-module">Cargando…</dd>
+        </div>
+        <div>
+          <dt>Líder consolidador</dt>
+          <dd id="summary-leader">Cargando…</dd>
+        </div>
+        <div>
+          <dt>Correo institucional</dt>
+          <dd id="summary-leader-email">—</dd>
         </div>
       </dl>
+      <p id="leader-contact-hint" class="leader-contact-hint muted">
+        Para inquietudes sobre esta medición, contacte a su líder consolidador.
+      </p>
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel" data-step-panel="grading" aria-labelledby="students-title" hidden>
@@ -143,6 +158,11 @@
         <li>Calificaciones: pendiente</li>
         <li>Análisis cualitativo: pendiente</li>
       </ul>
+      <div id="submit-leader-notice" class="leader-contact-hint submit-leader-notice" hidden>
+        <p><strong>Líder consolidador:</strong> <span id="submit-leader-name">—</span></p>
+        <p><strong>Correo:</strong> <a id="submit-leader-email" href="#">—</a></p>
+        <p class="muted">Se recomienda enviar un correo a su líder consolidador informando que completó la medición de este RA.</p>
+      </div>
     </section>
 
     <div class="wizard-actions" aria-label="Navegación del wizard">

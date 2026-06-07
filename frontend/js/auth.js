@@ -47,6 +47,8 @@
     errorBox.style.display = "none";
   }
 
+  const INSTITUTIONAL_EMAIL_SUFFIX = "@unibarranquilla.edu.co";
+
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     clearError();
@@ -56,6 +58,12 @@
 
     if (!email || !password) {
       showError("Por favor complete todos los campos.");
+      return;
+    }
+
+    var emailLower = email.toLowerCase();
+    if (!emailLower.endsWith(INSTITUTIONAL_EMAIL_SUFFIX) && !emailLower.endsWith("@iub.edu.co")) {
+      showError("Use su correo institucional " + INSTITUTIONAL_EMAIL_SUFFIX);
       return;
     }
 

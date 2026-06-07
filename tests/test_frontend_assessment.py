@@ -37,7 +37,8 @@ def test_assessment_js_loads_module_data_via_supabase():
     js = read_frontend("js/module_assessment.js")
 
     assert 'new URLSearchParams(window.location.search)' in js
-    assert 'get("module_id")' in js
+    assert 'get("evaluation_id")' in js
+    assert 'module_ra_evaluations' in js
     assert 'from("module_students")' in js
     assert 'from("assessments")' in js
     assert 'from("module_analysis")' in js
@@ -52,7 +53,7 @@ def test_assessment_js_saves_assessments_analysis_and_submit():
     assert "updateWizardState" in js
     assert "allStudentsFullyGraded" in js
     assert "allAnalysesComplete" in js
-    assert 'from("modules")' in js
+    assert 'module_ra_evaluation_id' in js
     assert "upsert" in js
 
 
@@ -70,3 +71,19 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert 'document.querySelectorAll("[data-step-panel]")' in js
     assert "wizardNextBtn.addEventListener" in js
     assert "wizardPrevBtn.addEventListener" in js
+
+
+def test_assessment_shows_leader_contact_on_general_and_submit():
+    html = read_frontend("assessment.html")
+    js = read_frontend("js/module_assessment.js")
+
+    assert 'id="summary-ra"' in html
+    assert 'id="summary-leader"' in html
+    assert 'id="summary-leader-email"' in html
+    assert 'id="leader-contact-hint"' in html
+    assert 'id="submit-leader-notice"' in html
+    assert "loadConsolidatorInfo" in js
+    assert "renderLeaderContact" in js
+    assert "ra_consolidator_assignments" in js
+    assert "buildMailtoLink" in js
+    assert "unibarranquilla" not in js

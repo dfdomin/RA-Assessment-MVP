@@ -40,7 +40,7 @@ VIEWS = [
     {
         "id": "assessment",
         "name": "Wizard calificación",
-        "path": "/frontend/assessment.html?module_id=1",
+        "path": "/frontend/assessment.html?evaluation_id=1",
         "requires_auth": True,
     },
 ]
@@ -94,12 +94,12 @@ def login_if_needed(page, base_url: str, email: str, password: str) -> bool:
     return False
 
 
-def discover_module_id(page, base_url: str) -> int | None:
+def discover_evaluation_id(page, base_url: str) -> int | None:
     page.goto(f"{base_url.rstrip('/')}/frontend/dashboard.html", wait_until="networkidle")
     page.wait_for_timeout(3000)
     href = page.evaluate(
         """() => {
-          const link = document.querySelector('a[href*="assessment.html?module_id="]');
+          const link = document.querySelector('a[href*="assessment.html?evaluation_id="]');
           return link ? link.getAttribute('href') : null;
         }"""
     )
@@ -107,7 +107,7 @@ def discover_module_id(page, base_url: str) -> int | None:
         return None
     import re
 
-    match = re.search(r"module_id=(\d+)", href)
+    match = re.search(r"evaluation_id=(\d+)", href)
     return int(match.group(1)) if match else None
 
 
@@ -248,13 +248,13 @@ def run_review(base_url: str, browser_channel: str | None, email: str | None, pa
         page.on("pageerror", on_page_error)
 
         logged_in = False
-        module_id: int | None = None
+        evaluation_id: int | None = None
         if email and password:
             logged_in = login_if_needed(page, base_url, email, password)
             auth_info: dict[str, Any] = {"logged_in": logged_in, "email": email}
             if logged_in:
-                module_id = discover_module_id(page, base_url)
-                auth_info["module_id"] = module_id
+                evaluation_id = discover_evaluation_id(page, base_url)
+                auth_info["evaluation_id"] = evaluation_id
                 dash_state = collect_dashboard_state(page)
                 auth_info["dashboard"] = dash_state
                 if dash_state.get("row_count", 0) <= 1:
@@ -272,10 +272,10 @@ def run_review(base_url: str, browser_channel: str | None, email: str | None, pa
             )
 
         views_to_run = list(VIEWS)
-        if module_id:
+        if evaluation_id:
             views_to_run = [
                 v if v["id"] != "assessment"
-                else {**v, "path": f"/frontend/assessment.html?module_id={module_id}"}
+                else {**v, "path": f"/frontend/assessment.html?evaluation_id={evaluation_id}"}
                 for v in views_to_run
             ]
         elif logged_in:

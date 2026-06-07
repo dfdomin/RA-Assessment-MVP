@@ -1,0 +1,14 @@
+---
+description: Aplicar siempre mejores prácticas; señalar y explicar desviaciones
+alwaysApply: true
+---
+
+# Mejores prácticas — obligatorio
+
+- **Siempre** priorizar mejores prácticas de programación y modelado de datos (normalización, una entidad = una fila, tablas puente para relaciones N:M, nombres alineados al dominio).
+- Si el código, el schema o una propuesta **no** cumple una buena práctica:
+  1. Decir **qué hay que arreglar** (concreto, accionable).
+  2. Explicar **por qué está mal** (riesgo, deuda técnica, inconsistencia con el dominio).
+  3. Proponer la **alternativa correcta** antes de implementar atajos.
+- No implementar parches (duplicar filas, denormalizar sin justificación) solo por velocidad si existe un modelo correcto razonable.
+- En decisiones de diseño (A vs B, tablas nuevas, migraciones), argumentar con el dominio real del proyecto (`CONTEXT.md`, Excel de mapeo, PRD).
