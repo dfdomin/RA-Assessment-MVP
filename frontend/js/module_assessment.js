@@ -26,6 +26,27 @@
   var moduleStudents = [];
   var piRows = [];
   var activeStudentCount = 0;
+  var currentModule = null;
+
+  // Criterios ABET: etiqueta en español para la UI; valor interno en BD (1–4); puntaje de referencia (1, 2, 4, 5).
+  var LEVEL_CRITERIA = [
+    { dbValue: 1, labelEs: "Deficiente", distKey: "Deficiente", score: 1 },
+    { dbValue: 2, labelEs: "Insuficiente", distKey: "Insuficiente", score: 2 },
+    { dbValue: 3, labelEs: "Bueno", distKey: "Bueno", score: 4 },
+    { dbValue: 4, labelEs: "Sobresaliente", distKey: "Sobresaliente", score: 5 },
+  ];
+
+  function levelMetaByDbValue(dbValue) {
+    return LEVEL_CRITERIA.find(function (level) { return level.dbValue === Number(dbValue); }) || null;
+  }
+
+  function buildLevelSelectOptions() {
+    var html = '<option value="">—</option>';
+    LEVEL_CRITERIA.forEach(function (level) {
+      html += '<option value="' + level.dbValue + '">' + level.labelEs + "</option>";
+    });
+    return html;
+  }
 
   function assertSupabase() {
     if (typeof supabase === "undefined" || !supabase || !supabase.auth) throw new Error("Supabase no disponible.");
@@ -72,15 +93,17 @@
   function buildDistribution(students, pis) {
     var dist = {};
     pis.forEach(function (pi) {
-      dist[pi.id] = { pi_code: pi.code, pi_description: pi.description, Poor: 0, Inadequate: 0, Adequate: 0, Exemplary: 0 };
+      dist[pi.id] = { pi_code: pi.code, pi_description: pi.description };
+      LEVEL_CRITERIA.forEach(function (level) {
+        dist[pi.id][level.distKey] = 0;
+      });
     });
     students.forEach(function (s) {
       (s.assessments || []).forEach(function (a) {
         var bucket = dist[a.perf_indicator_id];
         if (!bucket) return;
-        var labels = { 1: "Poor", 2: "Inadequate", 3: "Adequate", 4: "Exemplary" };
-        var label = labels[a.level] || "Poor";
-        bucket[label] = (bucket[label] || 0) + 1;
+        var meta = levelMetaByDbValue(a.level);
+        if (meta) bucket[meta.distKey] = (bucket[meta.distKey] || 0) + 1;
       });
     });
     return dist;
@@ -104,8 +127,13 @@
     if (emptyRow) emptyRow.colSpan = 2 + (piRows || []).length;
   }
 
-  function renderModuleSummary() {
-    moduleInfo.textContent = "Modulo " + moduleId + " — " + activeStudentCount + " estudiantes activos";
+  function renderModuleSummary(mod) {
+    var code = mod && mod.course_code ? mod.course_code : "";
+    var name = mod && mod.course_name ? mod.course_name : "";
+    var group = mod && mod.group_name ? mod.group_name : "";
+    var title = code && name ? code + " — " + name : (name || code || "Módulo " + moduleId);
+    if (group) title += " · Grupo " + group;
+    moduleInfo.textContent = title + " — " + activeStudentCount + " estudiantes activos";
   }
 
   function renderStudents(studentsData) {
@@ -120,7 +148,7 @@
         sel.title = pi.code + ": " + (pi.description || "");
         sel.dataset.moduleStudentId = s.module_student_id;
         sel.dataset.piId = pi.id;
-        sel.innerHTML = '<option value="">—</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>';
+        sel.innerHTML = buildLevelSelectOptions();
         var existing = (s.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
         if (existing) sel.value = existing.level;
         cell.appendChild(sel);
@@ -133,12 +161,28 @@
   function renderDistribution(data) {
     distributionBody.innerHTML = "";
     var dist = data.distribution || {};
+    var table = document.createElement("table");
+    table.className = "modules-table";
+    var head = document.createElement("thead");
+    var headCells = "<th scope=\"col\">PI</th><th scope=\"col\">Descripción</th>";
+    LEVEL_CRITERIA.forEach(function (level) {
+      headCells += '<th scope="col">' + level.labelEs + "</th>";
+    });
+    head.innerHTML = "<tr>" + headCells + "</tr>";
+    table.appendChild(head);
+    var body = document.createElement("tbody");
     Object.keys(dist).forEach(function (piId) {
       var d = dist[piId];
+      var cells = "<td>" + (d.pi_code || "—") + "</td><td>" + (d.pi_description || "—") + "</td>";
+      LEVEL_CRITERIA.forEach(function (level) {
+        cells += "<td>" + (d[level.distKey] || 0) + "</td>";
+      });
       var row = document.createElement("tr");
-      row.innerHTML = "<td>" + (d.pi_code || "—") + "</td><td>" + (d.pi_description || "—") + "</td><td>" + d.Poor + "</td><td>" + d.Inadequate + "</td><td>" + d.Adequate + "</td><td>" + d.Exemplary + "</td>";
-      distributionBody.appendChild(row);
+      row.innerHTML = cells;
+      body.appendChild(row);
     });
+    table.appendChild(body);
+    distributionBody.appendChild(table);
   }
 
   function renderAnalyses(data) {
@@ -186,7 +230,7 @@
   }
 
   async function loadModule() {
-    setStatus("Cargando modulo...");
+    setStatus("Cargando módulo...");
     try {
       var client = assertSupabase();
       var session = await requireAuthOrRedirect();
@@ -194,7 +238,8 @@
 
       // Load module info
       var { data: mod } = await client.from("modules").select("*, period:periods(rubric_id)").eq("id", moduleId).single();
-      if (!mod) { setStatus("Modulo no encontrado.", "error"); return; }
+      if (!mod) { setStatus("Módulo no encontrado.", "error"); return; }
+      currentModule = mod;
 
       // Load active PIs from the rubric
       var { data: pis } = await client.from("perf_indicators").select("*").eq("rubric_id", mod.period.rubric_id).eq("is_active", true).order("position");
@@ -228,7 +273,7 @@
         return { assessments: (r.assessments || []).map(function (a) { return { perf_indicator_id: a.perf_indicator_id, level: a.level }; }) };
       }), piRows);
 
-      renderModuleSummary(studentsData);
+      renderModuleSummary(currentModule);
       renderStudents(studentsData);
       renderDistribution({ distribution: dist });
       renderAnalyses({ analyses: (qualRows || []).map(function (r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) });
@@ -237,7 +282,7 @@
       setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");
     } catch (e) {
       if (isAuthError(e)) { redirectToLogin(); return; }
-      setStatus("Error al cargar modulo: " + (e.message || e), "error");
+      setStatus("Error al cargar módulo: " + (e.message || e), "error");
     }
   }
 
@@ -276,12 +321,12 @@
   submitModuleBtn.addEventListener("click", async function () {
     if (!allStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
     submitModuleBtn.disabled = true;
-    setStatus("Enviando modulo...");
+    setStatus("Enviando módulo...");
     try {
       await requireAuthOrRedirect();
       var { error } = await assertSupabase().from("modules").update({ status: "completed", submitted_at: new Date().toISOString() }).eq("id", moduleId);
       if (error) throw error;
-      setStatus("Modulo enviado.", "success");
+      setStatus("Módulo enviado.", "success");
     } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); submitModuleBtn.disabled = false; }
   });
 

@@ -59,6 +59,11 @@ def test_assessment_js_saves_assessments_analysis_and_submit():
 def test_assessment_js_renders_distribution_and_wizard_navigation():
     js = read_frontend("js/module_assessment.js")
 
+    assert "LEVEL_CRITERIA" in js
+    assert "Deficiente" in js
+    assert "Sobresaliente" in js
+    assert "buildLevelSelectOptions" in js
+    assert "course_name" in js
     assert "renderDistribution" in js
     assert "showStep" in js
     assert 'document.querySelectorAll("[data-step-target]")' in js
