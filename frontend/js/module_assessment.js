@@ -91,6 +91,9 @@
 
   var pendingUpserts = new Map();
   var saveDebounceTimer = null;
+  var pendingWeightUpserts = new Map();
+  var weightSaveDebounceTimer = null;
+  var piWeightsValid = true;
 
   var LEVEL_CRITERIA = [
     { value: 1, labelEs: "Deficiente", shortAbet: "No", distKey: "Deficiente", header: "Poor / 1 / (No)" },
@@ -121,6 +124,40 @@
       html += '<option value="' + level.value + '">' + buildSelectorLabel(level) + "</option>";
     });
     return html;
+  }
+
+  function sumPiWeights() {
+    return piRows.reduce(function (sum, pi) {
+      return sum + Number(pi.pi_weight != null ? pi.pi_weight : 0);
+    }, 0);
+  }
+
+  function formatWeightTotal(total) {
+    return Math.round(total * 100) / 100;
+  }
+
+  function validatePiWeights() {
+    if (!piRows.length) {
+      piWeightsValid = true;
+      return true;
+    }
+    piWeightsValid = Math.abs(formatWeightTotal(sumPiWeights()) - 100) < 0.01;
+    return piWeightsValid;
+  }
+
+  function buildWeightTotalHtml() {
+    var total = formatWeightTotal(sumPiWeights());
+    var valid = validatePiWeights();
+    var cls = valid ? "weight-total weight-total-ok" : "weight-total weight-total-error";
+    var msg = valid
+      ? "Total ponderación: " + total + "%"
+      : "Total ponderación: " + total + "% — debe sumar exactamente 100%";
+    return '<p class="' + cls + '" role="status" aria-live="polite">' + escapeHtml(msg) + "</p>";
+  }
+
+  function buildWeightInputHtml(pi) {
+    var value = pi.pi_weight != null ? pi.pi_weight : "";
+    return '<input type="number" class="pi-weight-input" data-pi-id="' + pi.id + '" min="0" max="100" step="0.01" value="' + escapeHtml(String(value)) + '" aria-label="Ponderación ' + escapeHtml(pi.code) + '">';
   }
 
   function descriptorForPi(pi, levelValue) {
@@ -600,6 +637,7 @@
     if (rubricLayoutScrollBtn) rubricLayoutScrollBtn.setAttribute("aria-pressed", rubricLayoutMode === "scroll" ? "true" : "false");
     if (rubricLayoutTabsBtn) rubricLayoutTabsBtn.setAttribute("aria-pressed", rubricLayoutMode === "tabs" ? "true" : "false");
     renderRubricPanel();
+    renderCurrentLot();
   }
 
   function maybeAutoFallbackToTabs() {
@@ -619,13 +657,13 @@
     var body = "";
     pis.forEach(function (pi) {
       body += "<tr><td class=\"criterion-cell\">" + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
-      body += '<td class="weight-cell">' + escapeHtml(String(pi.pi_weight != null ? pi.pi_weight : "")) + "</td>";
+      body += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td>";
       LEVEL_CRITERIA.forEach(function (level) {
         body += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
       });
       body += "</tr>";
     });
-    return '<table class="rubric-matrix">' + head + body + "</tbody></table>";
+    return '<table class="rubric-matrix">' + head + body + "</tbody></table>" + buildWeightTotalHtml();
   }
 
   function buildRubricTabsHtml(pis) {
@@ -641,13 +679,101 @@
       tabs += '<th scope="col">' + escapeHtml(level.header) + "</th>";
     });
     tabs += "</tr></thead><tbody><tr>";
-    tabs += '<td class="criterion-cell">' + escapeHtml(pi.description) + "</td>";
-    tabs += '<td class="weight-cell">' + escapeHtml(String(pi.pi_weight != null ? pi.pi_weight : "")) + "</td>";
+    tabs += '<td class="criterion-cell">' + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
+    tabs += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td>";
     LEVEL_CRITERIA.forEach(function (level) {
       tabs += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
     });
     tabs += "</tr></tbody></table>";
+    tabs += buildWeightTotalHtml();
+    tabs += '<p class="rubric-tabs-hint muted">Vista por criterio: califique <strong>todos</strong> los PIs en la tabla inferior. La columna resaltada corresponde al criterio activo.</p>';
     return tabs;
+  }
+
+  function attachPiWeightListeners() {
+    if (!rubricContent) return;
+    rubricContent.querySelectorAll(".pi-weight-input").forEach(function (input) {
+      input.addEventListener("input", function () {
+        queuePiWeightSave(input);
+        updateWeightTotalDisplay();
+        updateLotChrome();
+      });
+      input.addEventListener("change", function () {
+        queuePiWeightSave(input);
+        updateWeightTotalDisplay();
+        updateLotChrome();
+      });
+    });
+  }
+
+  function updateWeightTotalDisplay() {
+    if (!rubricContent) return;
+    var totalEl = rubricContent.querySelector(".weight-total");
+    if (!totalEl) return;
+    var total = formatWeightTotal(sumPiWeights());
+    var valid = validatePiWeights();
+    totalEl.className = valid ? "weight-total weight-total-ok" : "weight-total weight-total-error";
+    totalEl.textContent = valid
+      ? "Total ponderación: " + total + "%"
+      : "Total ponderación: " + total + "% — debe sumar exactamente 100%";
+  }
+
+  function queuePiWeightSave(input) {
+    if (!currentEvaluation || !input) return;
+    var piId = Number(input.dataset.piId);
+    var weight = Number(input.value);
+    if (!piId || Number.isNaN(weight)) return;
+    var pi = piRows.find(function (row) { return row.id === piId; });
+    if (pi) pi.pi_weight = weight;
+    pendingWeightUpserts.set(String(piId), {
+      module_ra_evaluation_id: currentEvaluation.id,
+      perf_indicator_id: piId,
+      pi_weight: weight,
+      updated_at: new Date().toISOString(),
+    });
+    setSaveIndicator("Guardando ponderaciones…", "saving");
+    clearTimeout(weightSaveDebounceTimer);
+    weightSaveDebounceTimer = setTimeout(function () { flushPendingWeightSaves(false); }, SAVE_DEBOUNCE_MS);
+  }
+
+  async function flushPendingWeightSaves(force) {
+    if (!pendingWeightUpserts.size) return;
+    if (!validatePiWeights()) {
+      setSaveIndicator("Ponderaciones deben sumar 100%", "error");
+      return;
+    }
+    var payload = Array.from(pendingWeightUpserts.values());
+    pendingWeightUpserts.clear();
+    try {
+      await requireAuthOrRedirect();
+      var { error } = await assertSupabase()
+        .from("module_ra_evaluation_pi_weights")
+        .upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
+      if (error) throw error;
+      setSaveIndicator("Guardado", "saved");
+      buildStudentsHead();
+    } catch (e) {
+      payload.forEach(function (item) {
+        pendingWeightUpserts.set(String(item.perf_indicator_id), item);
+      });
+      if (!isAuthError(e)) setSaveIndicator("Error al guardar ponderaciones", "error");
+    }
+  }
+
+  async function loadPiWeights(client, evaluationId) {
+    var { data, error } = await client.from("module_ra_evaluation_pi_weights")
+      .select("perf_indicator_id, pi_weight")
+      .eq("module_ra_evaluation_id", evaluationId);
+    if (error) throw error;
+    var byPi = {};
+    (data || []).forEach(function (row) {
+      byPi[row.perf_indicator_id] = Number(row.pi_weight);
+    });
+    piRows.forEach(function (pi) {
+      if (byPi[pi.id] != null) pi.pi_weight = byPi[pi.id];
+      pi.default_pi_weight = pi.default_pi_weight != null ? pi.default_pi_weight : Number(pi.pi_weight);
+    });
+    validatePiWeights();
   }
 
   function renderRubricPanel() {
@@ -662,10 +788,12 @@
     rubricContent.innerHTML = rubricLayoutMode === "tabs"
       ? buildRubricTabsHtml(piRows)
       : buildRubricMatrixHtml(piRows);
+    attachPiWeightListeners();
     rubricContent.querySelectorAll("[data-pi-tab]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         activeTabPiIndex = Number(btn.dataset.piTab);
         renderRubricPanel();
+        renderCurrentLot();
       });
     });
     if (rubricLayoutMode === "scroll") {
@@ -677,10 +805,13 @@
     var headRow = document.querySelector("#students-head tr");
     if (!headRow) return;
     headRow.querySelectorAll(".pi-header").forEach(function (h) { h.remove(); });
-    piRows.forEach(function (pi) {
+    piRows.forEach(function (pi, idx) {
       var th = document.createElement("th");
       th.scope = "col";
       th.className = "pi-header";
+      if (rubricLayoutMode === "tabs") {
+        th.classList.add(idx === activeTabPiIndex ? "pi-header-active" : "pi-header-muted");
+      }
       th.title = pi.description || pi.code;
       var weight = pi.pi_weight != null ? " (" + pi.pi_weight + "%)" : "";
       th.textContent = pi.code + weight;
@@ -699,8 +830,11 @@
     lotStudents.forEach(function (s) {
       var row = document.createElement("tr");
       row.innerHTML = "<td>" + escapeHtml(s.full_name || "—") + "</td><td>" + escapeHtml(s.internal_id || "—") + "</td>";
-      piRows.forEach(function (pi) {
+      piRows.forEach(function (pi, idx) {
         var cell = document.createElement("td");
+        if (rubricLayoutMode === "tabs") {
+          cell.classList.add(idx === activeTabPiIndex ? "pi-cell-active" : "pi-cell-muted");
+        }
         var sel = document.createElement("select");
         sel.className = "level-select";
         sel.title = pi.code + ": " + (pi.description || "");
@@ -726,7 +860,7 @@
     var lotComplete = isCurrentLotComplete();
     var hasMore = currentLotIndex < lots - 1;
     if (lotAdvanceBtn) {
-      lotAdvanceBtn.disabled = !(lotComplete && currentLotIndex === maxLotUnlocked && hasMore);
+      lotAdvanceBtn.disabled = !(piWeightsValid && lotComplete && currentLotIndex === maxLotUnlocked && hasMore);
     }
     var allGraded = allActiveStudentsFullyGraded();
     if (continueAnalysisBtn) continueAnalysisBtn.hidden = !allGraded;
@@ -737,6 +871,8 @@
         lotHint.textContent = "Lote completo. Puede corregir datos o pulsar «Calificar más estudiantes».";
       } else if (lotComplete && currentLotIndex < maxLotUnlocked) {
         lotHint.textContent = "Lote ya completado. Use «Lote siguiente» o «Lote anterior» para revisar.";
+      } else if (!piWeightsValid) {
+        lotHint.textContent = "Ajuste las ponderaciones de cada PI hasta que sumen exactamente 100%.";
       } else if (!lotComplete) {
         lotHint.textContent = "Complete todos los criterios de cada estudiante en este lote.";
       } else {
@@ -972,7 +1108,7 @@
 
   function updateWizardState() {
     saveQualitativeBtn.disabled = false;
-    submitModuleBtn.disabled = !allActiveStudentsFullyGraded() || !allAnalysesComplete();
+    submitModuleBtn.disabled = !piWeightsValid || !allActiveStudentsFullyGraded() || !allAnalysesComplete();
   }
 
   async function loadModule() {
@@ -1004,8 +1140,11 @@
         .order("position");
       piRows = (pis || []).map(function (pi) {
         pi.pi_levels = pi.pi_levels || [];
+        pi.default_pi_weight = Number(pi.pi_weight);
         return pi;
       });
+
+      await loadPiWeights(client, resolvedId);
 
       currentLotIndex = 0;
       maxLotUnlocked = 0;
@@ -1058,7 +1197,8 @@
 
   if (lotAdvanceBtn) {
     lotAdvanceBtn.addEventListener("click", async function () {
-      if (!isCurrentLotComplete() || currentLotIndex !== maxLotUnlocked) return;
+      if (!piWeightsValid || !isCurrentLotComplete() || currentLotIndex !== maxLotUnlocked) return;
+      await flushPendingWeightSaves(true);
       await flushPendingSaves(true);
       if (currentLotIndex < totalLots() - 1) {
         currentLotIndex += 1;

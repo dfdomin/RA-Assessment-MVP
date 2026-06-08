@@ -269,26 +269,32 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(30, 40, 67, 0.15);
 }
 
-/* Compact level-select dropdowns in assessment table */
+/* Selectores de nivel: etiqueta completa visible (Deficiente — No (1), etc.) */
 .assessment-table .level-select {
-  width: 3.2rem;
-  min-width: 3.2rem;
-  padding: 0.25rem 0.15rem;
-  font-size: 0.8rem;
-  text-align: center;
-  text-align-last: center;
+  width: 100%;
+  min-width: 10.5rem;
+  max-width: 12rem;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.72rem;
 }
 
 .assessment-table th.pi-header {
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.4rem 0.2rem;
+  padding: 0.4rem 0.35rem;
   text-align: center;
   white-space: nowrap;
-  writing-mode: horizontal-tb;
-  max-width: 5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 6.5rem;
+}
+
+.assessment-table th.pi-header-active,
+.assessment-table td.pi-cell-active {
+  background: #fff9db;
+}
+
+.assessment-table th.pi-header-muted,
+.assessment-table td.pi-cell-muted {
+  opacity: 0.72;
 }
 
 .status-message {
@@ -591,8 +597,37 @@ select:focus {
 }
 
 .rubric-matrix .weight-cell {
-  width: 5%;
+  width: 6%;
   text-align: center;
+}
+
+.pi-weight-input {
+  width: 3.5rem;
+  max-width: 100%;
+  padding: 0.2rem 0.25rem;
+  font-size: 0.75rem;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+}
+
+.weight-total {
+  margin: 0.35rem 0.5rem 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.weight-total-ok {
+  color: #166534;
+}
+
+.weight-total-error {
+  color: var(--color-error);
+}
+
+.rubric-tabs-hint {
+  margin: 0.35rem 0.5rem 0;
+  font-size: 0.72rem;
 }
 
 .rubric-tabs {
@@ -666,11 +701,29 @@ select:focus {
 }
 
 .lot-nav {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.lot-nav-side {
+  display: flex;
+}
+
+.lot-nav-end {
+  justify-content: flex-end;
+}
+
+.lot-nav-center {
+  display: flex;
+  justify-content: center;
+}
+
+.lot-advance-btn {
+  white-space: nowrap;
+  max-width: none;
 }
 
 .lot-hint {
@@ -832,11 +885,7 @@ select:focus {
 }
 
 .assessment-table {
-  min-width: 860px;
-}
-
-.level-select {
-  min-width: 120px;
+  min-width: 960px;
 }
 
 .analysis-list {

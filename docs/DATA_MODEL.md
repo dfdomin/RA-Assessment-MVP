@@ -420,7 +420,26 @@ Performance Indicators (PIs) de una rúbrica. Hasta 15 PIs activos por SO.
 **Índices**: `INDEX(rubric_id)`, `UNIQUE(rubric_id, code)`  
 **Constraint de negocio** (enforced en Pydantic, no en DB): `SUM(pi_weight) WHERE is_active = TRUE = 100.00`
 
-**Origen Excel**: columnas J12/M12/P12/S12/V12/Y12 de la hoja `EF_ASESSM_SO_GENERIC`
+**Origen Excel (plantilla de rúbrica)**: descriptores y pesos por defecto del período. Los pesos **editables por el docente** en cada módulo viven en `module_ra_evaluation_pi_weights` (fila 12 de la hoja del módulo).
+
+---
+
+### 3.5a `module_ra_evaluation_pi_weights`
+
+Ponderación de cada PI **por asignación módulo×RA** (`module_ra_evaluation_id`). El docente ajusta estos valores al calificar; si no hay fila, se usa `perf_indicators.pi_weight` de la rúbrica del período.
+
+| Columna | Tipo | Nulo | Descripción |
+|---|---|---|---|
+| `id` | `BIGINT` | No | PK |
+| `module_ra_evaluation_id` | `BIGINT` | No | FK → `module_ra_evaluations.id` |
+| `perf_indicator_id` | `BIGINT` | No | FK → `perf_indicators.id` |
+| `pi_weight` | `NUMERIC(5,2)` | No | Peso 0–100 para este módulo y RA |
+| `updated_at` | `TIMESTAMPTZ` | No | Última modificación |
+
+**Índices**: `UNIQUE(module_ra_evaluation_id, perf_indicator_id)`  
+**Constraint de negocio**: suma de pesos de PIs activos = **100.00** (validado en frontend al guardar).
+
+**Origen Excel**: celdas J12/M12/P12/S12/V12/Y12 de `EF_ASESSM_SO_GENERIC` **por hoja de módulo**.
 
 ---
 

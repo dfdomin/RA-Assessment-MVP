@@ -215,9 +215,15 @@
         </div>
 
         <div class="lot-nav" aria-label="Navegación entre lotes">
-          <button id="lot-prev-btn" class="btn-secondary" type="button" disabled>Lote anterior</button>
-          <button id="lot-advance-btn" class="btn-primary compact-btn" type="button" disabled>Calificar más estudiantes</button>
-          <button id="lot-next-btn" class="btn-secondary" type="button" disabled>Lote siguiente</button>
+          <div class="lot-nav-side">
+            <button id="lot-prev-btn" class="btn-secondary" type="button" disabled>Lote anterior</button>
+          </div>
+          <div class="lot-nav-center">
+            <button id="lot-advance-btn" class="btn-primary lot-advance-btn" type="button" disabled>Calificar más estudiantes</button>
+          </div>
+          <div class="lot-nav-side lot-nav-end">
+            <button id="lot-next-btn" class="btn-secondary" type="button" disabled>Lote siguiente</button>
+          </div>
         </div>
         <p id="lot-hint" class="lot-hint muted" aria-live="polite"></p>
         <button id="continue-analysis-btn" class="btn-primary compact-btn" type="button" hidden>
