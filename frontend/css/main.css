@@ -731,6 +731,277 @@ select:focus {
   min-height: 1.1rem;
 }
 
+.grading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.grading-substeps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.grading-substep {
+  border: 1px solid var(--color-border);
+  background: #f9fafb;
+  color: var(--color-primary);
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.grading-substep span {
+  opacity: 0.75;
+  margin-right: 0.15rem;
+}
+
+.grading-substep.active,
+.grading-substep[aria-current="step"] {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+}
+
+.grading-substep.active span,
+.grading-substep[aria-current="step"] span {
+  opacity: 1;
+}
+
+.grading-subpanel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.grading-intro {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.grading-notice {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+}
+
+.rubric-subtitle {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-primary);
+}
+
+.rubric-readonly-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: #ffffff;
+}
+
+.rubric-ack-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.grading-capture-panel {
+  gap: 0.65rem;
+}
+
+.capture-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.view-mode-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.view-mode-picker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.student-card-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+
+.student-position {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.student-card-name {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--color-primary);
+}
+
+.student-card-doc {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+}
+
+.student-card-pis {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.student-pi-block {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  background: #fafafa;
+}
+
+.student-pi-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  line-height: 1.35;
+}
+
+.student-pi-matrix {
+  margin-bottom: 0.65rem;
+  font-size: 0.72rem;
+}
+
+.student-pi-level-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.student-pi-level-label .level-select {
+  min-width: 10rem;
+  max-width: 100%;
+}
+
+.advance-countdown {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: var(--border-radius);
+}
+
+.advance-countdown p {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.student-nav-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.student-nav-primary {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.grid-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.grid-filter-label {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.admin-modogrilla-panel {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-modogrilla-panel h4 {
+  margin: 0 0 0.5rem;
+  color: var(--color-primary);
+}
+
+.admin-modogrilla-upload {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.admin-modogrilla-search-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+}
+
+#modogrilla-teacher-search {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+  margin-bottom: 0.75rem;
+}
+
+.admin-modogrilla-table td label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 1024px), (max-height: 768px) {
   .grading-viewport {
     max-height: calc(100vh - 9rem);

@@ -169,63 +169,101 @@
       </div>
     </section>
 
-    <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="students-title" hidden>
-      <div id="rubric-panel" class="rubric-panel" aria-label="Rúbrica vigente del RA">
-        <div class="rubric-toolbar">
-          <div>
-            <h3 id="rubric-ra-title">Rúbrica del RA</h3>
-            <p id="rubric-ra-description" class="muted rubric-ra-description"></p>
-          </div>
-          <div class="rubric-layout-toggle" role="group" aria-label="Modo de visualización de la rúbrica">
-            <button id="rubric-layout-scroll" class="btn-secondary compact" type="button" aria-pressed="true">Vista completa</button>
-            <button id="rubric-layout-tabs" class="btn-secondary compact" type="button" aria-pressed="false">Vista por criterio</button>
-          </div>
+    <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="grading-title" hidden>
+      <div class="grading-header">
+        <div>
+          <h3 id="grading-title">Calificaciones</h3>
+          <p id="rubric-ra-description" class="muted rubric-ra-description"></p>
         </div>
-        <div id="rubric-scroll-wrap" class="rubric-scroll-wrap">
-          <div id="rubric-content" class="rubric-content">
-            <p class="muted">Cargando rúbrica…</p>
-          </div>
+        <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
+      </div>
+
+      <nav class="grading-substeps" aria-label="Subpasos de calificación">
+        <button type="button" class="grading-substep active" data-grading-sub="weights" aria-current="step">
+          <span>3a</span> Ponderación
+        </button>
+        <button type="button" class="grading-substep" data-grading-sub="rubric">
+          <span>3b</span> Rúbrica
+        </button>
+        <button type="button" class="grading-substep" data-grading-sub="capture">
+          <span>3c</span> Calificar
+        </button>
+      </nav>
+
+      <div id="grading-panel-weights" class="grading-subpanel" data-grading-panel="weights">
+        <p class="muted grading-intro">Defina el peso de cada indicador de desempeño. La suma debe ser exactamente 100%.</p>
+        <p id="weights-recalc-notice" class="grading-notice" hidden role="status">
+          Cambiar pesos recalcula resultados ya guardados.
+        </p>
+        <div id="grading-weights-content" class="rubric-scroll-wrap">
+          <p class="muted">Cargando ponderaciones…</p>
         </div>
       </div>
 
-      <div class="lot-zone">
-        <div class="lot-toolbar">
+      <div id="grading-panel-rubric" class="grading-subpanel" data-grading-panel="rubric" hidden>
+        <p class="muted grading-intro">
+          Revise los criterios y descriptores antes de calificar. En el paso siguiente verá la referencia del estudiante activo.
+        </p>
+        <h4 id="rubric-ra-title" class="rubric-subtitle">Rúbrica del RA</h4>
+        <div id="grading-rubric-content" class="rubric-scroll-wrap rubric-readonly-wrap">
+          <p class="muted">Cargando rúbrica…</p>
+        </div>
+        <label class="rubric-ack-label">
+          <input id="rubric-review-ack" type="checkbox" />
+          He revisado los criterios de desempeño
+        </label>
+      </div>
+
+      <div id="grading-panel-capture" class="grading-subpanel grading-capture-panel" data-grading-panel="capture" hidden>
+        <div class="capture-toolbar">
           <div class="lot-meta">
             <strong id="grading-progress">Estudiantes calificados: —</strong>
-            <span id="lot-position" class="muted">Lote — de —</span>
-            <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
           </div>
           <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
         </div>
 
-        <div class="table-wrap lot-table-wrap">
-          <table class="modules-table assessment-table lot-table">
-            <thead id="students-head">
-              <tr>
-                <th scope="col">Estudiante</th>
-                <th scope="col">Documento</th>
-              </tr>
-            </thead>
-            <tbody id="students-body">
-              <tr>
-                <td colspan="2">Cargando estudiantes…</td>
-              </tr>
-            </tbody>
-          </table>
+        <div id="view-mode-picker" class="view-mode-picker" hidden role="group" aria-label="Modo de calificación">
+          <span class="muted">Vista:</span>
+          <label><input type="radio" name="capture-view-mode" value="student_card" checked /> Por estudiante</label>
+          <label><input type="radio" name="capture-view-mode" value="grid" /> ModoGrilla</label>
         </div>
 
-        <div class="lot-nav" aria-label="Navegación entre lotes">
-          <div class="lot-nav-side">
-            <button id="lot-prev-btn" class="btn-secondary" type="button" disabled>Lote anterior</button>
+        <div id="student-card-view" class="student-card-view">
+          <p id="student-position" class="student-position muted">Estudiante — de —</p>
+          <h4 id="student-card-name" class="student-card-name">—</h4>
+          <p id="student-card-doc" class="student-card-doc muted">—</p>
+          <div id="student-card-pis" class="student-card-pis"></div>
+          <div id="advance-countdown" class="advance-countdown" hidden role="status" aria-live="polite">
+            <p id="advance-countdown-text"></p>
+            <div class="student-nav-actions">
+              <button id="btn-stay-here" class="btn-secondary" type="button">Permanecer aquí</button>
+              <button id="btn-next-student" class="btn-primary" type="button" hidden>Sgte Estudiante</button>
+            </div>
           </div>
-          <div class="lot-nav-center">
-            <button id="lot-advance-btn" class="btn-primary lot-advance-btn" type="button" disabled>Calificar más estudiantes</button>
-          </div>
-          <div class="lot-nav-side lot-nav-end">
-            <button id="lot-next-btn" class="btn-secondary" type="button" disabled>Lote siguiente</button>
+          <div class="student-nav-actions student-nav-primary">
+            <button id="btn-prev-student" class="btn-secondary" type="button" disabled>Anterior</button>
           </div>
         </div>
-        <p id="lot-hint" class="lot-hint muted" aria-live="polite"></p>
+
+        <div id="grid-view" class="grid-view" hidden>
+          <label class="grid-filter-label">
+            <input id="grid-pending-only" type="checkbox" checked />
+            Solo pendientes
+          </label>
+          <div class="table-wrap lot-table-wrap">
+            <table class="modules-table assessment-table lot-table">
+              <thead id="students-head">
+                <tr>
+                  <th scope="col">Estudiante</th>
+                  <th scope="col">Documento</th>
+                </tr>
+              </thead>
+              <tbody id="students-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p id="capture-hint" class="lot-hint muted" aria-live="polite"></p>
         <button id="continue-analysis-btn" class="btn-primary compact-btn" type="button" hidden>
           Continuar al análisis cualitativo
         </button>

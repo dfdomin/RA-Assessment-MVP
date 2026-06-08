@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var LOT_SIZE = 5;
   var SAVE_DEBOUNCE_MS = 1000;
+  var ADVANCE_COUNTDOWN_SEC = 3;
 
   var params = new URLSearchParams(window.location.search);
   var evaluationId = params.get("evaluation_id");
@@ -31,18 +31,29 @@
   var statusMsg = document.getElementById("assessment-status");
   var rubricRaTitle = document.getElementById("rubric-ra-title");
   var rubricRaDescription = document.getElementById("rubric-ra-description");
-  var rubricContent = document.getElementById("rubric-content");
-  var rubricScrollWrap = document.getElementById("rubric-scroll-wrap");
-  var rubricLayoutScrollBtn = document.getElementById("rubric-layout-scroll");
-  var rubricLayoutTabsBtn = document.getElementById("rubric-layout-tabs");
+  var gradingWeightsContent = document.getElementById("grading-weights-content");
+  var gradingRubricContent = document.getElementById("grading-rubric-content");
+  var weightsRecalcNotice = document.getElementById("weights-recalc-notice");
+  var rubricReviewAck = document.getElementById("rubric-review-ack");
+  var gradingSubstepBtns = Array.from(document.querySelectorAll("[data-grading-sub]"));
+  var gradingSubpanels = Array.from(document.querySelectorAll("[data-grading-panel]"));
+  var viewModePicker = document.getElementById("view-mode-picker");
+  var studentCardView = document.getElementById("student-card-view");
+  var gridView = document.getElementById("grid-view");
+  var studentPosition = document.getElementById("student-position");
+  var studentCardName = document.getElementById("student-card-name");
+  var studentCardDoc = document.getElementById("student-card-doc");
+  var studentCardPis = document.getElementById("student-card-pis");
+  var advanceCountdown = document.getElementById("advance-countdown");
+  var advanceCountdownText = document.getElementById("advance-countdown-text");
+  var btnStayHere = document.getElementById("btn-stay-here");
+  var btnNextStudent = document.getElementById("btn-next-student");
+  var btnPrevStudent = document.getElementById("btn-prev-student");
+  var gridPendingOnly = document.getElementById("grid-pending-only");
   var gradingProgress = document.getElementById("grading-progress");
-  var lotPosition = document.getElementById("lot-position");
   var saveIndicator = document.getElementById("save-indicator");
   var editRosterBtn = document.getElementById("edit-roster-btn");
-  var lotPrevBtn = document.getElementById("lot-prev-btn");
-  var lotAdvanceBtn = document.getElementById("lot-advance-btn");
-  var lotNextBtn = document.getElementById("lot-next-btn");
-  var lotHint = document.getElementById("lot-hint");
+  var captureHint = document.getElementById("capture-hint");
   var continueAnalysisBtn = document.getElementById("continue-analysis-btn");
   var rosterBody = document.getElementById("roster-body");
   var rosterStats = document.getElementById("roster-stats");
@@ -84,10 +95,12 @@
   var currentConsolidator = null;
   var currentRaLabel = "";
 
-  var currentLotIndex = 0;
-  var maxLotUnlocked = 0;
-  var rubricLayoutMode = "scroll";
-  var activeTabPiIndex = 0;
+  var gradingSubStep = "weights";
+  var captureViewMode = "student_card";
+  var currentUserGridEnabled = false;
+  var currentStudentIndex = 0;
+  var advanceCountdownTimer = null;
+  var advanceCountdownValue = 0;
 
   var pendingUpserts = new Map();
   var saveDebounceTimer = null;
@@ -166,12 +179,44 @@
     return row && row.descriptor ? row.descriptor : "—";
   }
 
-  function totalLots() {
-    return Math.max(1, Math.ceil(activeStudentCount / LOT_SIZE));
-  }
-
   function getStudentRecord(msId) {
     return studentsData.students.find(function (s) { return s.module_student_id === msId; });
+  }
+
+  function getCurrentStudent() {
+    return studentsData.students[currentStudentIndex] || null;
+  }
+
+  function hasAnyAssessment() {
+    return studentsData.students.some(function (s) {
+      return (s.assessments || []).some(function (a) { return a.level; });
+    });
+  }
+
+  function findFirstPendingStudentIndex() {
+    var idx = studentsData.students.findIndex(function (s) { return !isStudentFullyGraded(s); });
+    return idx >= 0 ? idx : 0;
+  }
+
+  function findNextPendingStudentIndex(fromIndex) {
+    var students = studentsData.students;
+    var i;
+    for (i = fromIndex + 1; i < students.length; i++) {
+      if (!isStudentFullyGraded(students[i])) return i;
+    }
+    for (i = 0; i < fromIndex; i++) {
+      if (!isStudentFullyGraded(students[i])) return i;
+    }
+    return -1;
+  }
+
+  function isViewModeLocked() {
+    return !!(currentEvaluation && currentEvaluation.grading_view_mode);
+  }
+
+  function effectiveCaptureViewMode() {
+    if (isViewModeLocked()) return currentEvaluation.grading_view_mode;
+    return captureViewMode;
   }
 
   function syncAssessment(msId, piId, level) {
@@ -194,16 +239,6 @@
 
   function countGradedStudents() {
     return studentsData.students.filter(isStudentFullyGraded).length;
-  }
-
-  function isCurrentLotComplete() {
-    var lotStudents = getLotStudents(currentLotIndex);
-    return lotStudents.length > 0 && lotStudents.every(isStudentFullyGraded);
-  }
-
-  function getLotStudents(lotIndex) {
-    var start = lotIndex * LOT_SIZE;
-    return studentsData.students.slice(start, start + LOT_SIZE);
   }
 
   function assertSupabase() {
@@ -421,13 +456,12 @@
       }),
     };
 
-    currentLotIndex = Math.min(currentLotIndex, Math.max(0, totalLots() - 1));
-    maxLotUnlocked = Math.min(maxLotUnlocked, Math.max(0, totalLots() - 1));
+    currentStudentIndex = Math.min(currentStudentIndex, Math.max(0, activeStudentCount - 1));
 
     renderModuleSummary(currentModule);
     renderRosterPanel();
-    renderCurrentLot();
-    updateLotChrome();
+    if (gradingSubStep === "capture") renderCaptureView();
+    updateCaptureChrome();
     var dist = buildDistribution(studentsData.students, piRows);
     renderDistribution({ distribution: dist });
     updateWizardState();
@@ -622,9 +656,7 @@
       maybeShowFirstRosterNotice();
     }
     if (stepTarget === "grading") {
-      renderRubricPanel();
-      renderCurrentLot();
-      updateLotChrome();
+      showGradingSubStep(gradingSubStep);
     }
     if (stepTarget === "analysis") {
       var dist = buildDistribution(studentsData.students, piRows);
@@ -632,23 +664,70 @@
     }
   }
 
-  function setRubricLayout(mode) {
-    rubricLayoutMode = mode === "tabs" ? "tabs" : "scroll";
-    if (rubricLayoutScrollBtn) rubricLayoutScrollBtn.setAttribute("aria-pressed", rubricLayoutMode === "scroll" ? "true" : "false");
-    if (rubricLayoutTabsBtn) rubricLayoutTabsBtn.setAttribute("aria-pressed", rubricLayoutMode === "tabs" ? "true" : "false");
-    renderRubricPanel();
-    renderCurrentLot();
+  function canEnterGradingSub(sub) {
+    if (sub === "weights") return true;
+    if (sub === "rubric") return piWeightsValid;
+    if (sub === "capture") return piWeightsValid && rubricReviewAck && rubricReviewAck.checked;
+    return false;
   }
 
-  function maybeAutoFallbackToTabs() {
-    if (rubricLayoutMode !== "scroll" || !rubricScrollWrap) return;
-    if (rubricScrollWrap.scrollHeight > rubricScrollWrap.clientHeight + 4) {
-      setRubricLayout("tabs");
-      if (lotHint) lotHint.textContent = "Vista por criterio activada: la rúbrica completa no cabía en pantalla.";
+  function showGradingSubStep(sub) {
+    if (!canEnterGradingSub(sub)) {
+      if (sub === "rubric" && !piWeightsValid) {
+        setStatus("Ajuste las ponderaciones hasta sumar 100% antes de continuar.", "error");
+      } else if (sub === "capture") {
+        setStatus("Revise la rúbrica y confirme que leyó los criterios.", "error");
+      }
+      return;
+    }
+    gradingSubStep = sub;
+    gradingSubpanels.forEach(function (p) { p.hidden = p.dataset.gradingPanel !== sub; });
+    gradingSubstepBtns.forEach(function (btn) {
+      var active = btn.dataset.gradingSub === sub;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-current", active ? "step" : "false");
+    });
+    if (weightsRecalcNotice) weightsRecalcNotice.hidden = !(sub === "weights" && hasAnyAssessment());
+    if (sub === "weights") renderWeightsPanel();
+    if (sub === "rubric") renderRubricReviewPanel();
+    if (sub === "capture") {
+      currentStudentIndex = findFirstPendingStudentIndex();
+      renderCaptureView();
+      updateCaptureChrome();
     }
   }
 
-  function buildRubricMatrixHtml(pis) {
+  function tryAdvanceGradingSubStep() {
+    if (gradingSubStep === "weights") {
+      if (!piWeightsValid) {
+        setStatus("La suma de ponderaciones debe ser exactamente 100%.", "error");
+        return false;
+      }
+      showGradingSubStep("rubric");
+      return false;
+    }
+    if (gradingSubStep === "rubric") {
+      if (!rubricReviewAck || !rubricReviewAck.checked) {
+        setStatus("Confirme que revisó los criterios de desempeño.", "error");
+        return false;
+      }
+      showGradingSubStep("capture");
+      return false;
+    }
+    return true;
+  }
+
+  function buildWeightsTableHtml(pis) {
+    var head = "<thead><tr><th scope=\"col\">Criterio</th><th scope=\"col\">%</th></tr></thead><tbody>";
+    var body = "";
+    pis.forEach(function (pi) {
+      body += "<tr><td class=\"criterion-cell\">" + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
+      body += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td></tr>";
+    });
+    return '<table class="rubric-matrix weights-matrix">' + head + body + "</tbody></table>" + buildWeightTotalHtml();
+  }
+
+  function buildRubricReadOnlyHtml(pis) {
     var head = "<thead><tr><th scope=\"col\">Criterio</th><th scope=\"col\">%</th>";
     LEVEL_CRITERIA.forEach(function (level) {
       head += '<th scope="col">' + escapeHtml(level.header) + "</th>";
@@ -657,58 +736,34 @@
     var body = "";
     pis.forEach(function (pi) {
       body += "<tr><td class=\"criterion-cell\">" + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
-      body += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td>";
+      body += '<td class="weight-cell">' + escapeHtml(String(pi.pi_weight != null ? pi.pi_weight : "")) + "</td>";
       LEVEL_CRITERIA.forEach(function (level) {
         body += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
       });
       body += "</tr>";
     });
-    return '<table class="rubric-matrix">' + head + body + "</tbody></table>" + buildWeightTotalHtml();
+    return '<table class="rubric-matrix">' + head + body + "</tbody></table>";
   }
 
-  function buildRubricTabsHtml(pis) {
-    if (!pis.length) return "<p class=\"muted\">Sin criterios activos.</p>";
-    var tabs = '<div class="rubric-tabs" role="tablist">';
-    pis.forEach(function (pi, idx) {
-      tabs += '<button type="button" class="rubric-tab" role="tab" data-pi-tab="' + idx + '" aria-selected="' + (idx === activeTabPiIndex ? "true" : "false") + '">' + escapeHtml(pi.code) + "</button>";
-    });
-    tabs += "</div>";
-    var pi = pis[activeTabPiIndex] || pis[0];
-    tabs += '<table class="rubric-matrix"><thead><tr><th scope="col">Criterio</th><th scope="col">%</th>';
-    LEVEL_CRITERIA.forEach(function (level) {
-      tabs += '<th scope="col">' + escapeHtml(level.header) + "</th>";
-    });
-    tabs += "</tr></thead><tbody><tr>";
-    tabs += '<td class="criterion-cell">' + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
-    tabs += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td>";
-    LEVEL_CRITERIA.forEach(function (level) {
-      tabs += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
-    });
-    tabs += "</tr></tbody></table>";
-    tabs += buildWeightTotalHtml();
-    tabs += '<p class="rubric-tabs-hint muted">Vista por criterio: califique <strong>todos</strong> los PIs en la tabla inferior. La columna resaltada corresponde al criterio activo.</p>';
-    return tabs;
-  }
-
-  function attachPiWeightListeners() {
-    if (!rubricContent) return;
-    rubricContent.querySelectorAll(".pi-weight-input").forEach(function (input) {
+  function attachPiWeightListeners(root) {
+    if (!root) return;
+    root.querySelectorAll(".pi-weight-input").forEach(function (input) {
       input.addEventListener("input", function () {
         queuePiWeightSave(input);
-        updateWeightTotalDisplay();
-        updateLotChrome();
+        updateWeightTotalDisplay(root);
+        updateCaptureChrome();
       });
       input.addEventListener("change", function () {
         queuePiWeightSave(input);
-        updateWeightTotalDisplay();
-        updateLotChrome();
+        updateWeightTotalDisplay(root);
+        updateCaptureChrome();
       });
     });
   }
 
-  function updateWeightTotalDisplay() {
-    if (!rubricContent) return;
-    var totalEl = rubricContent.querySelector(".weight-total");
+  function updateWeightTotalDisplay(root) {
+    if (!root) return;
+    var totalEl = root.querySelector(".weight-total");
     if (!totalEl) return;
     var total = formatWeightTotal(sumPiWeights());
     var valid = validatePiWeights();
@@ -751,7 +806,8 @@
         .upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
       if (error) throw error;
       setSaveIndicator("Guardado", "saved");
-      buildStudentsHead();
+      if (effectiveCaptureViewMode() === "grid") buildStudentsHead();
+      renderStudentCard();
     } catch (e) {
       payload.forEach(function (item) {
         pendingWeightUpserts.set(String(item.perf_indicator_id), item);
@@ -776,42 +832,57 @@
     validatePiWeights();
   }
 
-  function renderRubricPanel() {
-    if (!rubricContent) return;
+  function renderGradingHeader() {
     var so = currentModule && currentModule.period && currentModule.period.student_outcome;
     if (rubricRaTitle) rubricRaTitle.textContent = so && so.code ? "Rúbrica " + so.code : "Rúbrica del RA";
-    if (rubricRaDescription) rubricRaDescription.textContent = so && so.description ? so.description : "";
+    if (rubricRaDescription) {
+      rubricRaDescription.textContent = so && so.description ? so.description : "";
+    }
+  }
+
+  function renderWeightsPanel() {
+    if (!gradingWeightsContent) return;
+    renderGradingHeader();
     if (!piRows.length) {
-      rubricContent.innerHTML = "<p class=\"muted\">No hay criterios activos en la rúbrica.</p>";
+      gradingWeightsContent.innerHTML = "<p class=\"muted\">No hay criterios activos.</p>";
       return;
     }
-    rubricContent.innerHTML = rubricLayoutMode === "tabs"
-      ? buildRubricTabsHtml(piRows)
-      : buildRubricMatrixHtml(piRows);
-    attachPiWeightListeners();
-    rubricContent.querySelectorAll("[data-pi-tab]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        activeTabPiIndex = Number(btn.dataset.piTab);
-        renderRubricPanel();
-        renderCurrentLot();
-      });
-    });
-    if (rubricLayoutMode === "scroll") {
-      window.requestAnimationFrame(maybeAutoFallbackToTabs);
+    gradingWeightsContent.innerHTML = buildWeightsTableHtml(piRows);
+    attachPiWeightListeners(gradingWeightsContent);
+  }
+
+  function renderRubricReviewPanel() {
+    if (!gradingRubricContent) return;
+    renderGradingHeader();
+    if (!piRows.length) {
+      gradingRubricContent.innerHTML = "<p class=\"muted\">No hay criterios activos.</p>";
+      return;
     }
+    gradingRubricContent.innerHTML = buildRubricReadOnlyHtml(piRows);
+  }
+
+  function renderCaptureView() {
+    var mode = effectiveCaptureViewMode();
+    if (viewModePicker) viewModePicker.hidden = !currentUserGridEnabled || isViewModeLocked();
+    if (!isViewModeLocked() && viewModePicker) {
+      var radios = viewModePicker.querySelectorAll('input[name="capture-view-mode"]');
+      radios.forEach(function (r) { r.checked = r.value === captureViewMode; });
+      radios.forEach(function (r) { r.disabled = isViewModeLocked(); });
+    }
+    if (studentCardView) studentCardView.hidden = mode !== "student_card";
+    if (gridView) gridView.hidden = mode !== "grid";
+    if (mode === "student_card") renderStudentCard();
+    else renderGridView();
   }
 
   function buildStudentsHead() {
     var headRow = document.querySelector("#students-head tr");
     if (!headRow) return;
     headRow.querySelectorAll(".pi-header").forEach(function (h) { h.remove(); });
-    piRows.forEach(function (pi, idx) {
+    piRows.forEach(function (pi) {
       var th = document.createElement("th");
       th.scope = "col";
       th.className = "pi-header";
-      if (rubricLayoutMode === "tabs") {
-        th.classList.add(idx === activeTabPiIndex ? "pi-header-active" : "pi-header-muted");
-      }
       th.title = pi.description || pi.code;
       var weight = pi.pi_weight != null ? " (" + pi.pi_weight + "%)" : "";
       th.textContent = pi.code + weight;
@@ -819,64 +890,158 @@
     });
   }
 
-  function renderCurrentLot() {
+  function createLevelSelect(student, pi) {
+    var sel = document.createElement("select");
+    sel.className = "level-select";
+    sel.title = pi.code + ": " + (pi.description || "");
+    sel.dataset.moduleStudentId = student.module_student_id;
+    sel.dataset.piId = pi.id;
+    sel.innerHTML = buildLevelSelectOptions();
+    var existing = (student.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
+    if (existing) sel.value = String(existing.level);
+    return sel;
+  }
+
+  function renderStudentCard() {
+    cancelAdvanceCountdown();
+    var student = getCurrentStudent();
+    if (!studentCardPis || !student) return;
+    if (studentPosition) {
+      studentPosition.textContent = "Estudiante " + (currentStudentIndex + 1) + " de " + activeStudentCount;
+    }
+    if (studentCardName) studentCardName.textContent = student.full_name || "—";
+    if (studentCardDoc) studentCardDoc.textContent = student.internal_id ? "Doc. " + student.internal_id : "—";
+    studentCardPis.innerHTML = "";
+    piRows.forEach(function (pi) {
+      var block = document.createElement("section");
+      block.className = "student-pi-block";
+      var title = document.createElement("h5");
+      title.className = "student-pi-title";
+      title.textContent = pi.code + " · " + (pi.description || "") + " · " + (pi.pi_weight != null ? pi.pi_weight : "") + "%";
+      block.appendChild(title);
+      var table = document.createElement("table");
+      table.className = "rubric-matrix student-pi-matrix";
+      var head = "<thead><tr>";
+      LEVEL_CRITERIA.forEach(function (level) { head += '<th scope="col">' + escapeHtml(level.header) + "</th>"; });
+      head += "</tr></thead><tbody><tr>";
+      LEVEL_CRITERIA.forEach(function (level) {
+        head += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
+      });
+      head += "</tr></tbody>";
+      table.innerHTML = head;
+      block.appendChild(table);
+      var label = document.createElement("label");
+      label.className = "student-pi-level-label";
+      label.appendChild(document.createTextNode("Nivel "));
+      label.appendChild(createLevelSelect(student, pi));
+      block.appendChild(label);
+      studentCardPis.appendChild(block);
+    });
+    if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
+    if (btnNextStudent) btnNextStudent.hidden = true;
+    if (advanceCountdown) advanceCountdown.hidden = true;
+  }
+
+  function renderGridView() {
     buildStudentsHead();
+    if (!studentsBody) return;
     studentsBody.innerHTML = "";
-    var lotStudents = getLotStudents(currentLotIndex);
-    if (!lotStudents.length) {
-      studentsBody.innerHTML = '<tr><td colspan="' + (2 + piRows.length) + '">No hay estudiantes activos en este lote.</td></tr>';
+    var pendingOnly = gridPendingOnly && gridPendingOnly.checked;
+    var visible = studentsData.students.filter(function (s) {
+      return !pendingOnly || !isStudentFullyGraded(s);
+    });
+    if (!visible.length) {
+      studentsBody.innerHTML = '<tr><td colspan="' + (2 + piRows.length) + '">No hay estudiantes pendientes.</td></tr>';
       return;
     }
-    lotStudents.forEach(function (s) {
+    visible.forEach(function (s) {
       var row = document.createElement("tr");
       row.innerHTML = "<td>" + escapeHtml(s.full_name || "—") + "</td><td>" + escapeHtml(s.internal_id || "—") + "</td>";
-      piRows.forEach(function (pi, idx) {
+      piRows.forEach(function (pi) {
         var cell = document.createElement("td");
-        if (rubricLayoutMode === "tabs") {
-          cell.classList.add(idx === activeTabPiIndex ? "pi-cell-active" : "pi-cell-muted");
-        }
-        var sel = document.createElement("select");
-        sel.className = "level-select";
-        sel.title = pi.code + ": " + (pi.description || "");
-        sel.dataset.moduleStudentId = s.module_student_id;
-        sel.dataset.piId = pi.id;
-        sel.innerHTML = buildLevelSelectOptions();
-        var existing = (s.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
-        if (existing) sel.value = String(existing.level);
-        cell.appendChild(sel);
+        cell.appendChild(createLevelSelect(s, pi));
         row.appendChild(cell);
       });
       studentsBody.appendChild(row);
     });
   }
 
-  function updateLotChrome() {
-    var graded = countGradedStudents();
-    var lots = totalLots();
-    if (gradingProgress) gradingProgress.textContent = "Estudiantes calificados: " + graded + " de " + activeStudentCount;
-    if (lotPosition) lotPosition.textContent = "Lote " + (currentLotIndex + 1) + " de " + lots;
-    if (lotPrevBtn) lotPrevBtn.disabled = currentLotIndex <= 0;
-    if (lotNextBtn) lotNextBtn.disabled = currentLotIndex >= maxLotUnlocked;
-    var lotComplete = isCurrentLotComplete();
-    var hasMore = currentLotIndex < lots - 1;
-    if (lotAdvanceBtn) {
-      lotAdvanceBtn.disabled = !(piWeightsValid && lotComplete && currentLotIndex === maxLotUnlocked && hasMore);
+  function cancelAdvanceCountdown() {
+    if (advanceCountdownTimer) {
+      clearInterval(advanceCountdownTimer);
+      advanceCountdownTimer = null;
     }
+    advanceCountdownValue = 0;
+  }
+
+  function maybeStartAdvanceCountdown() {
+    var student = getCurrentStudent();
+    if (!student || !isStudentFullyGraded(student)) return;
+    if (!advanceCountdown || !advanceCountdownText) return;
+    cancelAdvanceCountdown();
+    advanceCountdown.hidden = false;
+    if (btnNextStudent) btnNextStudent.hidden = true;
+    advanceCountdownValue = ADVANCE_COUNTDOWN_SEC;
+    advanceCountdownText.textContent = "Siguiente estudiante en " + advanceCountdownValue + " s…";
+    advanceCountdownTimer = setInterval(function () {
+      advanceCountdownValue -= 1;
+      if (advanceCountdownValue <= 0) {
+        cancelAdvanceCountdown();
+        goToNextPendingStudent();
+        return;
+      }
+      advanceCountdownText.textContent = "Siguiente estudiante en " + advanceCountdownValue + " s…";
+    }, 1000);
+  }
+
+  function goToNextPendingStudent() {
+    cancelAdvanceCountdown();
+    var next = findNextPendingStudentIndex(currentStudentIndex);
+    if (next < 0 || allActiveStudentsFullyGraded()) {
+      if (advanceCountdown) advanceCountdown.hidden = true;
+      updateCaptureChrome();
+      return;
+    }
+    currentStudentIndex = next;
+    renderStudentCard();
+    updateCaptureChrome();
+  }
+
+  function goToPrevStudent() {
+    cancelAdvanceCountdown();
+    if (currentStudentIndex <= 0) return;
+    currentStudentIndex -= 1;
+    renderStudentCard();
+    updateCaptureChrome();
+  }
+
+  async function lockCaptureViewModeIfNeeded() {
+    if (!currentEvaluation || currentEvaluation.grading_view_mode) return;
+    var mode = captureViewMode;
+    try {
+      var { error } = await assertSupabase().from("module_ra_evaluations")
+        .update({ grading_view_mode: mode })
+        .eq("id", currentEvaluation.id);
+      if (error) throw error;
+      currentEvaluation.grading_view_mode = mode;
+      if (viewModePicker) viewModePicker.hidden = true;
+    } catch (e) {
+      if (!isAuthError(e)) setSaveIndicator("Error al fijar modo de vista", "error");
+    }
+  }
+
+  function updateCaptureChrome() {
+    var graded = countGradedStudents();
+    if (gradingProgress) gradingProgress.textContent = "Estudiantes calificados: " + graded + " de " + activeStudentCount;
     var allGraded = allActiveStudentsFullyGraded();
     if (continueAnalysisBtn) continueAnalysisBtn.hidden = !allGraded;
-    if (lotHint) {
+    if (captureHint) {
       if (allGraded) {
-        lotHint.textContent = "Todos los estudiantes activos están calificados. Puede revisar lotes anteriores o continuar al análisis.";
-      } else if (lotComplete && currentLotIndex === maxLotUnlocked && hasMore) {
-        lotHint.textContent = "Lote completo. Puede corregir datos o pulsar «Calificar más estudiantes».";
-      } else if (lotComplete && currentLotIndex < maxLotUnlocked) {
-        lotHint.textContent = "Lote ya completado. Use «Lote siguiente» o «Lote anterior» para revisar.";
-      } else if (!piWeightsValid) {
-        lotHint.textContent = "Ajuste las ponderaciones de cada PI hasta que sumen exactamente 100%.";
-      } else if (!lotComplete) {
-        lotHint.textContent = "Complete todos los criterios de cada estudiante en este lote.";
+        captureHint.textContent = "Todos los estudiantes activos están calificados. Puede continuar al análisis.";
+      } else if (effectiveCaptureViewMode() === "student_card") {
+        captureHint.textContent = "Complete los cuatro criterios del estudiante activo.";
       } else {
-        lotHint.textContent = "Último lote del módulo.";
+        captureHint.textContent = "Complete todos los criterios de cada estudiante visible.";
       }
     }
     updateWizardState();
@@ -892,7 +1057,7 @@
     setSaveIndicator("Guardando…", "saving");
     clearTimeout(saveDebounceTimer);
     saveDebounceTimer = setTimeout(function () { flushPendingSaves(false); }, SAVE_DEBOUNCE_MS);
-    updateLotChrome();
+    updateCaptureChrome();
   }
 
   async function flushPendingSaves(force) {
@@ -903,9 +1068,12 @@
       await requireAuthOrRedirect();
       var { error } = await assertSupabase().from("assessments").upsert(payload, { onConflict: "module_student_id,perf_indicator_id" });
       if (error) throw error;
+      if (!currentEvaluation.grading_view_mode) await lockCaptureViewModeIfNeeded();
       setSaveIndicator("Guardado", "saved");
       var dist = buildDistribution(studentsData.students, piRows);
       renderDistribution({ distribution: dist });
+      if (effectiveCaptureViewMode() === "student_card") maybeStartAdvanceCountdown();
+      else if (effectiveCaptureViewMode() === "grid") renderGridView();
     } catch (e) {
       payload.forEach(function (item) {
         pendingUpserts.set(String(item.module_student_id) + "-" + String(item.perf_indicator_id), item);
@@ -1122,10 +1290,18 @@
       if (!resolvedId) { setStatus("Evaluación no encontrada.", "error"); return; }
 
       var { data: evaluation } = await client.from("module_ra_evaluations")
-        .select("id, status, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+        .select("id, status, grading_view_mode, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
         .eq("id", resolvedId)
         .single();
       if (!evaluation || !evaluation.module) { setStatus("Módulo no encontrado.", "error"); return; }
+
+      var { data: profile } = await client.from("users")
+        .select("grid_grading_enabled")
+        .eq("id", session.user.id)
+        .single();
+      currentUserGridEnabled = !!(profile && profile.grid_grading_enabled);
+      captureViewMode = evaluation.grading_view_mode || "student_card";
+      gradingSubStep = "weights";
 
       currentEvaluation = evaluation;
       currentModule = evaluation.module;
@@ -1146,16 +1322,14 @@
 
       await loadPiWeights(client, resolvedId);
 
-      currentLotIndex = 0;
-      maxLotUnlocked = 0;
-
       await reloadRosterData();
 
       var { data: qualRows } = await client.from("module_analysis")
         .select("perf_indicator_id, analysis_text")
         .eq("module_ra_evaluation_id", resolvedId);
 
-      renderRubricPanel();
+      renderGradingHeader();
+      renderWeightsPanel();
       renderAnalyses({ analyses: (qualRows || []).map(function (r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) });
       enableActions();
       updateWizardState();
@@ -1166,48 +1340,43 @@
     }
   }
 
-  if (studentsBody) {
-    studentsBody.addEventListener("change", function (e) {
-      if (!e.target.classList.contains("level-select")) return;
-      if (!e.target.value) return;
-      queueSave(e.target.dataset.moduleStudentId, e.target.dataset.piId, e.target.value);
+  function handleLevelSelectChange(e) {
+    if (!e.target.classList.contains("level-select")) return;
+    if (!e.target.value) return;
+    cancelAdvanceCountdown();
+    queueSave(e.target.dataset.moduleStudentId, e.target.dataset.piId, e.target.value);
+  }
+
+  if (studentsBody) studentsBody.addEventListener("change", handleLevelSelectChange);
+  if (studentCardPis) studentCardPis.addEventListener("change", handleLevelSelectChange);
+
+  gradingSubstepBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () { showGradingSubStep(btn.dataset.gradingSub); });
+  });
+
+  if (viewModePicker) {
+    viewModePicker.addEventListener("change", function (e) {
+      if (!e.target.name || e.target.name !== "capture-view-mode" || isViewModeLocked()) return;
+      captureViewMode = e.target.value === "grid" ? "grid" : "student_card";
+      renderCaptureView();
+      updateCaptureChrome();
     });
   }
 
-  if (rubricLayoutScrollBtn) rubricLayoutScrollBtn.addEventListener("click", function () { setRubricLayout("scroll"); });
-  if (rubricLayoutTabsBtn) rubricLayoutTabsBtn.addEventListener("click", function () { setRubricLayout("tabs"); });
+  if (gridPendingOnly) {
+    gridPendingOnly.addEventListener("change", function () { renderGridView(); });
+  }
 
-  if (lotPrevBtn) {
-    lotPrevBtn.addEventListener("click", function () {
-      if (currentLotIndex <= 0) return;
-      currentLotIndex -= 1;
-      renderCurrentLot();
-      updateLotChrome();
+  if (btnStayHere) {
+    btnStayHere.addEventListener("click", function () {
+      cancelAdvanceCountdown();
+      if (advanceCountdown) advanceCountdown.hidden = true;
+      if (btnNextStudent) btnNextStudent.hidden = false;
     });
   }
 
-  if (lotNextBtn) {
-    lotNextBtn.addEventListener("click", function () {
-      if (currentLotIndex >= maxLotUnlocked) return;
-      currentLotIndex += 1;
-      renderCurrentLot();
-      updateLotChrome();
-    });
-  }
-
-  if (lotAdvanceBtn) {
-    lotAdvanceBtn.addEventListener("click", async function () {
-      if (!piWeightsValid || !isCurrentLotComplete() || currentLotIndex !== maxLotUnlocked) return;
-      await flushPendingWeightSaves(true);
-      await flushPendingSaves(true);
-      if (currentLotIndex < totalLots() - 1) {
-        currentLotIndex += 1;
-        maxLotUnlocked = Math.max(maxLotUnlocked, currentLotIndex);
-        renderCurrentLot();
-        updateLotChrome();
-      }
-    });
-  }
+  if (btnNextStudent) btnNextStudent.addEventListener("click", function () { goToNextPendingStudent(); });
+  if (btnPrevStudent) btnPrevStudent.addEventListener("click", function () { goToPrevStudent(); });
 
   if (editRosterBtn) {
     editRosterBtn.addEventListener("click", function () { showStep("roster"); });
@@ -1309,8 +1478,18 @@
   wizardSteps.forEach(function (s) {
     s.addEventListener("click", function () { showStep(s.dataset.stepTarget); });
   });
-  wizardNextBtn.addEventListener("click", function () { showStep(stepOrder[Math.min(currentStepIndex + 1, stepOrder.length - 1)]); });
-  wizardPrevBtn.addEventListener("click", function () { showStep(stepOrder[Math.max(currentStepIndex - 1, 0)]); });
+  wizardNextBtn.addEventListener("click", function () {
+    if (stepOrder[currentStepIndex] === "grading" && !tryAdvanceGradingSubStep()) return;
+    showStep(stepOrder[Math.min(currentStepIndex + 1, stepOrder.length - 1)]);
+  });
+
+  wizardPrevBtn.addEventListener("click", function () {
+    if (stepOrder[currentStepIndex] === "grading") {
+      if (gradingSubStep === "capture") { showGradingSubStep("rubric"); return; }
+      if (gradingSubStep === "rubric") { showGradingSubStep("weights"); return; }
+    }
+    showStep(stepOrder[Math.max(currentStepIndex - 1, 0)]);
+  });
 
   showStep("general");
   loadModule();

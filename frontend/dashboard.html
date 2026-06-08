@@ -47,6 +47,35 @@
       </div>
       <p id="admin-status" class="status-message" role="status" aria-live="polite">Cargando panorama…</p>
       <div id="admin-lines" class="admin-lines" aria-live="polite"></div>
+
+      <section class="admin-modogrilla-panel" aria-labelledby="admin-modogrilla-title">
+        <h4 id="admin-modogrilla-title">Habilitar ModoGrilla</h4>
+        <p class="muted">
+          Los docentes habilitados pueden elegir la vista en tabla al calificar. La carga CSV solo agrega habilitaciones.
+          <a href="./static/templates/template_modogrilla_docentes.csv" download>Descargar plantilla CSV</a>
+        </p>
+        <div class="admin-modogrilla-upload">
+          <input id="modogrilla-csv-input" type="file" accept=".csv,text/csv" />
+          <button id="modogrilla-csv-apply" class="btn-primary compact" type="button">Aplicar CSV</button>
+        </div>
+        <p id="modogrilla-csv-result" class="status-message" role="status" aria-live="polite"></p>
+        <label class="admin-modogrilla-search-label" for="modogrilla-teacher-search">Buscar docente</label>
+        <input id="modogrilla-teacher-search" type="search" placeholder="Nombre o correo" />
+        <div class="table-wrap">
+          <table class="modules-table admin-modogrilla-table">
+            <thead>
+              <tr>
+                <th scope="col">Docente</th>
+                <th scope="col">Correo</th>
+                <th scope="col">ModoGrilla</th>
+              </tr>
+            </thead>
+            <tbody id="modogrilla-teachers-body">
+              <tr><td colspan="3">Cargando docentes…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
     <section id="modules-panel" class="modules-panel" aria-labelledby="modules-title">

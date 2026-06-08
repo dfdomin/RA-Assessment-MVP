@@ -313,6 +313,7 @@ Docentes, líderes y administradores del sistema.
 | `microsoft_oid` | `VARCHAR(255)` | Sí | `NULL` | Object ID de Azure AD (unique, nullable) |
 | `pege_id` | `VARCHAR(50)` | Sí | `NULL` | ID del docente en el SIS Academusoft; usado por `oracle_adapter.py` para el mapeo de sincronización (F16) |
 | `is_active` | `BOOLEAN` | No | `TRUE` | Soft-disable de cuenta |
+| `grid_grading_enabled` | `BOOLEAN` | No | `FALSE` | Admin: permite al docente elegir ModoGrilla en paso 3c (ADR-0003) |
 | `created_at` | `TIMESTAMPTZ` | No | `NOW()` | Timestamp de creación |
 
 **Índices**: `UNIQUE(email)`, `UNIQUE(microsoft_oid)` (partial: WHERE microsoft_oid IS NOT NULL), `UNIQUE(pege_id)` (partial: WHERE pege_id IS NOT NULL)
@@ -502,6 +503,7 @@ Asignación **módulo físico × período de captura (RA)**. Una fila por cada R
 | `module_id` | `BIGINT` | No | — | FK → `modules.id` |
 | `period_id` | `BIGINT` | No | — | FK → `periods.id` |
 | `status` | `VARCHAR(20)` | No | `'pending'` | `'pending'` \| `'in_progress'` \| `'completed'` |
+| `grading_view_mode` | `VARCHAR(20)` | Sí | `NULL` | Vista de captura fijada tras el primer guardado: `'student_card'` \| `'grid'` (ADR-0003) |
 | `submitted_at` | `TIMESTAMPTZ` | Sí | `NULL` | Timestamp del envío docente para este RA |
 
 **Índices**: `UNIQUE(module_id, period_id)`, `INDEX(period_id)`, `INDEX(period_id, status)`

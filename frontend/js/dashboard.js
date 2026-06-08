@@ -25,7 +25,14 @@
   const adminPanel = document.getElementById("admin-panel");
   const adminLines = document.getElementById("admin-lines");
   const adminStatus = document.getElementById("admin-status");
+  const modogrillaCsvInput = document.getElementById("modogrilla-csv-input");
+  const modogrillaCsvApply = document.getElementById("modogrilla-csv-apply");
+  const modogrillaCsvResult = document.getElementById("modogrilla-csv-result");
+  const modogrillaTeacherSearch = document.getElementById("modogrilla-teacher-search");
+  const modogrillaTeachersBody = document.getElementById("modogrilla-teachers-body");
   const modulesPanel = document.getElementById("modules-panel");
+
+  var adminTeachersCache = [];
 
   const MEASUREMENT_LINES = [
     {
@@ -129,6 +136,133 @@
     return { total: rows.length, completed: completed };
   }
 
+  function setModogrillaCsvResult(message, kind) {
+    if (!modogrillaCsvResult) return;
+    modogrillaCsvResult.textContent = message;
+    modogrillaCsvResult.className = "status-message" + (kind ? " " + kind : "");
+  }
+
+  function renderModogrillaTeachersTable(filter) {
+    if (!modogrillaTeachersBody) return;
+    var q = (filter || "").trim().toLowerCase();
+    var rows = adminTeachersCache.filter(function (t) {
+      if (!q) return true;
+      return (t.full_name || "").toLowerCase().indexOf(q) >= 0
+        || (t.email || "").toLowerCase().indexOf(q) >= 0;
+    });
+    modogrillaTeachersBody.innerHTML = "";
+    if (!rows.length) {
+      modogrillaTeachersBody.innerHTML = "<tr><td colspan=\"3\">Sin docentes.</td></tr>";
+      return;
+    }
+    rows.forEach(function (t) {
+      var tr = document.createElement("tr");
+      var tdName = document.createElement("td");
+      tdName.textContent = t.full_name || "—";
+      var tdEmail = document.createElement("td");
+      tdEmail.textContent = t.email || "—";
+      var tdToggle = document.createElement("td");
+      var label = document.createElement("label");
+      var cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = !!t.grid_grading_enabled;
+      cb.dataset.userId = t.id;
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(" Habilitado"));
+      tdToggle.appendChild(label);
+      tr.appendChild(tdName);
+      tr.appendChild(tdEmail);
+      tr.appendChild(tdToggle);
+      modogrillaTeachersBody.appendChild(tr);
+    });
+  }
+
+  async function loadModogrillaTeachers() {
+    if (!modogrillaTeachersBody) return;
+    try {
+      var sb = ensureSupabase();
+      var res = await sb.from("users")
+        .select("id, full_name, email, role, grid_grading_enabled")
+        .eq("role", "teacher")
+        .order("full_name");
+      if (res.error) throw res.error;
+      adminTeachersCache = res.data || [];
+      renderModogrillaTeachersTable(modogrillaTeacherSearch && modogrillaTeacherSearch.value);
+    } catch (e) {
+      modogrillaTeachersBody.innerHTML = "<tr><td colspan=\"3\">Error al cargar docentes.</td></tr>";
+    }
+  }
+
+  async function updateTeacherGridFlag(userId, enabled) {
+    var sb = ensureSupabase();
+    var { error } = await sb.from("users")
+      .update({ grid_grading_enabled: enabled })
+      .eq("id", userId);
+    if (error) throw error;
+    var row = adminTeachersCache.find(function (t) { return t.id === userId; });
+    if (row) row.grid_grading_enabled = enabled;
+    await sb.from("security_events").insert({
+      event: "modogrilla_teacher_toggle",
+      detail: { user_id: userId, grid_grading_enabled: enabled },
+    });
+  }
+
+  function parseModogrillaCsv(text) {
+    var lines = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (!lines.length) return [];
+    var header = lines[0].toLowerCase().replace(/^\uFEFF/, "");
+    var col = header.indexOf("docente_email") >= 0 ? "docente_email" : header.indexOf("email") >= 0 ? "email" : null;
+    if (!col) throw new Error("El CSV debe tener columna docente_email.");
+    var start = 1;
+    var emails = [];
+    for (var i = start; i < lines.length; i++) {
+      var parts = lines[i].split(",");
+      var email = (parts[0] || "").trim().toLowerCase();
+      if (email) emails.push(email);
+    }
+    return emails;
+  }
+
+  async function applyModogrillaCsv(file) {
+    setModogrillaCsvResult("Procesando CSV…");
+    var text = await file.text();
+    var emails = parseModogrillaCsv(text);
+    if (!emails.length) {
+      setModogrillaCsvResult("El archivo no contiene correos.", "error");
+      return;
+    }
+    var sb = ensureSupabase();
+    var ok = 0;
+    var errors = [];
+    for (var idx = 0; idx < emails.length; idx++) {
+      var email = emails[idx];
+      var rowNum = idx + 2;
+      var lookup = await sb.from("users").select("id, role, email").eq("email", email).maybeSingle();
+      if (lookup.error || !lookup.data) {
+        errors.push("Fila " + rowNum + ": correo no encontrado — " + email);
+        continue;
+      }
+      if (lookup.data.role !== "teacher") {
+        errors.push("Fila " + rowNum + ": no es docente — " + email);
+        continue;
+      }
+      var upd = await sb.from("users").update({ grid_grading_enabled: true }).eq("id", lookup.data.id);
+      if (upd.error) {
+        errors.push("Fila " + rowNum + ": " + upd.error.message);
+        continue;
+      }
+      ok += 1;
+    }
+    await sb.from("security_events").insert({
+      event: "modogrilla_csv_apply",
+      detail: { enabled: ok, failed: errors.length, errors: errors.slice(0, 20) },
+    });
+    await loadModogrillaTeachers();
+    var msg = ok + " docente(s) habilitado(s) para ModoGrilla.";
+    if (errors.length) msg += " " + errors.length + " error(es): " + errors.join(" · ");
+    setModogrillaCsvResult(msg, errors.length ? "error" : "success");
+  }
+
   async function loadAdminDashboard() {
     if (!adminLines) return;
     adminLines.innerHTML = "<p class=\"muted\">Cargando…</p>";
@@ -215,6 +349,7 @@
       } else {
         setAdminStatus(cycleLabel + " — " + assignments.length + " asignaciones programa×RA cargadas.", "success");
       }
+      await loadModogrillaTeachers();
     } catch (e) {
       console.error(e);
       adminLines.innerHTML = "<p class=\"muted\">Error al cargar panorama administrativo.</p>";
@@ -734,6 +869,41 @@
       setLeaderReportStatus("Error al exportar DOCX.", "error");
     }
   });
+  if (modogrillaCsvApply) {
+    modogrillaCsvApply.addEventListener("click", async function () {
+      var file = modogrillaCsvInput && modogrillaCsvInput.files && modogrillaCsvInput.files[0];
+      if (!file) {
+        setModogrillaCsvResult("Seleccione un archivo CSV.", "error");
+        return;
+      }
+      try {
+        await requireSession();
+        await applyModogrillaCsv(file);
+      } catch (e) {
+        setModogrillaCsvResult("Error al procesar CSV: " + (e.message || e), "error");
+      }
+    });
+  }
+  if (modogrillaTeachersBody) {
+    modogrillaTeachersBody.addEventListener("change", async function (e) {
+      var cb = e.target;
+      if (!cb || cb.type !== "checkbox" || !cb.dataset.userId) return;
+      try {
+        await requireSession();
+        await updateTeacherGridFlag(cb.dataset.userId, cb.checked);
+        setModogrillaCsvResult(cb.checked ? "ModoGrilla habilitado." : "ModoGrilla deshabilitado.", "success");
+      } catch (err) {
+        cb.checked = !cb.checked;
+        setModogrillaCsvResult("Error al actualizar docente.", "error");
+      }
+    });
+  }
+  if (modogrillaTeacherSearch) {
+    modogrillaTeacherSearch.addEventListener("input", function () {
+      renderModogrillaTeachersTable(modogrillaTeacherSearch.value);
+    });
+  }
+
   logoutBtn.addEventListener("click", async function() { try { await ensureSupabase().auth.signOut(); } catch(e) {} window.location.replace("./index.html"); });
 
   leaderPanel.hidden = true;
