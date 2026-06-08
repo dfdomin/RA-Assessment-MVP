@@ -20,7 +20,10 @@ async function assertModuleTeacher(
   db: ReturnType<typeof serviceClient>,
   userId: string,
   moduleId: number,
-): Promise<{ error: string | null; module?: { id: number; course_code: string; group_name: string; period_id: number } }> {
+): Promise<{
+  error: string | null;
+  module?: { id: number; course_code: string; group_name: string };
+}> {
   const { data: assignment } = await db
     .from("module_staff")
     .select("module_id")
@@ -34,7 +37,7 @@ async function assertModuleTeacher(
 
   const { data: module, error } = await db
     .from("modules")
-    .select("id, course_code, group_name, period_id")
+    .select("id, course_code, group_name")
     .eq("id", moduleId)
     .single();
 
@@ -42,13 +45,15 @@ async function assertModuleTeacher(
     return { error: "Module not found" };
   }
 
-  const { data: period } = await db
-    .from("periods")
-    .select("status")
-    .eq("id", module.period_id)
-    .single();
+  // modules no longer have period_id (0013); gate on open module_ra_evaluations
+  const { data: openEvaluations, error: evalError } = await db
+    .from("module_ra_evaluations")
+    .select("id, periods!inner(status)")
+    .eq("module_id", moduleId)
+    .eq("periods.status", "open")
+    .limit(1);
 
-  if (period?.status === "closed") {
+  if (evalError || !openEvaluations?.length) {
     return { error: "Period is closed" };
   }
 
