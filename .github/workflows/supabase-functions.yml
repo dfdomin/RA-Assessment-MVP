@@ -26,4 +26,5 @@ jobs:
           supabase functions deploy report-leader --project-ref whjjervbojyktkhvvmte
           supabase functions deploy sanitize --project-ref whjjervbojyktkhvvmte
           supabase functions deploy bulk-import --project-ref whjjervbojyktkhvvmte
+          supabase functions deploy students-import --project-ref whjjervbojyktkhvvmte
           supabase functions deploy habeas-data --project-ref whjjervbojyktkhvvmte

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, field_validator
 
+from src.domain.levels import validate_level
+
 
 class AssessmentInput(BaseModel):
     module_student_id: int
@@ -8,10 +10,8 @@ class AssessmentInput(BaseModel):
 
     @field_validator("level")
     @classmethod
-    def level_must_be_1_to_4(cls, v: int) -> int:
-        if v not in (1, 2, 3, 4):
-            raise ValueError("level must be 1, 2, 3, or 4")
-        return v
+    def level_must_be_allowed(cls, v: int) -> int:
+        return validate_level(v)
 
 
 class AssessmentsUpdate(BaseModel):

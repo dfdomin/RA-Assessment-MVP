@@ -432,7 +432,7 @@ Descriptores de los 4 niveles de desempeño para cada PI.
 |---|---|---|---|
 | `id` | `SERIAL` | No | PK |
 | `perf_indicator_id` | `INT` | No | FK → `perf_indicators.id` |
-| `level_value` | `INT` | No | `1`=Poor, `2`=Inadequate, `3`=Adequate, `4`=Exemplary |
+| `level_value` | `INT` | No | `1`=Poor, `2`=Inadequate, `4`=Adequate, `5`=Exemplary. **CHECK** `IN (1,2,4,5)` |
 | `label` | `VARCHAR(20)` | No | `'Poor'` \| `'Inadequate'` \| `'Adequate'` \| `'Exemplary'` |
 | `descriptor` | `TEXT` | No | Descripción del desempeño esperado en este nivel |
 
@@ -514,12 +514,13 @@ Estudiantes del sistema. Un estudiante puede estar en múltiples módulos (disti
 | Columna | Tipo | Nulo | Descripción |
 |---|---|---|---|
 | `id` | `SERIAL` | No | PK |
-| `internal_id` | `VARCHAR(20)` | No | ID interno del sistema académico (unique) |
-| `document_number` | `VARCHAR(15)` | No | Cédula o TI |
+| `internal_id` | `VARCHAR(20)` | No | ID interno del sistema académico (unique); en v1 import PDF = `document_number` (ADR-0002) |
+| `document_number` | `VARCHAR(15)` | No | Cédula o TI (unique — clave natural de upsert) |
 | `full_name` | `VARCHAR(200)` | No | Apellidos y nombre (sanitizado) |
+| `pege_id` | `VARCHAR(50)` | Sí | `NULL` | Persona General Academusoft; lo rellena `oracle_adapter` (ADR-0002) |
 | `is_suppressed` | `BOOLEAN` | No | `TRUE` si fue anonimizado vía habeas data |
 
-**Índices**: `UNIQUE(internal_id)`  
+**Índices**: `UNIQUE(internal_id)`, `UNIQUE(document_number)`, `UNIQUE(pege_id)` (partial: WHERE `pege_id IS NOT NULL`)  
 **Nota de privacidad**: en caso de supresión (Ley 1581/2012), `full_name` se actualiza a `'[SUPRIMIDO]'` y `document_number` a `'[SUPRIMIDO-{id}]'`. No se elimina el registro para preservar integridad de reportes cerrados.
 
 ---
@@ -533,9 +534,10 @@ Relación entre un módulo y sus estudiantes matriculados.
 | `id` | `SERIAL` | No | auto | PK |
 | `module_id` | `INT` | No | — | FK → `modules.id` |
 | `student_id` | `INT` | No | — | FK → `students.id` |
+| `roster_position` | `INT` | No | `0` | Orden en lista del módulo (`No.` del PDF Academusoft; ADR-0002) |
 | `status` | `VARCHAR(20)` | No | `'active'` | `'active'` \| `'excluded'` |
 
-**Índices**: `UNIQUE(module_id, student_id)`, `INDEX(module_id)`, `INDEX(student_id)`
+**Índices**: `UNIQUE(module_id, student_id)`, `INDEX(module_id)`, `INDEX(student_id)`, `INDEX(module_id, roster_position)`
 
 ---
 
@@ -556,19 +558,19 @@ Registro de exclusiones de estudiantes de un módulo con motivo documentado (tra
 
 ### 3.13 `assessments`
 
-Calificación de un estudiante en un PI específico. Valor discreto 1–4 (sin decimales).
+Calificación de un estudiante en un PI específico. Valor discreto **{1, 2, 4, 5}** (sin decimales; el valor 3 no existe en la escala ABET IUB).
 
 | Columna | Tipo | Nulo | Descripción |
 |---|---|---|---|
 | `id` | `SERIAL` | No | PK |
 | `module_student_id` | `INT` | No | FK → `module_students.id` |
 | `perf_indicator_id` | `INT` | No | FK → `perf_indicators.id` |
-| `level` | `INT` | No | `1`=Poor, `2`=Inadequate, `3`=Adequate, `4`=Exemplary |
+| `level` | `INT` | No | `1`=Poor, `2`=Inadequate, `4`=Adequate, `5`=Exemplary. **CHECK** `IN (1,2,4,5)` |
 | `recorded_at` | `TIMESTAMPTZ` | No | Primer registro |
 | `updated_at` | `TIMESTAMPTZ` | No | Última modificación |
 
 **Índices**: `UNIQUE(module_student_id, perf_indicator_id)`, `INDEX(module_student_id)`  
-**Nota**: Los campos `pi_percentage`, `total_score` y `standard` son calculados por la API en runtime — no se almacenan en DB. El cálculo es: `pi_percentage = level × pi_weight / 4`; `total_score = SUM(pi_percentage)`; `standard` se deriva de `level_thresholds`.
+**Nota**: Los campos `pi_percentage`, `total_score` y `standard` son calculados por la API en runtime — no se almacenan en DB. El cálculo es: `pi_percentage = level × pi_weight / 5`; `total_score = SUM(pi_percentage)` (máx. 100); `standard` se deriva de `level_thresholds`.
 
 **Origen Excel**: celdas I/L/O/R/U/X (filas 15–81) de la hoja `EF_ASESSM_SO_GENERIC`
 

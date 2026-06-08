@@ -153,8 +153,8 @@ async def students_client():
         await db.flush()
 
         db.add_all([
-            Assessment(module_student_id=complete_ms.id, perf_indicator_id=pi1.id, level=3),
-            Assessment(module_student_id=complete_ms.id, perf_indicator_id=pi2.id, level=4),
+            Assessment(module_student_id=complete_ms.id, perf_indicator_id=pi1.id, level=4),
+            Assessment(module_student_id=complete_ms.id, perf_indicator_id=pi2.id, level=5),
             Assessment(module_student_id=incomplete_ms.id, perf_indicator_id=pi1.id, level=2),
         ])
         await db.commit()

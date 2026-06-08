@@ -173,7 +173,7 @@ async def notifications_client():
         ]
         db.add_all(module_students)
         await db.flush()
-        db.add(Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi.id, level=3))
+        db.add(Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi.id, level=4))
         await db.commit()
 
         ids = {

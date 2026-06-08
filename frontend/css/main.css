@@ -484,7 +484,205 @@ select:focus {
 }
 
 .assessment-main {
-  max-width: 1120px;
+  max-width: 1004px;
+  width: 100%;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0.5rem 1rem 1rem;
+}
+
+.grading-viewport {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: calc(100vh - 10.5rem);
+  max-height: 40rem;
+  min-height: 36rem;
+  overflow: hidden;
+}
+
+.rubric-panel {
+  flex: 0 0 42%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: var(--color-surface);
+}
+
+.rubric-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.rubric-toolbar h3 {
+  font-size: 0.95rem;
+  color: var(--color-accent);
+}
+
+.rubric-toolbar .muted {
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.rubric-layout-toggle {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.rubric-layout-toggle .btn-secondary {
+  font-size: 0.7rem;
+  padding: 0.35rem 0.5rem;
+  min-height: auto;
+}
+
+.rubric-layout-toggle .btn-secondary[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  border-color: var(--color-accent);
+}
+
+.rubric-scroll-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.rubric-content {
+  padding: 0.35rem;
+}
+
+.rubric-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  table-layout: fixed;
+}
+
+.rubric-matrix th,
+.rubric-matrix td {
+  border: 1px solid var(--color-border);
+  padding: 0.35rem;
+  vertical-align: top;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.rubric-matrix thead th {
+  background: #e8eef8;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.rubric-matrix .criterion-cell {
+  background: #f0f4fa;
+  font-weight: 600;
+  width: 18%;
+}
+
+.rubric-matrix .weight-cell {
+  width: 5%;
+  text-align: center;
+}
+
+.rubric-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.35rem 0.35rem 0;
+}
+
+.rubric-tab {
+  border: 1px solid var(--color-border);
+  background: #f9fafb;
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+}
+
+.rubric-tab[aria-selected="true"] {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.lot-zone {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.lot-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.lot-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: baseline;
+  font-size: 0.85rem;
+}
+
+.save-indicator.saving {
+  color: var(--color-primary);
+}
+
+.save-indicator.saved {
+  color: #166534;
+}
+
+.save-indicator.error {
+  color: var(--color-error);
+}
+
+.lot-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lot-table {
+  min-width: 0;
+  width: 100%;
+}
+
+.lot-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.lot-hint {
+  font-size: 0.8rem;
+  min-height: 1.1rem;
+}
+
+@media (max-width: 1024px), (max-height: 768px) {
+  .grading-viewport {
+    max-height: calc(100vh - 9rem);
+    min-height: 28rem;
+  }
 }
 
 .assessment-panel {
@@ -566,6 +764,15 @@ select:focus {
   color: var(--color-primary);
   font-size: 1rem;
   font-weight: 600;
+}
+
+.analysis-distribution {
+  margin-bottom: 1.5rem;
+}
+
+.analysis-item .analysis-pi-dist {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.875rem;
 }
 
 .distribution-grid {
@@ -671,6 +878,155 @@ select:focus {
   .btn-primary.compact {
     width: 100%;
     max-width: none;
+  }
+}
+
+/* ── Roster (lista de estudiantes) ── */
+.roster-import-block,
+.roster-manual-block {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+}
+
+.roster-import-block h4,
+.roster-manual-block h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.roster-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.roster-import-controls,
+.roster-manual-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.roster-manual-controls input[type="text"] {
+  flex: 1 1 10rem;
+  min-width: 8rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+}
+
+.roster-preview-block {
+  margin-top: 1rem;
+}
+
+.roster-preview-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.roster-preview-meta div {
+  padding: 0.75rem;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+}
+
+.roster-preview-meta dt {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.roster-preview-meta dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.roster-warnings {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  color: #b45309;
+  font-size: 0.875rem;
+}
+
+.roster-consent {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.roster-stats {
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+}
+
+.roster-status-active {
+  color: #047857;
+}
+
+.roster-status-excluded {
+  color: #b45309;
+}
+
+.ra-dialog {
+  max-width: 28rem;
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+}
+
+.ra-dialog::backdrop {
+  background: rgba(30, 40, 67, 0.45);
+}
+
+.ra-dialog h3 {
+  margin: 0 0 0.75rem;
+}
+
+.ra-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roster-exclude-label {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.roster-exclude-label select {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-family: var(--font-family);
+}
+
+@media (max-width: 768px) {
+  .wizard-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .roster-preview-meta {
+    grid-template-columns: 1fr;
   }
 }
 

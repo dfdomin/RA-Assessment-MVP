@@ -32,6 +32,9 @@ bleach
 # CSV/XLSX parsing
 openpyxl
 
+# Academusoft student list PDF (ADR-0002)
+pdfplumber
+
 # PDF export
 weasyprint
 

@@ -93,8 +93,8 @@
 |---|---|---|---|
 | I-S2-01 | `GET /modules/{id}/assessments` | Docente ve calificaciones de su propio módulo | `200` con datos correctos |
 | I-S2-02 | `GET /modules/{id}/assessments` | Docente intenta ver calificaciones de módulo ajeno | `404 Not Found` (no 403) |
-| I-S2-03 | `PUT /modules/{id}/assessments` | Calificación válida con level 1–4 | `200` con total_score y standard calculados |
-| I-S2-04 | `PUT /modules/{id}/assessments` | Calificación con level = 5 (fuera de rango) | `422 Unprocessable Entity` |
+| I-S2-03 | `PUT /modules/{id}/assessments` | Calificación válida con level ∈ {1, 2, 4, 5} | `200` con total_score y standard calculados |
+| I-S2-04 | `PUT /modules/{id}/assessments` | Calificación con level = 3 (valor prohibido en escala ABET) | `422 Unprocessable Entity` |
 | I-S2-05 | `GET /rubrics` | Docente puede leer la rúbrica del período activo | `200` con PIs y descriptores |
 | I-S2-06 | `PUT /modules/{id}/submit` | Submit con estudiantes sin calificar | `409 Conflict` con lista de estudiantes pendientes |
 | I-S2-07 | `PUT /modules/{id}/assessments` | Líder asignado como evaluador califica un módulo propio o de otro RA/SO | `200`; evento de auditoría conserva `user_id` y `module_id` |
@@ -107,7 +107,7 @@
 | 🔒 S-S2-01 | **IDOR** | Docente A modifica `module_id` en URL para acceder al módulo de Docente B | `404 Not Found` en todos los endpoints de módulo (GET assessments, PUT assessments, POST students/import, GET qualitative, PUT qualitative, PUT submit) |
 | 🔒 S-S2-01b | **IDOR líder-evaluador** | Líder asignado a un módulo intenta escribir en otro módulo donde no está en `module_staff` | `404 Not Found`; el rol `leader` no bypassa `verify_module_ownership` |
 | 🔒 S-S2-02 | XSS | `PUT /modules/{id}/qualitative` con `analysis_text` que contiene `<script>alert(1)</script>` | Texto sanitizado retornado por `GET` no contiene el tag `<script>` |
-| 🔒 S-S2-03 | Pesos API bypass | Enviar PUT de calificación con `level = 0` o `level = 5` directamente | `422` — validación Pydantic bloquea |
+| 🔒 S-S2-03 | Pesos API bypass | Enviar PUT de calificación con `level = 0` o `level = 3` directamente | `422` — validación Pydantic bloquea |
 | 🔒 S-S2-04 | DG-TSI-09-V4 | Auditoría visual del frontend del flujo docente | ✅ Paleta `#1E2843`/`#FFDF2D` · tipografía Arial/Open Sans · header+contenido+footer · sin scroll horizontal a 1024×768 · sin popups de nueva ventana · campos obligatorios con `*` |
 
 ### 3.4 Pruebas de SyncService (F16 — Ports & Adapters)

@@ -16,11 +16,12 @@ from src.models.rubric import PerfIndicator, Rubric
 from src.models.security import SecurityEvent
 from src.models.student import ModuleStudent
 from src.models.student_outcome import StudentOutcome
+from src.domain.levels import LEVEL_LABELS_EN
 from src.models.user import User
 
 router = APIRouter(tags=["assessments"])
 
-_LEVEL_LABELS = {1: "Poor", 2: "Inadequate", 3: "Adequate", 4: "Exemplary"}
+_LEVEL_LABELS = LEVEL_LABELS_EN
 
 
 def _standard_from_score(score: float) -> str:

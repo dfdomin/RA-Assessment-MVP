@@ -129,7 +129,7 @@ async def habeas_client():
         module_student = ModuleStudent(module_id=module.id, student_id=student.id, status="active")
         db.add(module_student)
         await db.flush()
-        db.add(Assessment(module_student_id=module_student.id, perf_indicator_id=pi.id, level=4))
+        db.add(Assessment(module_student_id=module_student.id, perf_indicator_id=pi.id, level=5))
         await db.commit()
 
         ids = {"student_id": student.id}

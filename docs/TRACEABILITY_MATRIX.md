@@ -61,9 +61,9 @@
 | **Origen Excel** | Hoja `EF_ASESSM_SO_GENERIC` filas 15–81 (calificaciones); hoja `STUDENTS LIST` columnas A–C (lista de estudiantes); celdas I/L/O/R/U/X (Score por PI); celdas H/K/N/Q/T/W (Level auto); celdas J/M/P/S/V/Y (% auto); columnas E (Total Score), F (Overall Level), G (Standard) |
 | **Endpoints API** | `GET /modules/{id}/assessments` · `PUT /modules/{id}/assessments` · `POST /modules/{id}/students/import` |
 | **Tablas DB** | `students` · `module_students` · `student_exclusions` · `assessments` · `perf_indicators` |
-| **Pantallas UI** | Pantalla 3: Lista de Estudiantes · Pantalla 4: Grilla de Calificaciones |
+| **Pantallas UI** | Pantalla 3: Lista de Estudiantes · Pantalla 4: Panel rúbrica fija + lote de calificación, viewport 1024×768 sin scroll (ADR-0001; 3b eliminada) |
 | **Sprint** | S2 (calificaciones), S5 (importación CSV/Excel) |
-| **Criterios clave** | Selector de 4 niveles discretos (no numérico) · `verify_module_ownership` en todos los endpoints de escritura de módulo, aplicado igual a docentes y líderes asignados · Exclusión de estudiantes con motivo documentado (4 categorías) · Regla de completitud: Activos = Calificados para poder hacer submit · Total Score y Standard calculados por API en runtime (no en DB) |
+| **Criterios clave** | Panel de rúbrica fija · Lote de hasta 5 **activos** (excluidos fuera del lote) · Aviso post-importación para excluir no asistentes · Exclusión = editar lista de evaluación · Progreso `Estudiantes calificados: X de Y` · «Calificar más estudiantes» · Auto-guardado debounced · Niveles {1,2,4,5} · Completitud solo activos · Total Score = Σ(level × pi_weight / 5) |
 | **Riesgos** | La fórmula de Total Score requiere `pi_weight` exactos de la rúbrica activa — asegurar que se carga la rúbrica correcta del período activo, no una versión anterior. El parser defensivo de CSV/XLSX es la superficie de ataque más amplia — ver `SECURITY_PRIVACY.md §8` |
 
 ---
@@ -75,7 +75,7 @@
 | **Origen VBA** | Botón `Pegar_Analisis` / `CommandButton3` — pegaba texto libre en rango `Analisis_Pegar_N` (fila 79 de cada hoja `EF_ASESSM_SO#`) |
 | **Endpoints API** | `GET /modules/{id}/qualitative` · `PUT /modules/{id}/qualitative` |
 | **Tablas DB** | `module_analysis` |
-| **Pantallas UI** | Pantalla 6: Análisis Cualitativo por PI (wizard step 4) |
+| **Pantallas UI** | Pantalla 5: Distribución y Análisis Cualitativo (wizard step 3) |
 | **Sprint** | S3 |
 | **Criterios clave** | Texto libre hasta 2000 caracteres · Placeholder orientador configurable · Sanitización `bleach.clean()` antes de persistir · Escritura permitida solo al evaluador asignado en `module_staff` (docente o líder) · Obligatorio para submit del módulo · Guardado como borrador entre sesiones |
 | **Riesgos** | El placeholder orientador debe configurarse por el Admin, no hardcodeado — requiere una tabla de configuración o variable de entorno. Considerar agregar `system_config` en S3 |
@@ -89,7 +89,7 @@
 | **Origen Excel** | Mini-tabla en filas 53–62 de cada hoja `EF_ASESSM_SO#_CODIG_MODULO_N`; fórmula `=COUNTIF(H14:H53,"Poor")/COUNTA(H14:H53)` |
 | **Endpoints API** | `GET /modules/{id}/assessments` (incluye campo `distribution` en la respuesta) |
 | **Tablas DB** | `assessments` · `perf_indicators` · `module_students` |
-| **Pantallas UI** | Pantalla 5: Distribución del Módulo (visible en tiempo real durante calificación y en Pantalla 7 antes del submit) |
+| **Pantallas UI** | Tabla F04b integrada en Pantalla 5 (paso Análisis del wizard); visible mientras el docente escribe el análisis |
 | **Sprint** | S3 |
 | **Criterios clave** | Porcentaje como métrica primaria (no conteo absoluto) · Denominador = estudiantes activos (excluidos no cuentan) · Suma 100% por fila de PI (tolerancia ±1% por redondeo) · Calculado en tiempo real |
 | **Riesgos** | El cálculo en tiempo real puede generar múltiples requests al servidor; considerar debounce en el frontend (300ms) para no saturar la API con cada clic |
@@ -103,7 +103,7 @@
 | **Origen VBA** | Botón `Next_Group` / `CommandButton4` — ocultaba hoja actual y mostraba la siguiente |
 | **Endpoints API** | No tiene endpoints propios — es una capa de navegación frontend que consume los endpoints de F02–F04b |
 | **Tablas DB** | `modules` (campo `status`) |
-| **Pantallas UI** | Wizard de 5 pasos: `[Info General] → [Estudiantes] → [Calificaciones + Distribución] → [Análisis] → [Enviar]` |
+| **Pantallas UI** | Wizard de 4 pasos: `[Info General] → [Calificaciones] → [Análisis (+ F04b)] → [Enviar]` |
 | **Sprint** | S3 |
 | **Criterios clave** | El docente puede navegar hacia atrás sin perder datos · El paso "Enviar" solo se habilita cuando Activos = Calificados y todos los análisis están escritos · Estado visual por paso (completado / en progreso / pendiente) |
 | **Riesgos** | La sincronización del estado del wizard con el backend (para persistir el borrador) requiere autosave cuidadoso — si el usuario cierra el navegador a mitad, los datos deben persistir |

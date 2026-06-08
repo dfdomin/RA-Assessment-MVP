@@ -21,14 +21,20 @@ def test_pw06_teacher_assessment_wizard_blocks_submit_until_ready(
     browser_page.wait_for_selector(".wizard-steps", timeout=8000)
 
     assert browser_page.locator('[data-step-target="general"]').is_visible()
+    assert browser_page.locator('[data-step-target="roster"]').is_visible()
     assert browser_page.locator('[data-step-target="grading"]').is_visible()
-    assert browser_page.locator('[data-step-target="distribution"]').is_visible()
     assert browser_page.locator('[data-step-target="analysis"]').is_visible()
+    assert browser_page.locator('[data-step-target="distribution"]').count() == 0
     assert browser_page.locator('[data-step-target="submit"]').is_visible()
     assert browser_page.locator("#submit-module-btn").is_disabled()
+
+    browser_page.click('[data-step-target="roster"]')
+    assert browser_page.locator('[data-step-panel="roster"]').is_visible()
+    assert browser_page.locator("#roster-body").is_visible()
 
     browser_page.click('[data-step-target="grading"]')
     assert browser_page.locator('[data-step-panel="grading"]').is_visible()
 
-    browser_page.click("#wizard-next-btn")
-    assert browser_page.locator('[data-step-panel="distribution"]').is_visible()
+    browser_page.click('[data-step-target="analysis"]')
+    assert browser_page.locator('[data-step-panel="analysis"]').is_visible()
+    assert browser_page.locator("#distribution-body").is_visible()

@@ -48,7 +48,8 @@ graph TB
 | `sanitize` | Limpieza HTML + safe_cell_value | `src/services/sanitize.py` |
 | `report-abet` | Preview JSON + export PDF/XLSX | `src/services/report.py` |
 | `report-leader` | Export PDF/DOCX informe líder | `src/services/leader_report.py` |
-| `bulk-import` | Carga masiva CSV/XLSX | `src/services/parser.py` |
+| `bulk-import` | Carga masiva CSV/XLSX (admin) | `src/services/parser.py` + `_shared/students_roster.ts` |
+| `students-import` | Preview + import PDF Academusoft (docente) | `src/services/academusoft_pdf.py` → `_shared/academusoft_pdf.ts` |
 | `habeas-data` | Consulta y supresión Ley 1581 | `src/api/routers/admin.py` |
 
 ### Seguridad MVP
@@ -229,7 +230,9 @@ graph TB
 | Comunicación | `fetch()` contra `/api/v1/*`; cookie httpOnly para sesión (JWT); mismo origen → sin CORS, sin `credentials: 'include'` |
 | Validaciones | El frontend valida para UX; **todas las validaciones críticas se replican en la API** |
 
-El frontend no contiene lógica de negocio. Toda regla de negocio (suma de pesos = 100%, completitud del módulo, ownership) está enforced en el backend.
+El frontend no contiene lógica de negocio. Toda regla de negocio (suma de pesos = 100%, completitud del módulo, ownership, niveles ∈ {1,2,4,5}) está enforced en el backend.
+
+**UX de calificación (F03, ADR-0001):** `assessment.html` separa **panel de rúbrica fija** y **lote de 5 estudiantes** diseñado para **1024×768 px sin scroll** de página (Guía IUB). Pantalla 3b eliminada. Persistencia: auto-guardado debounced + «Calificar más estudiantes». Ver `CONTEXT.md` y `docs/adr/0001-grading-ux-lotes-y-escala-1245.md`.
 
 ### 4.2 Backend (FastAPI + Python 3.12)
 

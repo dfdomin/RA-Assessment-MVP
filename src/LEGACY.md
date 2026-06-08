@@ -11,7 +11,8 @@ Keep it until Supabase Edge Functions reach functional parity for:
 
 - ABET report PDF/XLSX (`src/services/report.py`)
 - Leader report PDF/DOCX (`src/services/leader_report.py`)
-- Bulk CSV/XLSX import (`src/services/parser.py` + `src/api/routers/admin.py`)
+- Bulk CSV/XLSX import (`src/services/parser.py` + `src/api/routers/admin.py`) — **parity in** `bulk-import` + `_shared/students_roster.ts`
+- Teacher PDF student list (`src/services/academusoft_pdf.py` + `src/api/routers/students.py`) — **parity in** `students-import` + `_shared/academusoft_pdf.ts`
 - Habeas data query/suppression (`src/api/routers/admin.py`)
 
 ## When to use

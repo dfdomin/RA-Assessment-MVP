@@ -173,9 +173,9 @@ async def action_plan_client():
                 Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi_low.id, level=1),
                 Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi_low.id, level=1),
                 Assessment(module_student_id=module_students[2].id, perf_indicator_id=pi_low.id, level=2),
-                Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi_high.id, level=4),
-                Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi_high.id, level=4),
-                Assessment(module_student_id=module_students[2].id, perf_indicator_id=pi_high.id, level=3),
+                Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi_high.id, level=5),
+                Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi_high.id, level=5),
+                Assessment(module_student_id=module_students[2].id, perf_indicator_id=pi_high.id, level=4),
             ]
         )
         db.add(ModuleAssignment(module_id=module.id, user_id=teacher.id))

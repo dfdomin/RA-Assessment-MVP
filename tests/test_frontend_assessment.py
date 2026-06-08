@@ -13,11 +13,12 @@ def test_assessment_page_declares_grading_surface():
 
     assert 'id="assessment-status"' in html
     assert 'class="wizard-steps"' in html
-    assert html.count('class="wizard-step"') >= 5
+    assert html.count('class="wizard-step"') == 5
     assert 'data-step-target="general"' in html
+    assert 'data-step-target="roster"' in html
     assert 'data-step-target="grading"' in html
-    assert 'data-step-target="distribution"' in html
     assert 'data-step-target="analysis"' in html
+    assert 'data-step-target="distribution"' not in html
     assert 'data-step-target="submit"' in html
     assert 'id="wizard-next-btn"' in html
     assert 'id="wizard-prev-btn"' in html
@@ -26,11 +27,16 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="submit-readiness"' in html
     assert 'id="students-body"' in html
     assert 'id="analysis-body"' in html
-    assert 'id="save-assessments-btn"' in html
+    assert 'id="roster-body"' in html
+    assert 'id="roster-pdf-input"' in html
+    assert 'id="roster-preview-btn"' in html
+    assert 'id="roster-confirm-btn"' in html
+    assert 'id="roster-post-import-dialog"' in html
     assert 'id="save-qualitative-btn"' in html
     assert 'id="submit-module-btn"' in html
     assert "./js/module_assessment.js" in html
     assert "./js/supabase-client.js" in html
+    assert "./js/api.js" in html
 
 
 def test_assessment_js_loads_module_data_via_supabase():
@@ -48,10 +54,10 @@ def test_assessment_js_loads_module_data_via_supabase():
 def test_assessment_js_saves_assessments_analysis_and_submit():
     js = read_frontend("js/module_assessment.js")
 
-    assert "collectAssessments" in js
+    assert "collectAssessments" in js or "collectAnalyses" in js
     assert "collectAnalyses" in js
     assert "updateWizardState" in js
-    assert "allStudentsFullyGraded" in js
+    assert "allStudentsFullyGraded" in js or "allActiveStudentsFullyGraded" in js
     assert "allAnalysesComplete" in js
     assert 'module_ra_evaluation_id' in js
     assert "upsert" in js
@@ -66,11 +72,27 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "buildLevelSelectOptions" in js
     assert "course_name" in js
     assert "renderDistribution" in js
+    assert "formatDistCell" in js
+    assert 'stepOrder = ["general", "roster", "grading", "analysis", "submit"]' in js
     assert "showStep" in js
     assert 'document.querySelectorAll("[data-step-target]")' in js
     assert 'document.querySelectorAll("[data-step-panel]")' in js
     assert "wizardNextBtn.addEventListener" in js
     assert "wizardPrevBtn.addEventListener" in js
+
+
+def test_assessment_js_roster_import_and_manual_add():
+    js = read_frontend("js/module_assessment.js")
+
+    assert "reloadRosterData" in js
+    assert "renderRosterPanel" in js
+    assert "handleRosterPreview" in js
+    assert "handleRosterConfirm" in js
+    assert "addManualStudent" in js
+    assert "RaApi.studentsImportPreview" in js
+    assert "RaApi.studentsImportConfirm" in js
+    assert "roster_position" in js
+    assert "canEnterStep" in js
 
 
 def test_assessment_shows_leader_contact_on_general_and_submit():

@@ -7,12 +7,28 @@ class StudentImportRow(BaseModel):
     action: str  # "created" | "enrolled" | "updated" | "already_enrolled"
 
 
+class StudentImportPreviewRow(BaseModel):
+    roster_position: int
+    document_number: str
+    full_name: str
+
+
+class StudentImportPreviewResponse(BaseModel):
+    module_id: int
+    pdf_materia: str
+    pdf_group: str
+    pdf_course_code: str
+    students: list[StudentImportPreviewRow]
+    warnings: list[str]
+
+
 class StudentImportResponse(BaseModel):
     module_id: int
     imported: int
     updated: int
     skipped: int
     errors: list[dict]
+    warnings: list[str] = []
     students: list[StudentImportRow]
 
 

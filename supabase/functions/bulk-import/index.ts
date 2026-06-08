@@ -6,6 +6,7 @@ import {
   normalizeHeader,
 } from "../_shared/sanitize.ts";
 import { corsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
+import { persistRosterRows } from "../_shared/students_roster.ts";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 const REQUIRED: Record<string, Set<string>> = {
@@ -63,77 +64,71 @@ async function importStudents(
   if (!consent) {
     return {
       imported: 0,
+      updated: 0,
+      skipped: 0,
       failed: 1,
       errors: [rowError(0, "consent", "consent_acknowledged required")],
     };
   }
 
   const db = serviceClient();
-  let imported = 0;
   const errors: Array<Record<string, unknown>> = [];
+  let imported = 0;
+  let updated = 0;
+  let skipped = 0;
 
+  const byModule = new Map<number, Array<{ row: Record<string, string>; rowNumber: number }>>();
   for (let i = 0; i < rows.length; i++) {
     const rowNumber = i + 2;
     const row = rows[i];
     try {
-      const internalId = ensureNoFormula(row.id_interno ?? "");
-      const documentNumber = ensureNoFormula(row.numero_documento ?? "");
-      const fullName = ensureNoFormula(row.nombre_completo ?? "");
       const moduleId = Number(ensureNoFormula(row.modulo_id ?? ""));
-      if (!SAFE_ID.test(internalId) || !SAFE_DOC.test(documentNumber)) {
-        throw new Error("Invalid id or document");
-      }
-      if (!SAFE_NAME.test(fullName)) throw new Error("Invalid name");
       if (!moduleId) throw new Error("modulo_id required");
-
       const { data: module } = await db.from("modules").select("id").eq("id", moduleId).single();
       if (!module) throw new Error(`Module not found: ${moduleId}`);
-
-      let studentId: number;
-      const { data: byDoc } = await db
-        .from("students")
-        .select("id")
-        .eq("document_number", documentNumber)
-        .maybeSingle();
-      if (byDoc) {
-        studentId = byDoc.id;
-        await db.from("students").update({
-          internal_id: internalId,
-          full_name: fullName,
-        }).eq("id", studentId);
-      } else {
-        const { data: created, error } = await db.from("students").insert({
-          internal_id: internalId,
-          document_number: documentNumber,
-          full_name: fullName,
-        }).select("id").single();
-        if (error || !created) throw error ?? new Error("Student insert failed");
-        studentId = created.id;
-      }
-
-      const { data: existing } = await db
-        .from("module_students")
-        .select("id")
-        .eq("module_id", moduleId)
-        .eq("student_id", studentId)
-        .maybeSingle();
-
-      if (existing) {
-        await db.from("module_students").update({ status: "active" }).eq("id", existing.id);
-      } else {
-        await db.from("module_students").insert({
-          module_id: moduleId,
-          student_id: studentId,
-          status: "active",
-        });
-      }
-      imported++;
+      const bucket = byModule.get(moduleId) ?? [];
+      bucket.push({ row, rowNumber });
+      byModule.set(moduleId, bucket);
     } catch (err) {
       errors.push(rowError(rowNumber, "row", String(err)));
     }
   }
 
-  return { imported, failed: errors.length, errors };
+  for (const [moduleId, moduleRows] of byModule.entries()) {
+    const rosterRows = [];
+    for (let i = 0; i < moduleRows.length; i++) {
+      const { row, rowNumber } = moduleRows[i];
+      try {
+        const internalId = ensureNoFormula(row.id_interno ?? "");
+        const documentNumber = ensureNoFormula(row.numero_documento ?? "");
+        const fullName = ensureNoFormula(row.nombre_completo ?? "");
+        if (!SAFE_ID.test(internalId) || !SAFE_DOC.test(documentNumber)) {
+          throw new Error("Invalid id or document");
+        }
+        if (!SAFE_NAME.test(fullName)) throw new Error("Invalid name");
+        rosterRows.push({
+          roster_position: i + 1,
+          document_number: documentNumber,
+          full_name: fullName,
+          internal_id: internalId,
+        });
+      } catch (err) {
+        errors.push(rowError(rowNumber, "row", String(err)));
+      }
+    }
+
+    if (!rosterRows.length) continue;
+
+    const result = await persistRosterRows(db, moduleId, rosterRows);
+    imported += result.imported;
+    updated += result.updated;
+    skipped += result.skipped;
+    for (const item of result.errors) {
+      errors.push(rowError(item.row + 1, "row", item.error));
+    }
+  }
+
+  return { imported, updated, skipped, failed: errors.length, errors };
 }
 
 async function importModules(rows: Array<Record<string, string>>) {

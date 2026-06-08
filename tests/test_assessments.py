@@ -204,8 +204,8 @@ async def test_assigned_teacher_saves_assessments(assessment_client):
     r = await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 3},
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 5},
         ]},
     )
 
@@ -236,7 +236,7 @@ async def test_invalid_level_returns_422(assessment_client):
     r = await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 5},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 3},
         ]},
     )
 
@@ -252,7 +252,7 @@ async def test_foreign_module_student_rejected(assessment_client):
     r = await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": 99999, "perf_indicator_id": ids["pi1_id"], "level": 3},
+            {"module_student_id": 99999, "perf_indicator_id": ids["pi1_id"], "level": 4},
         ]},
     )
 
@@ -273,7 +273,7 @@ async def test_admin_views_assessments_with_distribution(assessment_client):
     await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 3},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 4},
         ]},
     )
     await _login(client, "admin.assess@iub.edu.co", "Admin1234!")
@@ -288,7 +288,7 @@ async def test_admin_views_assessments_with_distribution(assessment_client):
     student = data["students"][0]
     assert student["student_name"] == "García Pérez, María"
     assert len(student["assessments"]) == 1
-    assert student["assessments"][0]["level"] == 3
+    assert student["assessments"][0]["level"] == 4
 
 
 @pytest.mark.asyncio
@@ -326,14 +326,14 @@ async def test_upsert_updates_existing_grade(assessment_client):
     await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 5},
         ]},
     )
 
     r = await client.get(f"/api/v1/modules/{ids['module_id']}/assessments")
     data = r.json()
     grade = next(a for a in data["students"][0]["assessments"] if a["perf_indicator_id"] == ids["pi1_id"])
-    assert grade["level"] == 4
+    assert grade["level"] == 5
 
 
 # ---------------------------------------------------------------------------
@@ -361,8 +361,8 @@ async def test_submit_without_analysis_returns_409(assessment_client):
     await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 3},
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 5},
         ]},
     )
 
@@ -381,8 +381,8 @@ async def test_submit_completes_when_all_requirements_met(assessment_client):
     await client.put(
         f"/api/v1/modules/{ids['module_id']}/assessments",
         json={"assessments": [
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 3},
-            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi1_id"], "level": 4},
+            {"module_student_id": ids["ms_id"], "perf_indicator_id": ids["pi2_id"], "level": 5},
         ]},
     )
     await client.put(

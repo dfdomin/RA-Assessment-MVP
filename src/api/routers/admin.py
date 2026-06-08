@@ -542,8 +542,8 @@ async def _upsert_pi_levels(pi: PerfIndicator, row: dict[str, str], db: AsyncSes
     labels = {
         1: ("Poor", row["poor_descriptor"].strip()),
         2: ("Inadequate", row["inadequate_descriptor"].strip()),
-        3: ("Adequate", row["adequate_descriptor"].strip()),
-        4: ("Exemplary", row["exemplary_descriptor"].strip()),
+        4: ("Adequate", row["adequate_descriptor"].strip()),
+        5: ("Exemplary", row["exemplary_descriptor"].strip()),
     }
     existing = (
         await db.execute(select(PILevel).where(PILevel.perf_indicator_id == pi.id))

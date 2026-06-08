@@ -97,6 +97,31 @@
     bulkImport: function (formData) {
       return callEdgeFunction("bulk-import", null, { formData: formData });
     },
+    studentsImportPreview: async function (moduleId, file) {
+      var formData = new FormData();
+      formData.append("module_id", String(moduleId));
+      formData.append("action", "preview");
+      formData.append("file", file);
+      var response = await callEdgeFunction("students-import", null, { formData: formData });
+      var data = await response.json();
+      if (!response.ok) {
+        throw new Error((data && data.error) || "Preview failed");
+      }
+      return data;
+    },
+    studentsImportConfirm: async function (moduleId, file, consentAcknowledged) {
+      var formData = new FormData();
+      formData.append("module_id", String(moduleId));
+      formData.append("action", "import");
+      formData.append("consent_acknowledged", consentAcknowledged ? "true" : "false");
+      formData.append("file", file);
+      var response = await callEdgeFunction("students-import", null, { formData: formData });
+      var data = await response.json();
+      if (!response.ok) {
+        throw new Error((data && data.error) || "Import failed");
+      }
+      return data;
+    },
     habeasQuery: function (documentNumber) {
       return callEdgeFunctionJson("habeas-data", {
         action: "query",

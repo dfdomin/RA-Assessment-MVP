@@ -47,11 +47,11 @@
       <button class="wizard-step" type="button" data-step-target="general" aria-current="step">
         <span>1</span> Información
       </button>
-      <button class="wizard-step" type="button" data-step-target="grading">
-        <span>2</span> Calificaciones
+      <button class="wizard-step" type="button" data-step-target="roster">
+        <span>2</span> Lista
       </button>
-      <button class="wizard-step" type="button" data-step-target="distribution">
-        <span>3</span> Distribución
+      <button class="wizard-step" type="button" data-step-target="grading">
+        <span>3</span> Calificaciones
       </button>
       <button class="wizard-step" type="button" data-step-target="analysis">
         <span>4</span> Análisis
@@ -91,57 +91,143 @@
       </p>
     </section>
 
-    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="grading" aria-labelledby="students-title" hidden>
+    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="roster" aria-labelledby="roster-title" hidden>
       <div class="modules-header">
         <div>
-          <h3 id="students-title">Calificaciones por estudiante</h3>
-          <p class="muted">Selecciona el criterio de desempeño (Deficiente, Insuficiente, Bueno o Sobresaliente) para cada indicador.</p>
+          <h3 id="roster-title">Lista de estudiantes</h3>
+          <p class="muted">Importe el PDF de Academusoft o agregue estudiantes manualmente antes de calificar.</p>
         </div>
-        <button id="save-assessments-btn" class="btn-secondary" type="button" disabled>
-          Guardar calificaciones
-        </button>
       </div>
 
+      <div class="roster-import-block">
+        <h4>Importar desde PDF Academusoft</h4>
+        <p class="muted roster-hint">Reporte «Listado de Estudiantes Inscritos» (Materia y Grupo deben coincidir con el módulo).</p>
+        <div class="roster-import-controls">
+          <input type="file" id="roster-pdf-input" accept="application/pdf,.pdf" />
+          <button id="roster-preview-btn" class="btn-secondary compact" type="button" disabled>Vista previa</button>
+        </div>
+        <div id="roster-preview-block" class="roster-preview-block" hidden>
+          <dl id="roster-preview-meta" class="roster-preview-meta"></dl>
+          <div class="table-wrap">
+            <table class="modules-table roster-preview-table">
+              <thead>
+                <tr>
+                  <th scope="col">No.</th>
+                  <th scope="col">Documento</th>
+                  <th scope="col">Nombre completo</th>
+                </tr>
+              </thead>
+              <tbody id="roster-preview-body"></tbody>
+            </table>
+          </div>
+          <ul id="roster-preview-warnings" class="roster-warnings" aria-live="polite"></ul>
+          <label class="roster-consent">
+            <input type="checkbox" id="roster-consent-checkbox" />
+            Autorizo el tratamiento de datos personales de los estudiantes conforme a la Ley 1581 de 2012.
+          </label>
+          <button id="roster-confirm-btn" class="btn-primary compact-btn" type="button" disabled>Confirmar importación</button>
+        </div>
+      </div>
+
+      <div class="roster-manual-block">
+        <h4>Alta manual</h4>
+        <div class="roster-manual-controls">
+          <input type="text" id="roster-manual-doc" placeholder="Número de documento" inputmode="numeric" autocomplete="off" />
+          <input type="text" id="roster-manual-name" placeholder="Nombre completo" autocomplete="off" />
+          <button id="roster-manual-add-btn" class="btn-secondary compact" type="button">Agregar</button>
+        </div>
+      </div>
+
+      <p id="roster-stats" class="roster-stats muted" aria-live="polite">Cargando lista…</p>
       <div class="table-wrap">
-        <table class="modules-table assessment-table">
-          <thead id="students-head">
+        <table class="modules-table roster-table">
+          <thead>
             <tr>
-              <th scope="col">Estudiante</th>
+              <th scope="col">No.</th>
               <th scope="col">Documento</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
             </tr>
           </thead>
-          <tbody id="students-body">
-            <tr>
-              <td colspan="2">Cargando estudiantes…</td>
-            </tr>
+          <tbody id="roster-body">
+            <tr><td colspan="5">Cargando estudiantes…</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
-    <section class="modules-panel assessment-panel wizard-panel" data-step-panel="distribution" aria-labelledby="distribution-title" hidden>
-      <div class="modules-header">
-        <div>
-          <h3 id="distribution-title">Distribución de desempeño</h3>
-          <p class="muted">Consulta la concentración de niveles por indicador.</p>
+    <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="students-title" hidden>
+      <div id="rubric-panel" class="rubric-panel" aria-label="Rúbrica vigente del RA">
+        <div class="rubric-toolbar">
+          <div>
+            <h3 id="rubric-ra-title">Rúbrica del RA</h3>
+            <p id="rubric-ra-description" class="muted rubric-ra-description"></p>
+          </div>
+          <div class="rubric-layout-toggle" role="group" aria-label="Modo de visualización de la rúbrica">
+            <button id="rubric-layout-scroll" class="btn-secondary compact" type="button" aria-pressed="true">Vista completa</button>
+            <button id="rubric-layout-tabs" class="btn-secondary compact" type="button" aria-pressed="false">Vista por criterio</button>
+          </div>
+        </div>
+        <div id="rubric-scroll-wrap" class="rubric-scroll-wrap">
+          <div id="rubric-content" class="rubric-content">
+            <p class="muted">Cargando rúbrica…</p>
+          </div>
         </div>
       </div>
-      <div id="distribution-body" class="distribution-grid">
-        <p class="muted">Cargando distribución…</p>
+
+      <div class="lot-zone">
+        <div class="lot-toolbar">
+          <div class="lot-meta">
+            <strong id="grading-progress">Estudiantes calificados: —</strong>
+            <span id="lot-position" class="muted">Lote — de —</span>
+            <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
+          </div>
+          <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
+        </div>
+
+        <div class="table-wrap lot-table-wrap">
+          <table class="modules-table assessment-table lot-table">
+            <thead id="students-head">
+              <tr>
+                <th scope="col">Estudiante</th>
+                <th scope="col">Documento</th>
+              </tr>
+            </thead>
+            <tbody id="students-body">
+              <tr>
+                <td colspan="2">Cargando estudiantes…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="lot-nav" aria-label="Navegación entre lotes">
+          <button id="lot-prev-btn" class="btn-secondary" type="button" disabled>Lote anterior</button>
+          <button id="lot-advance-btn" class="btn-primary compact-btn" type="button" disabled>Calificar más estudiantes</button>
+          <button id="lot-next-btn" class="btn-secondary" type="button" disabled>Lote siguiente</button>
+        </div>
+        <p id="lot-hint" class="lot-hint muted" aria-live="polite"></p>
+        <button id="continue-analysis-btn" class="btn-primary compact-btn" type="button" hidden>
+          Continuar al análisis cualitativo
+        </button>
       </div>
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel" data-step-panel="analysis" aria-labelledby="analysis-title" hidden>
       <div class="modules-header">
         <div>
-          <h3 id="analysis-title">Análisis cualitativo</h3>
-          <p class="muted">Registra una conclusión breve por indicador activo.</p>
+          <h3 id="analysis-title">Distribución y análisis cualitativo</h3>
+          <p class="muted">Revise la distribución por criterio (F04b) y registre su análisis por indicador.</p>
         </div>
         <button id="save-qualitative-btn" class="btn-secondary" type="button" disabled>
           Guardar análisis
         </button>
       </div>
 
+      <div id="distribution-body" class="distribution-grid analysis-distribution" aria-label="Distribución del módulo">
+        <p class="muted">Cargando distribución…</p>
+      </div>
       <div id="analysis-body" class="analysis-list">
         <p class="muted">Cargando indicadores…</p>
       </div>
@@ -173,6 +259,32 @@
         Siguiente
       </button>
     </div>
+
+    <dialog id="roster-post-import-dialog" class="ra-dialog">
+      <h3>Lista de estudiantes</h3>
+      <p id="roster-post-import-message"></p>
+      <button id="roster-post-import-close" class="btn-primary compact-btn" type="button">Entendido</button>
+    </dialog>
+
+    <dialog id="roster-exclude-dialog" class="ra-dialog">
+      <form method="dialog" id="roster-exclude-form">
+        <h3>Excluir estudiante</h3>
+        <p id="roster-exclude-student-name" class="muted"></p>
+        <label class="roster-exclude-label">
+          Motivo
+          <select id="roster-exclude-reason" required>
+            <option value="withdrew">Retirado del módulo</option>
+            <option value="never_attended">Nunca asistió</option>
+            <option value="medical">Motivo médico</option>
+            <option value="other">Otro</option>
+          </select>
+        </label>
+        <menu class="ra-dialog-actions">
+          <button class="btn-secondary" type="submit" value="cancel">Cancelar</button>
+          <button id="roster-exclude-confirm" class="btn-primary compact-btn" type="submit" value="confirm">Excluir</button>
+        </menu>
+      </form>
+    </dialog>
   </main>
 
   <footer class="site-footer" role="contentinfo">
@@ -182,6 +294,7 @@
     <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase-client.js?v=BUILD_SHA"></script>
+  <script src="./js/api.js?v=BUILD_SHA"></script>
   <script src="./js/module_assessment.js?v=BUILD_SHA"></script>
 </body>
 </html>

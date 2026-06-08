@@ -226,8 +226,8 @@ Lista rúbricas con sus PIs y pesos.
         "levels": [
           { "level_value": 1, "label": "Poor", "descriptor": "El estudiante no logra…" },
           { "level_value": 2, "label": "Inadequate", "descriptor": "El estudiante…" },
-          { "level_value": 3, "label": "Adequate", "descriptor": "El estudiante…" },
-          { "level_value": 4, "label": "Exemplary", "descriptor": "El estudiante…" }
+          { "level_value": 4, "label": "Adequate", "descriptor": "El estudiante…" },
+          { "level_value": 5, "label": "Exemplary", "descriptor": "El estudiante…" }
         ]
       }
     ]
@@ -257,8 +257,8 @@ Crea una nueva rúbrica para un período/SO. **La suma de `pi_weight` de PIs act
       "levels": [
         { "level_value": 1, "label": "Poor", "descriptor": "…" },
         { "level_value": 2, "label": "Inadequate", "descriptor": "…" },
-        { "level_value": 3, "label": "Adequate", "descriptor": "…" },
-        { "level_value": 4, "label": "Exemplary", "descriptor": "…" }
+        { "level_value": 4, "label": "Adequate", "descriptor": "…" },
+        { "level_value": 5, "label": "Exemplary", "descriptor": "…" }
       ]
     }
   ]
@@ -348,7 +348,7 @@ Obtiene todas las calificaciones del módulo con distribución de niveles calcul
       "student_name": "García Pérez, María",
       "status": "active",
       "assessments": [
-        { "perf_indicator_id": 10, "pi_code": "PI1", "level": 3 }
+        { "perf_indicator_id": 10, "pi_code": "PI1", "level": 4 }
       ],
       "total_score": 3.15,
       "standard": "Medium"
@@ -373,44 +373,93 @@ Guarda (como borrador o final) las calificaciones de uno o más estudiantes.
 ```json
 {
   "assessments": [
-    { "module_student_id": 100, "perf_indicator_id": 10, "level": 3 },
-    { "module_student_id": 100, "perf_indicator_id": 11, "level": 4 }
+    { "module_student_id": 100, "perf_indicator_id": 10, "level": 4 },
+    { "module_student_id": 100, "perf_indicator_id": 11, "level": 5 }
   ]
 }
 ```
 Acepta uno o múltiples registros en el mismo request (upsert por `module_student_id + perf_indicator_id`).
 
-**Errores**: `422` si `level` no es 1–4 | `404` ownership check falla
+**Errores**: `422` si `level` ∉ {1, 2, 4, 5} (el valor 3 no existe) | `404` ownership check falla
 
 ---
 
 ## 7. Grupo STUDENTS
 
-### `POST /modules/{id}/students/import`
+### `POST /functions/v1/students-import` (MVP — Edge Function)
 
-Importa la lista de estudiantes desde un archivo CSV o XLSX.
+Reemplaza en producción a los endpoints FastAPI legacy. Mismo contrato lógico ADR-0002.
+
+**Request** (`multipart/form-data`):
+
+| Campo | Valores |
+|---|---|
+| `action` | `preview` \| `import` |
+| `module_id` | ID del módulo |
+| `file` | PDF Academusoft (`application/pdf`) |
+| `consent_acknowledged` | `true` — obligatorio solo en `action=import` |
+
+**Roles**: docente asignado en `module_staff` (vía JWT Supabase).
+
+---
+
+### `POST /modules/{id}/students/import/preview` (legacy FastAPI)
+
+Parsea un PDF Academusoft sin escribir en BD (ADR-0002). Referencia en `src/`.
 
 **Roles permitidos**: Docente o Líder asignado al módulo  
-**Seguridad**: `verify_module_ownership`  
+**MIME**: `application/pdf` únicamente
+
+**Response 200**:
+```json
+{
+  "module_id": 12,
+  "pdf_materia": "ADM18-PROCESAMIENTO DE LA INFORMACIÓN…",
+  "pdf_group": "1_CE_G2",
+  "pdf_course_code": "ADM18",
+  "students": [
+    { "roster_position": 1, "document_number": "1042856266", "full_name": "AFANADOR VIDES SHARIT" }
+  ],
+  "warnings": ["2 estudiantes activos del módulo no aparecen en este PDF — revíselos y exclúyalos si corresponde."]
+}
+```
+
+**422** si Materia/Grupo del PDF no coinciden con el módulo abierto.
+
+---
+
+### `POST /modules/{id}/students/import`
+
+Importa la lista de estudiantes desde PDF Academusoft, CSV o XLSX.
+
+**Roles permitidos**: Docente o Líder asignado al módulo
+**Seguridad**: `verify_module_ownership`
 **Seguridad**: parser defensivo — ver `SECURITY_PRIVACY.md §3`
 
 **Request**: `multipart/form-data`
 ```
-file: [archivo.csv o archivo.xlsx]
+file: [reporte.pdf | archivo.csv | archivo.xlsx]
+consent_acknowledged: true   # obligatorio (Ley 1581/2012)
 ```
 
 **Límites del parser**:
 - Tamaño máximo: **2 MB**
 - Máximo de estudiantes: **100 por import**
-- Encoding: **UTF-8** (con o sin BOM)
-- MIME types: `text/csv`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
-- Rechaza valores que comiencen con `=`, `+`, `-`, `@`, `|`, `%`
-
-**Formato del CSV**: columnas en orden `internal_id, document_number, full_name`
+- MIME types: `application/pdf`, `text/csv`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- PDF: upsert por `document_number`; `internal_id` = documento; `roster_position` = columna `No.`
+- CSV/XLSX: columnas `internal_id, document_number, full_name`; rechaza fórmulas (`=`, `+`, `-`, `@`, `|`, `%`)
 
 **Response 200**:
 ```json
-{ "imported": 31 }
+{
+  "module_id": 12,
+  "imported": 31,
+  "updated": 0,
+  "skipped": 0,
+  "errors": [],
+  "warnings": [],
+  "students": [{ "internal_id": "1042856266", "full_name": "…", "action": "created" }]
+}
 ```
 
 **Errores**: `413` archivo > 2 MB | `415` tipo MIME no permitido | `422` campo inválido o fórmula detectada

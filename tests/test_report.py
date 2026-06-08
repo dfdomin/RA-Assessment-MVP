@@ -166,13 +166,13 @@ async def report_client():
                     ),
                     PILevel(
                         perf_indicator_id=pi.id,
-                        level_value=3,
+                        level_value=4,
                         label="Adequate",
                         descriptor="Adecuado",
                     ),
                     PILevel(
                         perf_indicator_id=pi.id,
-                        level_value=4,
+                        level_value=5,
                         label="Exemplary",
                         descriptor="Excelente",
                     ),
@@ -214,8 +214,8 @@ async def report_client():
 
         db.add_all(
             [
-                Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi1.id, level=4),
-                Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi1.id, level=3),
+                Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi1.id, level=5),
+                Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi1.id, level=4),
                 Assessment(module_student_id=module_students[0].id, perf_indicator_id=pi2.id, level=2),
                 Assessment(module_student_id=module_students[1].id, perf_indicator_id=pi2.id, level=2),
                 ModuleAssignment(module_id=module.id, user_id=teacher.id),

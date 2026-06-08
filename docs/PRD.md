@@ -1,6 +1,8 @@
 # PRD — RA Assessment App
-**Version**: 2.4
+**Version**: 2.6
 **Fecha**: 2026-06-07
+**Changelog v2.6**: Wizard docente de **4 pasos** (eliminado paso «Distribución»). La tabla F04b (% primario, conteo entre paréntesis) queda **siempre visible** en el paso **Análisis** junto a los campos de texto por PI (ADR-0001, decisión grill #14). F04b sigue calculándose en tiempo real; el docente la ve al escribir el análisis, como pedía F04.
+**Changelog v2.5**: UX F03 (ADR-0001): **panel de rúbrica fija**; **lote de calificación** de hasta 5 **activos**; progreso `Estudiantes calificados: X de Y`; botón **«Calificar más estudiantes»**; auto-guardado debounced; escala **{1, 2, 4, 5}**; **aviso post-importación** en Pantalla 3 (exclusión = editar lista de evaluación para no asistentes). Ver `CONTEXT.md` y `docs/adr/0001-grading-ux-lotes-y-escala-1245.md`.
 **Changelog v2.4**: Jerarquía institucional de tres niveles documentada a partir del mapeo real `MODULOS 2025-2 POR RESULTADOS DE APRENDIZAJE.xlsx` (206 módulos, 2 líneas propedéuticas, 5 programas, 27 combinaciones programa×RA, 11 líderes consolidadores). Rol **Administrador** redefinido como **Líder de Medición** (consolida informes ejecutivos por línea; no califica). Rol **Líder** redefinido como **Líder consolidador de RA** (una persona distinta por combinación programa×RA). Módulos multi-RA: un mismo curso puede contribuir a varios RAs en el mismo cuatrimestre; cada RA genera un envío independiente hacia su líder asignado; el enrutamiento al líder es **automático y transparente** para el docente. Dominio institucional de correo: **`@unibarranquilla.edu.co`** (único válido para login, recuperación de contraseña, `mailto:` y contacto con líder). Campo canónico: `public.users.email` (sincronizado con `auth.users.email`). UX docente (F05): desde el **paso 1 (Información general)** mostrar líder consolidador del RA + correo; repetir en paso Enviar con sugerencia de notificación por correo. Ciclo de medición = un cuatrimestre académico (ej. `2025-2`); el archivo de mapeo siempre corresponde a un solo cuatrimestre. Pendiente de propagar a `DATA_MODEL.md`, `ROLE_PERMISSION_MATRIX.md`, `API_CONTRACT.md`, `MIGRATION_PLAN.md` (ver `memory/NEXT_STEPS.md` H-05).
 **Changelog v2.3**: Incorporación de F17 (Reporte Ejecutivo por Línea Propedéutica — institucional). Enmienda de §12: múltiples programas pasan de "fuera de alcance v1" a "estructura de datos modelada en v1, UI multi-programa en v2". Decisión arquitectónica tomada tras LLM Council (2026-05-16): no se crea rol `dean` en v1; el reporte institucional es exportable por Admin/Líder.
 **Changelog v2.2**: Incorporación de requerimientos de la Guía de Usabilidad y Estilos IUB (DG-TSI-09-V4) como sección #18. Actualizaciones menores en secciones #9, #11, #13 y #14 para alineación.
@@ -147,14 +149,16 @@ Ejemplo: si un módulo mide RA1 (líder Marta) y RA5 (líder Indira), el docente
 
 En el Excel original, la calificacion era un valor numerico continuo (1.0–5.0) mapeado a cuatro niveles. **En la app, el docente selecciona el nivel directamente** — no ingresa un numero. Los rangos del Excel se preservan como referencia para el calculo del Total Score y el Standard:
 
-| Nivel (EN) | Nivel (ES) | Valor interno | Rango equivalente Excel | Estandar | Tipo de accion |
-|---|---|---|---|---|---|
-| Poor | Deficiente | 1 | 1.0 – 2.0 | Low | Acciones correctivas |
-| Inadequate | Insuficiente | 2 | 2.1 – 3.0 | — | Acciones preventivas |
-| Adequate | Bueno | 3 | 3.1 – 4.0 | Medium | Acciones preventivas |
-| Exemplary | Sobresaliente | 4 | 4.1 – 5.0 | High | Planes de mejora/mantenimiento |
+| Nivel (EN) | Nivel (ES) | Valor canónico | Interpretación corta (ABET) | Rango equivalente Excel | Estandar | Tipo de accion |
+|---|---|---|---|---|---|---|
+| Poor | Deficiente | **1** | No | 1.0 – 2.0 | Low | Acciones correctivas |
+| Inadequate | Insuficiente | **2** | Sí, pero | 2.1 – 3.0 | — | Acciones preventivas |
+| Adequate | Bueno | **4** | Sí | 3.1 – 4.0 | Medium | Acciones preventivas |
+| Exemplary | Sobresaliente | **5** | Sí, aún más | 4.1 – 5.0 | High | Planes de mejora/mantenimiento |
 
-El Total Score de un estudiante = suma (valor_interno_nivel_PI x peso_PI). El Standard del estudiante se deriva del Total Score usando los rangos de la columna "Rango equivalente Excel" como umbrales de corte.
+**No existe el valor 3** en la escala ABET de la IUB (el Excel solo distingue enteros {1, 2, 4, 5}).
+
+El Total Score de un estudiante = suma de contribuciones por PI: `pi_percentage = level × pi_weight / 5` (máximo 100 si todos los PIs activos son Exemplary). El Standard del estudiante se deriva del Total Score usando los rangos de la columna "Rango equivalente Excel" como umbrales de corte.
 
 > Fuente: hoja `Conversion` de `Data_Assessment_TGA_RA1_2024-2.xlsm`
 
@@ -225,22 +229,36 @@ Cada fila (estudiante) en el Excel tiene tres campos de identidad:
 
 La hoja `STUDENTS LIST` (A2:C38) es la fuente maestra de estudiantes del periodo; la hoja de evaluacion la referencia. En la app, esta separacion se mantiene como "lista de estudiantes del modulo" cargada antes de calificar.
 
-#### 3b. Escala de calificacion: selector directo de nivel (4 opciones discretas)
+#### 3b. Escala de calificacion: selector directo de nivel (4 opciones discretas, valores {1, 2, 4, 5})
 
-El docente **no ingresa un numero**. Selecciona directamente uno de los cuatro niveles de la rubrica ABET para cada estudiante por PI. Esto es intencional: el proposito del assessment no es trasladar una nota de otra actividad sino que el docente evalue el desempeno del estudiante contra los descriptores de la rubrica — un ejercicio de reflexion y autoevaluacion del programa, no de calificacion.
+El docente **no ingresa un numero libre**. Selecciona uno de los cuatro niveles ABET para cada estudiante por criterio de desempeño. El valor guardado en BD es el **valor canónico** de la tabla anterior (**1, 2, 4 o 5**); el valor **3 no existe**.
 
-| Nivel | Espanol | Valor interno | Accion derivada |
+| Nivel | Espanol | Valor canónico | Etiqueta de selector (zona inferior) |
 |---|---|---|---|
-| Poor | Deficiente | 1 | Acciones correctivas |
-| Inadequate | Insuficiente | 2 | Acciones preventivas |
-| Adequate | Bueno | 3 | Acciones preventivas |
-| Exemplary | Sobresaliente | 4 | Planes de mejora / mantenimiento |
+| Poor | Deficiente | 1 | `Deficiente — No (1)` |
+| Inadequate | Insuficiente | 2 | `Insuficiente — Sí, pero (2)` |
+| Adequate | Bueno | 4 | `Bueno — Sí (4)` |
+| Exemplary | Sobresaliente | 5 | `Sobresaliente — Sí, aún más (5)` |
 
-**Valores intermedios o decimales no existen.** El sistema solo acepta una de las cuatro opciones. El valor interno (1–4) se usa exclusivamente para el calculo ponderado del Total Score; el docente nunca lo ve.
+**Valores intermedios o decimales no existen.** El sistema rechaza `level = 3` con `422`.
 
-**UI de seleccion:** radio buttons o segmented control horizontal con los cuatro niveles etiquetados. Al seleccionar un nivel, el descriptor completo de ese nivel para ese PI aparece como tooltip o panel expandible para que el docente pueda confirmar que su seleccion corresponde al descriptor correcto de la rubrica.
+#### 3b-1. UX de calificacion: panel de rubrica fija + lotes de estudiantes (ADR-0001)
 
-> **Origen**: analisis de `Data_Assessment_TGA_RA1_2024-2.xlsm` confirma que la formula de nivel (`IF(score<2,"Poor", IF(score<=3,"Inadequate"...))`) solo produce resultados distintos para enteros {1, 2, 4, 5} en escala 1–5. La app consolida esto en 4 niveles discretos directamente seleccionables, eliminando la ambiguedad de que 2 y 3 produjeran el mismo nivel ABET.
+**Panel de rubrica fija (zona superior, sticky):** muestra la **rubrica vigente** del RA medido — descripcion del RA, cada criterio de desempeño (PI) y los **cuatro descriptores largos** por nivel, con columnas alineadas al Excel (`Poor / 1 / No`, etc.). Permanece visible mientras el docente califica.
+
+**Lote de calificacion (zona inferior):** hasta **cinco** estudiantes activos del modulo, en **orden de lista del módulo**. Una fila por estudiante; selectores compactos por PI con **etiqueta de selector** (texto corto + numero). El ultimo lote puede tener **menos de cinco** estudiantes.
+
+**Progreso:** contador obligatorio `Estudiantes calificados: X de Y`.
+
+**Avance de lote:** cuando todos los estudiantes del lote tienen todos los PIs activos calificados, aparece mensaje de lote completo y el boton **«Calificar más estudiantes»** (no usar «siguiente grupo» — confunde con el grupo del curso). El docente confirma antes de ver el siguiente lote.
+
+**Persistencia:** auto-guardado **debounced** (~1 s sin cambios) con `upsert` en batch a PostgreSQL; **flush** al pulsar «Calificar más estudiantes». No hay boton «Guardar calificaciones» separado.
+
+**Desbordamiento de rubrica (1024×768):** **Modo A (defecto):** panel superior con scroll interno. **Modo B (respaldo):** pestañas por criterio; toggle manual «Vista completa» / «Vista por criterio»; auto-cambio a B si el panel A desborda tras renderizar.
+
+**Cierre de calificacion:** cuando todos los activos estan calificados, mensaje de confirmacion y boton **«Continuar al analisis cualitativo»** (paso Analisis del wizard); el docente confirma, no hay avance automatico.
+
+> **Origen**: hoja `EF_ASESSM_SO_GENERIC` y rúbricas RA1–RA5 en `Data_Assessment_TGA_RA1_2024-2.xlsm`; escala {1, 2, 4, 5} confirmada en grill de dominio 2026-06-07.
 
 #### 3c. Estructura de columnas por PI (hoja `EF_ASESSM_SO_GENERIC`)
 
@@ -271,7 +289,18 @@ Cada PI tiene un peso porcentual (almacenado en fila 12: J12, M12, P12, S12, V12
 
 Para poder enviar el modulo, **todos los estudiantes en estado activo deben tener los PIs activos calificados**. La completitud es total — no es suficiente con que haya al menos 1 estudiante calificado.
 
-Si un estudiante no debe ser evaluado en el periodo (se retiro, nunca asistio, incapacidad), el docente no lo elimina — lo **excluye con motivo documentado**:
+La matricula importada puede incluir estudiantes que **nunca asistieron** o **dejaron de asistir** al modulo. El docente **no los elimina** del sistema: los **excluye de la evaluacion** con motivo documentado. Eso equivale a **editar la lista de evaluacion** del modulo (quien si sera calificado para este RA).
+
+Tras cada importacion o confirmacion de nomina (Pantalla 3), el sistema muestra un **aviso post-importacion** (dialog o panel destacado, dismissible):
+
+```
+Revise su lista de estudiantes antes de calificar.
+Si hay matriculados que nunca asistieron o dejaron de asistir a este modulo,
+excluyalos de la evaluacion usando el menu de cada fila. No es necesario
+calificarlos ni borrarlos del sistema.
+```
+
+Si un estudiante no debe ser evaluado en el periodo (se retiro, nunca asistio, incapacidad), el docente lo **excluye con motivo documentado**:
 
 ```
 Accion en la fila del estudiante: [ ... ] → "Excluir del assessment"
@@ -293,8 +322,11 @@ Modal de confirmacion:
 - El estudiante excluido no desaparece de la lista; queda en una seccion colapsada "Excluidos (N)" visible en la pantalla
 - El motivo queda registrado en la BD y aparece en el reporte del modulo (trazabilidad para ABET)
 - El docente puede re-incluir un estudiante excluido por error hasta antes del envio
-- El indicador de progreso: `Activos: 31 | Calificados: 28 | Pendientes: 3 | Excluidos: 2`
-- El boton "Confirmar y Enviar" solo se habilita cuando Activos = Calificados (cero pendientes)
+- La exclusion y re-inclusion estan disponibles en **Pantalla 3** y durante la calificacion mediante el enlace **«Editar lista de evaluacion»** en Pantalla 4 (sin perder borradores del lote en curso)
+- Si se excluye a un estudiante ya calificado, las calificaciones **permanecen en BD** pero **no cuentan** para completitud ni reportes hasta re-inclusion
+- El indicador de progreso en Pantalla 3: `Activos: 31 | Excluidos: 2 | Total matricula: 33`; en Pantalla 4 (lotes): `Estudiantes calificados: X de Y` (Y = solo activos)
+- Los **excluidos no entran en los lotes de calificacion** (ADR-0001); aparecen en seccion colapsada «Excluidos (N)» en Pantalla 3 y no en la zona de lote de cinco
+- El boton "Confirmar y Enviar" solo se habilita cuando Activos = Calificados (cero pendientes entre activos)
 
 #### 3f. Otros criterios de aceptacion
 
@@ -358,7 +390,7 @@ PI 4 | 0%  (0)   | 6%   (2)   | 71%  (22)  | 26%  (8)   |
 ```
 
 Esta vista existe en dos contextos:
-- Para el **docente**: visible en tiempo real durante la calificacion y como confirmacion antes del envio
+- Para el **docente**: tabla completa F04b **fija en el paso Análisis** del wizard (arriba del formulario por PI), visible mientras escribe; se actualiza en tiempo real al volver desde Calificaciones
 - Para el **lider**: detalle por modulo accesible desde el dashboard (ABET puede solicitar resultados a nivel de modulo individual, no solo el consolidado)
 
 **Criterios de aceptacion:**
@@ -377,8 +409,10 @@ Para el lider consolidador: vista de los modulos de su programa×RA con estado d
 Para el docente: interfaz en pasos (stepper), **una instancia por cada RA** que el modulo debe medir en el cuatrimestre:
 
 ```
-[ Info General ] → [ Calificaciones ] → [ Distribucion ] → [ Analisis ] → [ Enviar ]
+[ Info General ] → [ Calificaciones ] → [ Analisis (+ F04b) ] → [ Enviar ]
 ```
+
+El paso **Análisis** integra la tabla de distribución (F04b) y los campos de texto cualitativo (F04). No hay paso separado «Distribución».
 
 **Paso Info General (docente):** ademas del curso y grupo, muestra **el RA de esta sesion**, el **lider consolidador** (nombre + correo `@unibarranquilla.edu.co` desde `users.email`) y nota de contacto para inquietudes. Si el modulo es multi-RA, el dashboard lista entradas separadas ("Calificar RA3", "Calificar RA5", etc.).
 
@@ -1013,7 +1047,7 @@ perf_indicators  -- PIs de cada rubrica (hasta 15 por SO)
                  -- Origen: columnas J12/M12/P12/S12/V12/Y12 de EF_ASESSM_SO_GENERIC
 
 pi_levels        -- Descriptores de los 4 niveles por PI (Poor/Inadequate/Adequate/Exemplary)
-                 -- Incluye: nivel (1-4), etiqueta, descripcion del desempeno esperado
+                 -- Incluye: nivel (1,2,4,5), etiqueta, descripcion del desempeno esperado
 
 level_thresholds -- Umbrales de corte score→nivel por rubrica (configurables por el lider)
                  -- Origen: RUBRIC sheet ($I$6,$I$7,$I$8) y hoja Conversion
@@ -1032,7 +1066,7 @@ students         -- Estudiantes (ID interno, N documento, nombre completo)
                  -- Origen: hoja STUDENTS LIST columnas A-C de Data_Assessment
 module_students  -- Estudiantes matriculados en un modulo especifico
 
-assessments      -- Calificacion: module_student x perf_indicator → level INTEGER 1-4
+assessments      -- Calificacion: module_student x perf_indicator → level INTEGER IN (1,2,4,5)
                  -- 1=Poor, 2=Inadequate, 3=Adequate, 4=Exemplary (seleccion directa, sin decimales)
                  -- Campos calculados por la API (no en DB): pi_percentage, total_score, standard
                  -- Origen: celdas I/L/O/R/U/X (filas 15-81) de EF_ASESSM_SO_GENERIC
@@ -1445,6 +1479,10 @@ El docente carga o confirma la lista de estudiantes de su modulo.
 - **Importar desde lista del periodo**: si el administrador cargo la nomina previamente (via F15)
 - **Agregar manualmente**: fila por fila
 
+**Aviso post-importacion (obligatorio):** al terminar una carga exitosa (o al abrir Pantalla 3 con nomina ya precargada por admin), mostrar el mensaje de revision y exclusion descrito en F03 §3e. El docente debe poder cerrar el aviso y continuar editando la lista.
+
+**Editar lista de evaluacion = excluir / re-incluir:** la exclusion no borra al estudiante; ajusta quienes seran calificados. Caso tipico: matriculado en el modulo que nunca asistio o dejo de asistir.
+
 **Accion de exclusion por estudiante:**
 
 Cada fila tiene un menu contextual `[ ... ]` con la opcion "Excluir del assessment". Al activarla:
@@ -1463,6 +1501,8 @@ Activos: 31  |  Calificados: 0  |  Excluidos: 2      Total matricula: 33
 ▸ Excluidos (2)
 ```
 
+**Enlace desde Pantalla 4 (calificacion):** `Editar lista de evaluacion` abre Pantalla 3 en el mismo wizard; al regresar, el docente continua en el **mismo lote** con el progreso guardado.
+
 **Validaciones:**
 - El numero de documento debe ser unico dentro del modulo
 - No se puede avanzar con 0 estudiantes activos
@@ -1470,7 +1510,11 @@ Activos: 31  |  Calificados: 0  |  Excluidos: 2      Total matricula: 33
 
 ---
 
-### Pantalla 3b: Revision de la Rubrica (paso obligatorio antes de calificar)
+### ~~Pantalla 3b: Revision de la Rubrica~~ (eliminada en v2.5 — ADR-0001)
+
+> **Obsoleta:** el **panel de rubrica fija** en Pantalla 4 reemplaza este paso. No hay duplicacion «leer rúbrica → luego calificar».
+
+### Pantalla 3b (referencia historica — no implementar)
 
 Antes de acceder a la grilla de calificacion, el docente ve la rubrica completa del periodo.
 
@@ -1508,27 +1552,36 @@ SO/RA: Aplicar principios de contabilidad, economia, finanzas...
 
 ### Pantalla 4: Ingreso de Calificaciones (F03 — Parte B)
 
-Vista de grilla: filas = estudiantes activos, columnas = selector de nivel por PI activo.
+Dos zonas verticales (ADR-0001):
+
+**Zona A — Panel de rubrica fija (sticky):** matriz como el Excel del RA medido — descripcion del RA, filas por criterio de desempeño, columnas `Poor/1/No`, `Inadequate/2/Si pero`, `Adequate/4/Si`, `Exemplary/5/Si aun mas` con descriptores largos en cada celda.
+
+**Zona B — Lote de calificacion:** hasta 5 estudiantes activos (orden de lista del modulo). Contador `Estudiantes calificados: X de Y`.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ Contabilidad I — Grupo A          Activos: 31 | Calificados: 28 | Pend.: 3  │
-├──────────────────┬────────────────┬────────────────┬──────────────┬──────────┤
-│ Estudiante       │      PI1       │      PI2       │     PI3      │ Standard │
-│                  │     (30%)      │     (40%)      │    (15%)     │          │
-├──────────────────┼────────────────┼────────────────┼──────────────┼──────────┤
-│ Garcia, Maria    │ P  I  [A] E    │ P  I  [A] E    │ P [I] A  E   │ Medium   │
-│ Lopez, Juan      │ P  I   A [E]   │ P  I  [A] E    │ P  I  [A] E  │ High     │
-│ Martinez, Ana    │ —  —   —  —    │ —  —   —  —    │ —  —   —  —  │ —        │
-│ ...              │                │                │              │          │
-├──────────────────┼────────────────┼────────────────┼──────────────┼──────────┤
-│ ► Excluidos (2)  │                │                │              │          │
-└──────────────────┴────────────────┴────────────────┴──────────────┴──────────┘
-  P = Poor  I = Inadequate  A = Adequate  E = Exemplary   [ ] = seleccionado
+│ RA5 — Liderar los miembros de los diferentes procesos…        [rubrica fija]│
+│ ┌ Criterio 1 ──┬ % ┬ Poor/1/No ──────────┬ Inad./2 ──┬ Adeq./4 ──┬ Exc./5 ─┐ │
+│ │ Explicar su… │   │ No explica su…      │ Explica…  │ Explica…  │ Explica…│ │
+│ └ … (todos los criterios activos del RA) ───────────────────────────────────┘ │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ ADM17 · Grupo 1_CE_G1     Estudiantes calificados: 10 de 31    [Guardado ✓] │
+├──────────────────┬────────────────┬────────────────┬──────────────────────────┤
+│ Estudiante       │ PI1 (30%)      │ PI2 (40%)      │ PI3 (15%)                │
+├──────────────────┼────────────────┼────────────────┼──────────────────────────┤
+│ Garcia, Maria    │ [selectores]   │ [selectores]   │ [selectores]             │
+│ Lopez, Juan      │ …              │ …              │ …                        │
+│ … (max 5 filas)  │                │                │                          │
+├──────────────────┴────────────────┴────────────────┴──────────────────────────┤
+│ Lote 2 de 7 · Estudiantes calificados: 10 de 31                                │
+│ [ Lote anterior ]  Lote completo. Quedan 21 por calificar.  [ Calificar más estudiantes ] [ Lote siguiente ] │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Navegacion entre lotes:** el docente puede usar **Lote anterior** / **Lote siguiente** para revisar o corregir lotes ya visitados. **Calificar mas estudiantes** desbloquea el siguiente lote aun no mostrado cuando el lote actual esta completo.
+
 **Comportamiento del selector de nivel (por celda):**
-- 4 opciones en linea: `Poor | Inadequate | Adequate | Exemplary`
+- 4 opciones con **etiqueta de selector**: `Deficiente — No (1)` … `Sobresaliente — Sí, aún más (5)`
 - Se selecciona con un clic; la opcion activa queda resaltada
 - Al hacer hover sobre cualquier opcion, se muestra en un tooltip el descriptor completo de ese nivel para ese PI segun la rubrica
 - Al seleccionar, el sistema recalcula en tiempo real el Standard del estudiante
@@ -1537,44 +1590,35 @@ Vista de grilla: filas = estudiantes activos, columnas = selector de nivel por P
 
 ---
 
-### Pantalla 5: Distribucion del Modulo (F04b)
+### Pantalla 5: Distribucion y Analisis Cualitativo (F04b + F04 — wizard paso 3)
 
 ```
-Distribucion de niveles — Contabilidad I, Grupo A
-Matricula total: 33 | Activos: 31 | Excluidos: 2
+Distribucion y analisis cualitativo — Contabilidad I, Grupo A
+31 estudiantes activos (F04b). Porcentaje primario, conteo entre parentesis.
 
-┌─────┬──────┬────────────┬──────────┬───────────┬─────────────────┐
-│ PI  │ Poor │ Inadequate │ Adequate │ Exemplary │ Total (activos) │
-├─────┼──────┼────────────┼──────────┼───────────┼─────────────────┤
-│ PI1 │  2   │     5      │   18     │     6     │       31        │
-│ PI2 │  1   │     3      │   20     │     7     │       31        │
-│ PI3 │  3   │     7      │   15     │     6     │       31        │
-│ PI4 │  0   │     2      │   22     │     7     │       31        │
-└─────┴──────┴────────────┴──────────┴───────────┴─────────────────┘
-```
+┌─────┬────────────┬─────────────┬────────────┬─────────────┐
+│ PI  │ Poor       │ Inadequate  │ Adequate   │ Exemplary   │
+├─────┼────────────┼─────────────┼────────────┼─────────────┤
+│ PI1 │  6%  (2)   │  16%  (5)   │  58% (18)  │  26%  (8)   │
+│ PI2 │  3%  (1)   │  10%  (3)   │  64% (20)  │  29%  (9)   │
+└─────┴────────────┴─────────────┴────────────┴─────────────┘
 
-Se calcula en tiempo real. El total siempre refleja estudiantes activos unicamente.
-
----
-
-### Pantalla 6: Analisis Cualitativo por PI (F04)
-
-```
 PI1 — [Descripcion del PI del RA]
-Distribucion: Poor: 2 | Inadequate: 5 | Adequate: 18 | Exemplary: 8
+Distribucion: Poor: 6% (2) · Inadequate: 16% (5) · Adequate: 58% (18) · Exemplary: 26% (8)
 
 ┌─────────────────────────────────────────────────────┐
-│ Escriba su analisis de los resultados del PI1...    │
-│                                                     │
+│ Indique el analisis de los resultados encontrados... │
 │                                              0/2000 │
 └─────────────────────────────────────────────────────┘
 ```
+
+La tabla F04b (equivalente a filas 53–62 del Excel) es **obligatoria** en esta pantalla. Se calcula en tiempo real; el denominador son estudiantes activos.
 
 **Validacion de envio:** todos los campos de analisis de PIs con datos deben tener al menos 1 caracter para poder marcar el modulo como "Completado".
 
 ---
 
-### Pantalla 7: Confirmacion y Envio (F05 — paso final)
+### Pantalla 6: Confirmacion y Envio (F05 — paso final)
 
 ```
 Resumen del modulo: Contabilidad I — Grupo A
@@ -2189,7 +2233,7 @@ Criterios de aceptación verificables derivados de la sección 4.2 de la Guía:
 #### 18.3.4 Sin desplazamiento horizontal (Guía §4.2.4)
 
 - A resolución de **1024×768 px** ninguna pantalla de la app genera una barra de desplazamiento horizontal.
-- La grilla de calificaciones (Pantalla 4, F03) — que puede tener hasta 15 columnas de PI — implementa scroll horizontal **dentro del contenedor de la tabla**, no en el viewport. El resto de la interfaz (header, breadcrumb, controles de estado) permanece fijo.
+- Pantalla 4 (F03, ADR-0001): a **1024×768 px** el lote de 5 estudiantes y controles no generan scroll de **página**. La rúbrica usa **modo A** (scroll interno en panel fijo) o **modo B** (pestañas por criterio); ambos en `assessment.html` / `module_assessment.js`.
 - Verificación: prueba manual en Chrome DevTools con viewport 1024×768 px en cada pantalla antes de pasar a producción.
 
 #### 18.3.5 Vínculo del logo a la página de inicio (Guía §4.2.5)
@@ -2298,7 +2342,7 @@ Criterios de aceptación derivados de la sección 4.4 de la Guía:
 
 | Acción | Mecanismo de confirmación |
 |---|---|
-| Enviar módulo (F05) | Dialog de confirmación con resumen del módulo antes del submit (Pantalla 7, §13) |
+| Enviar módulo (F05) | Dialog de confirmación con resumen del módulo antes del submit (Pantalla 6, §13) |
 | Cerrar período (F06) | Dialog de confirmación con lista de módulos pendientes si los hay |
 | Excluir estudiante del assessment (F03) | Dialog de confirmación con selección de motivo (Pantalla 3, §13) |
 | Descargar PDF del reporte ABET (F07) | Mensaje de confirmación inline: "El reporte fue generado exitosamente. [Descargar PDF]" |
@@ -2368,7 +2412,7 @@ Checklist de todas las directrices de las secciones 4.1–4.4 de la Guía DG-TSI
 | **4.4 — Contenido** | | |
 | Títulos y encabezados claros y semánticos (§4.4.1) | ✅ Cubierta | §18.5.1 |
 | Sin vínculos rotos (§4.4.2) | ✅ Cubierta | §18.5.2 |
-| Páginas / mensajes de confirmación (§4.4.3) | ✅ Cubierta | §18.5.3 y §13 (Pantalla 7) |
+| Páginas / mensajes de confirmación (§4.4.3) | ✅ Cubierta | §18.5.3 y §13 (Pantalla 6) |
 | **3.2 — Estilo visual** | | |
 | Colores institucionales primarios y complementarios (§3.2.2) | ✅ Cubierta | §18.2.1 y §9 |
 | Tipografía permitida (§3.2.3) | ✅ Cubierta | §18.2.2 y §9 |
