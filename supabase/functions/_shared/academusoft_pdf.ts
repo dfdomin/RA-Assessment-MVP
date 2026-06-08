@@ -64,11 +64,13 @@ function normalizeToken(value: string): string {
 
 async function extractPdfText(content: Uint8Array): Promise<string> {
   const pdf = await getDocumentProxy(content);
-  const { text } = await extractText(pdf, { mergePages: true });
-  if (!text || !text.trim()) {
+  // mergePages:true collapses Academusoft PDFs into one line; keep per-page breaks
+  const { text } = await extractText(pdf, { mergePages: false });
+  const merged = Array.isArray(text) ? text.join("\n") : (text ?? "");
+  if (!merged.trim()) {
     throw new AcademusoftPdfError("PDF vacío o sin texto extraíble");
   }
-  return text;
+  return merged;
 }
 
 function isFooterLine(line: string): boolean {
