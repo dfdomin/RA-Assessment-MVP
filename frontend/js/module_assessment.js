@@ -115,7 +115,7 @@
   }
 
   function buildSelectorLabel(level) {
-    return level.labelEs + " — " + level.shortAbet + " (" + level.value + ")";
+    return level.labelEs + " (" + level.value + ")";
   }
 
   function buildLevelSelectOptions() {

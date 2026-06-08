@@ -269,7 +269,7 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(30, 40, 67, 0.15);
 }
 
-/* Selectores de nivel: etiqueta completa visible (Deficiente — No (1), etc.) */
+/* Selectores de nivel: nombre + valor (Deficiente (1), etc.) */
 .assessment-table .level-select {
   width: 100%;
   min-width: 10.5rem;
