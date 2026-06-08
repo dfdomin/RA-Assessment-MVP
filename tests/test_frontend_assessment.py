@@ -34,7 +34,10 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="roster-manual-toggle"' in html
     assert 'id="roster-manual-block"' in html
     assert "¿Necesita agregar estudiantes de forma manual?" in html
-    assert 'id="roster-post-import-dialog"' in html
+    assert 'id="roster-table-hint"' in html
+    assert 'id="roster-table-wrap"' in html
+    assert 'id="roster-import-notice"' in html
+    assert "Excluir" in html
     assert 'id="save-qualitative-btn"' in html
     assert 'id="submit-module-btn"' in html
     assert "./js/module_assessment.js" in html
@@ -98,6 +101,8 @@ def test_assessment_js_roster_import_and_manual_add():
     assert "canEnterStep" in js
     assert "roster-manual-toggle" in js
     assert "rosterManualBlock" in js
+    assert "showRosterNotice" in js
+    assert "roster-table-wrap" in js
 
 
 def test_assessment_shows_leader_contact_on_general_and_submit():

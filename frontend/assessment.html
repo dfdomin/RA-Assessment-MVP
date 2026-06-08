@@ -125,7 +125,7 @@
             <input type="checkbox" id="roster-consent-checkbox" />
             Autorizo el tratamiento de datos personales de los estudiantes conforme a la Ley 1581 de 2012.
           </label>
-          <button id="roster-confirm-btn" class="btn-primary compact-btn" type="button" disabled>Confirmar importación</button>
+          <button id="roster-confirm-btn" class="btn-primary roster-confirm-btn" type="button" disabled>Confirmar importación</button>
         </div>
       </div>
 
@@ -143,7 +143,11 @@
       </div>
 
       <p id="roster-stats" class="roster-stats muted" aria-live="polite">Cargando lista…</p>
-      <div class="table-wrap">
+      <p id="roster-table-hint" class="roster-table-hint muted">
+        Use <strong>Excluir</strong> para quitar de la evaluación a quien se retiró del módulo, no asistió o no pertenece al grupo.
+        El estudiante no se elimina del sistema; puede reactivarlo después si fue un error.
+      </p>
+      <div id="roster-table-wrap" class="roster-table-wrap table-wrap">
         <table class="modules-table roster-table">
           <thead>
             <tr>
@@ -158,6 +162,10 @@
             <tr><td colspan="5">Cargando estudiantes…</td></tr>
           </tbody>
         </table>
+      </div>
+      <div id="roster-import-notice" class="roster-import-notice" hidden role="status" aria-live="polite">
+        <p id="roster-import-notice-message"></p>
+        <button id="roster-import-notice-dismiss" class="btn-secondary compact" type="button">Entendido</button>
       </div>
     </section>
 
@@ -263,12 +271,6 @@
         Siguiente
       </button>
     </div>
-
-    <dialog id="roster-post-import-dialog" class="ra-dialog">
-      <h3>Lista de estudiantes</h3>
-      <p id="roster-post-import-message"></p>
-      <button id="roster-post-import-close" class="btn-primary compact-btn" type="button">Entendido</button>
-    </dialog>
 
     <dialog id="roster-exclude-dialog" class="ra-dialog">
       <form method="dialog" id="roster-exclude-form">

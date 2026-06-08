@@ -59,9 +59,10 @@
   var rosterManualDoc = document.getElementById("roster-manual-doc");
   var rosterManualName = document.getElementById("roster-manual-name");
   var rosterManualAddBtn = document.getElementById("roster-manual-add-btn");
-  var rosterPostImportDialog = document.getElementById("roster-post-import-dialog");
-  var rosterPostImportClose = document.getElementById("roster-post-import-close");
-  var rosterPostImportMessage = document.getElementById("roster-post-import-message");
+  var rosterTableWrap = document.getElementById("roster-table-wrap");
+  var rosterImportNotice = document.getElementById("roster-import-notice");
+  var rosterImportNoticeMessage = document.getElementById("roster-import-notice-message");
+  var rosterImportNoticeDismiss = document.getElementById("roster-import-notice-dismiss");
   var rosterExcludeDialog = document.getElementById("roster-exclude-dialog");
   var rosterExcludeForm = document.getElementById("roster-exclude-form");
   var rosterExcludeStudentName = document.getElementById("roster-exclude-student-name");
@@ -224,18 +225,28 @@
     return true;
   }
 
-  function showPostImportDialog(message) {
-    if (!rosterPostImportDialog || !rosterPostImportMessage) return;
-    rosterPostImportMessage.textContent = message;
-    rosterPostImportDialog.showModal();
+  function showRosterNotice(message, kind) {
+    if (!rosterImportNotice || !rosterImportNoticeMessage) return;
+    rosterImportNoticeMessage.textContent = message;
+    rosterImportNotice.className = "roster-import-notice" + (kind ? " " + kind : "");
+    rosterImportNotice.hidden = false;
+    if (rosterTableWrap) rosterTableWrap.classList.add("is-compact");
+    rosterImportNotice.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function dismissRosterNotice(markSeen) {
+    if (markSeen) localStorage.setItem(rosterNoticeKey(), "1");
+    if (rosterImportNotice) rosterImportNotice.hidden = true;
+    if (rosterTableWrap) rosterTableWrap.classList.remove("is-compact");
   }
 
   function maybeShowFirstRosterNotice() {
     if (activeStudentCount <= 0) return;
     if (localStorage.getItem(rosterNoticeKey())) return;
-    showPostImportDialog(
+    showRosterNotice(
       "Este módulo ya tiene estudiantes en la lista. Revise la nómina antes de calificar. " +
-      "Si importa un PDF, los estudiantes activos que no aparezcan en el archivo deberán excluirse manualmente."
+      "Si importa un PDF, los estudiantes activos que no aparezcan en el archivo deberán excluirse manualmente.",
+      "info"
     );
   }
 
@@ -440,8 +451,7 @@
       if (result.warnings && result.warnings.length) {
         msg += " " + result.warnings.join(" ");
       }
-      showPostImportDialog(msg);
-      localStorage.setItem(rosterNoticeKey(), "1");
+      showRosterNotice(msg, (result.errors && result.errors.length) ? "error" : "success");
       setStatus(msg, (result.errors && result.errors.length) ? "error" : "success");
     } catch (e) {
       if (!isAuthError(e)) setStatus("Error al importar: " + (e.message || e), "error");
@@ -1093,10 +1103,9 @@
     rosterManualAddBtn.addEventListener("click", function () { addManualStudent(); });
   }
 
-  if (rosterPostImportClose && rosterPostImportDialog) {
-    rosterPostImportClose.addEventListener("click", function () {
-      localStorage.setItem(rosterNoticeKey(), "1");
-      rosterPostImportDialog.close();
+  if (rosterImportNoticeDismiss) {
+    rosterImportNoticeDismiss.addEventListener("click", function () {
+      dismissRosterNotice(true);
     });
   }
 
