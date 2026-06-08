@@ -54,6 +54,8 @@
   var rosterPreviewWarnings = document.getElementById("roster-preview-warnings");
   var rosterConsentCheckbox = document.getElementById("roster-consent-checkbox");
   var rosterConfirmBtn = document.getElementById("roster-confirm-btn");
+  var rosterManualToggle = document.getElementById("roster-manual-toggle");
+  var rosterManualBlock = document.getElementById("roster-manual-block");
   var rosterManualDoc = document.getElementById("roster-manual-doc");
   var rosterManualName = document.getElementById("roster-manual-name");
   var rosterManualAddBtn = document.getElementById("roster-manual-add-btn");
@@ -425,12 +427,22 @@
       if (rosterPdfInput) rosterPdfInput.value = "";
       if (rosterPreviewBtn) rosterPreviewBtn.disabled = true;
       var msg = "Importación completada: " + (result.imported || 0) + " nuevos, " + (result.updated || 0) + " actualizados.";
+      if (result.skipped) {
+        msg += " " + result.skipped + " sin cambios.";
+      }
+      if (result.errors && result.errors.length) {
+        msg += " " + result.errors.length + " filas con error.";
+        var firstErr = result.errors[0];
+        if (firstErr && firstErr.error) {
+          msg += " Ejemplo (fila " + (firstErr.row || "?") + "): " + firstErr.error;
+        }
+      }
       if (result.warnings && result.warnings.length) {
         msg += " " + result.warnings.join(" ");
       }
       showPostImportDialog(msg);
       localStorage.setItem(rosterNoticeKey(), "1");
-      setStatus(msg, "success");
+      setStatus(msg, (result.errors && result.errors.length) ? "error" : "success");
     } catch (e) {
       if (!isAuthError(e)) setStatus("Error al importar: " + (e.message || e), "error");
     }
@@ -1069,6 +1081,12 @@
 
   if (rosterConfirmBtn) {
     rosterConfirmBtn.addEventListener("click", function () { handleRosterConfirm(); });
+  }
+
+  if (rosterManualToggle && rosterManualBlock) {
+    rosterManualToggle.addEventListener("change", function () {
+      rosterManualBlock.hidden = !rosterManualToggle.checked;
+    });
   }
 
   if (rosterManualAddBtn) {

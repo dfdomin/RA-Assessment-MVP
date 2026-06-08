@@ -129,7 +129,11 @@
         </div>
       </div>
 
-      <div class="roster-manual-block">
+      <label class="roster-manual-toggle">
+        <input type="checkbox" id="roster-manual-toggle" />
+        ¿Necesita agregar estudiantes de forma manual?
+      </label>
+      <div id="roster-manual-block" class="roster-manual-block" hidden>
         <h4>Alta manual</h4>
         <div class="roster-manual-controls">
           <input type="text" id="roster-manual-doc" placeholder="Número de documento" inputmode="numeric" autocomplete="off" />

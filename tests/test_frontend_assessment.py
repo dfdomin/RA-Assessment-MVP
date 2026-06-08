@@ -31,6 +31,9 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="roster-pdf-input"' in html
     assert 'id="roster-preview-btn"' in html
     assert 'id="roster-confirm-btn"' in html
+    assert 'id="roster-manual-toggle"' in html
+    assert 'id="roster-manual-block"' in html
+    assert "¿Necesita agregar estudiantes de forma manual?" in html
     assert 'id="roster-post-import-dialog"' in html
     assert 'id="save-qualitative-btn"' in html
     assert 'id="submit-module-btn"' in html
@@ -93,6 +96,8 @@ def test_assessment_js_roster_import_and_manual_add():
     assert "RaApi.studentsImportConfirm" in js
     assert "roster_position" in js
     assert "canEnterStep" in js
+    assert "roster-manual-toggle" in js
+    assert "rosterManualBlock" in js
 
 
 def test_assessment_shows_leader_contact_on_general_and_submit():
