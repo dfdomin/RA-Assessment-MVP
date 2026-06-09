@@ -15,6 +15,10 @@
   var wizardPanels = Array.from(document.querySelectorAll("[data-step-panel]"));
   var wizardNextBtn = document.getElementById("wizard-next-btn");
   var wizardPrevBtn = document.getElementById("wizard-prev-btn");
+  var wizardActions = document.getElementById("wizard-actions");
+  var gradingToolbarPanel = document.getElementById("grading-toolbar-panel");
+  var gradingToolbarToggle = document.getElementById("grading-toolbar-toggle");
+  var gradingViewport = document.querySelector(".grading-viewport");
   var summaryRa = document.getElementById("summary-ra");
   var summaryModule = document.getElementById("summary-module");
   var summaryLeader = document.getElementById("summary-leader");
@@ -641,9 +645,9 @@
       s.classList.toggle("active", s.dataset.stepTarget === stepTarget);
       s.setAttribute("aria-current", s.dataset.stepTarget === stepTarget ? "step" : "false");
     });
-    wizardNextBtn.hidden = currentStepIndex >= stepOrder.length - 1;
     wizardPrevBtn.hidden = currentStepIndex <= 0;
     updateWizardNavLabels();
+    updateWizardChrome();
     if (stepTarget === "roster") {
       renderRosterPanel();
       maybeShowFirstRosterNotice();
@@ -687,8 +691,12 @@
       currentStudentIndex = findFirstPendingStudentIndex();
       renderCaptureView();
       updateCaptureChrome();
+      setGradingToolbarCollapsed(true);
+    } else {
+      setGradingToolbarCollapsed(false);
     }
     updateWizardNavLabels();
+    updateWizardChrome();
   }
 
   function updateWizardNavLabels() {
@@ -699,6 +707,24 @@
       else wizardPrevBtn.textContent = "Anterior";
     } else {
       wizardPrevBtn.textContent = "Anterior";
+    }
+  }
+
+  function setGradingToolbarCollapsed(collapsed) {
+    if (!gradingToolbarPanel || !gradingToolbarToggle) return;
+    gradingToolbarPanel.classList.toggle("is-collapsed", collapsed);
+    gradingToolbarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    if (gradingViewport) {
+      var inCapture = stepOrder[currentStepIndex] === "grading" && gradingSubStep === "capture";
+      gradingViewport.classList.toggle("grading-viewport--focus", collapsed && inCapture);
+    }
+  }
+
+  function updateWizardChrome() {
+    var inCapture = stepOrder[currentStepIndex] === "grading" && gradingSubStep === "capture";
+    if (wizardActions) wizardActions.hidden = inCapture;
+    if (wizardNextBtn) {
+      wizardNextBtn.hidden = inCapture || currentStepIndex >= stepOrder.length - 1;
     }
   }
 
@@ -1420,6 +1446,13 @@
   gradingSubstepBtns.forEach(function (btn) {
     btn.addEventListener("click", function () { showGradingSubStep(btn.dataset.gradingSub); });
   });
+
+  if (gradingToolbarToggle) {
+    gradingToolbarToggle.addEventListener("click", function () {
+      var collapsed = !gradingToolbarPanel.classList.contains("is-collapsed");
+      setGradingToolbarCollapsed(collapsed);
+    });
+  }
 
   if (viewModePicker) {
     viewModePicker.addEventListener("change", function (e) {

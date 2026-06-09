@@ -877,6 +877,70 @@ select:focus {
   min-height: 1.1rem;
 }
 
+.grading-toolbar-zone {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.grading-toolbar-panel.is-collapsed {
+  display: none;
+}
+
+.grading-ribbon-toggle {
+  align-self: center;
+  width: 2.75rem;
+  height: 0.9rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 4px 4px;
+  background: #f8fafc;
+  color: var(--color-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.grading-ribbon-toggle:hover,
+.grading-ribbon-toggle:focus-visible {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  outline: none;
+}
+
+.grading-ribbon-toggle-chevron::before {
+  content: "▲";
+  font-size: 0.55rem;
+}
+
+.grading-ribbon-toggle[aria-expanded="false"] .grading-ribbon-toggle-chevron::before {
+  content: "▼";
+}
+
+.grading-viewport--focus .grading-capture-panel {
+  gap: 0.25rem;
+}
+
+.grading-viewport--focus .student-card-header {
+  padding-bottom: 0.2rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .grading-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1168,6 +1232,14 @@ select:focus {
   font-weight: 600;
   color: var(--color-primary);
   white-space: nowrap;
+}
+
+.capture-continue-btn {
+  width: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  min-height: auto;
 }
 
 .student-card-name {

@@ -172,24 +172,39 @@
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="grading-title" hidden>
-      <div class="grading-toolbar">
-        <div class="grading-toolbar-row">
-          <h3 id="grading-title">Calificaciones</h3>
-          <p id="rubric-ra-description" class="grading-ra-label muted"></p>
-          <nav class="grading-substeps" aria-label="Subpasos de calificación">
-            <button type="button" class="grading-substep active" data-grading-sub="weights" aria-current="step">
-              <span>3a</span> Ponderación
-            </button>
-            <button type="button" class="grading-substep" data-grading-sub="rubric">
-              <span>3b</span> Rúbrica
-            </button>
-            <button type="button" class="grading-substep" data-grading-sub="capture">
-              <span>3c</span> Calificar
-            </button>
-          </nav>
-          <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
+      <div class="grading-toolbar-zone">
+        <div id="grading-toolbar-panel" class="grading-toolbar-panel">
+          <div class="grading-toolbar">
+            <div class="grading-toolbar-row">
+              <h3 id="grading-title">Calificaciones</h3>
+              <p id="rubric-ra-description" class="grading-ra-label muted"></p>
+              <nav class="grading-substeps" aria-label="Subpasos de calificación">
+                <button type="button" class="grading-substep active" data-grading-sub="weights" aria-current="step">
+                  <span>3a</span> Ponderación
+                </button>
+                <button type="button" class="grading-substep" data-grading-sub="rubric">
+                  <span>3b</span> Rúbrica
+                </button>
+                <button type="button" class="grading-substep" data-grading-sub="capture">
+                  <span>3c</span> Calificar
+                </button>
+              </nav>
+              <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
+            </div>
+            <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
+          </div>
         </div>
-        <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
+        <button
+          id="grading-toolbar-toggle"
+          class="grading-ribbon-toggle"
+          type="button"
+          aria-expanded="true"
+          aria-controls="grading-toolbar-panel"
+          title="Mostrar u ocultar herramientas de calificación"
+        >
+          <span class="grading-ribbon-toggle-chevron" aria-hidden="true"></span>
+          <span class="visually-hidden">Herramientas de calificación</span>
+        </button>
       </div>
 
       <div id="grading-panel-weights" class="grading-subpanel" data-grading-panel="weights">
@@ -248,6 +263,9 @@
             <p id="capture-hint" class="lot-hint muted capture-hint-left" aria-live="polite"></p>
             <p id="grading-progress" class="grading-progress-footer">Estudiantes calificados: —</p>
             <h4 id="capture-rubric-title" class="capture-rubric-footer-title">Rúbrica del RA</h4>
+            <button id="continue-analysis-btn" class="btn-primary compact-btn capture-continue-btn" type="button" hidden>
+              Continuar al análisis
+            </button>
           </div>
         </div>
 
@@ -269,9 +287,6 @@
           </div>
           <p id="grid-capture-hint" class="lot-hint muted" aria-live="polite"></p>
         </div>
-        <button id="continue-analysis-btn" class="btn-primary compact-btn" type="button" hidden>
-          Continuar al análisis cualitativo
-        </button>
       </div>
     </section>
 
@@ -312,7 +327,7 @@
       </div>
     </section>
 
-    <div class="wizard-actions" aria-label="Navegación del wizard">
+    <div id="wizard-actions" class="wizard-actions" aria-label="Navegación del wizard">
       <button id="wizard-prev-btn" class="btn-secondary" type="button" disabled>
         Anterior
       </button>
