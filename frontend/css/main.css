@@ -1663,8 +1663,10 @@ select:focus {
 
 .dist-chart-bar {
   display: flex;
+  flex-direction: row;
+  align-items: stretch;
   width: 100%;
-  min-height: 1.25rem;
+  height: 1.5rem;
   border: 1px solid var(--color-border);
   border-radius: 3px;
   overflow: hidden;
@@ -1672,13 +1674,37 @@ select:focus {
 }
 
 .dist-chart-segment {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
-  height: 100%;
+  height: 1.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-primary);
+  box-sizing: border-box;
+  border-right: 1px solid rgba(255, 255, 255, 0.45);
   transition: opacity 0.15s ease;
 }
 
+.dist-chart-segment:last-child {
+  border-right: none;
+}
+
 .dist-chart-segment:hover {
-  opacity: 0.85;
+  opacity: 0.88;
+}
+
+.dist-chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  font-style: italic;
 }
 
 .analysis-item .analysis-pi-dist {

@@ -79,6 +79,7 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "course_name" in js
     assert "renderDistribution" in js
     assert "formatDistCell" in js
+    assert "distributionKey" in js
     assert "exactDistPercent" in js
     assert "renderDistributionChart" in js
     assert "toFixed(2)" in js

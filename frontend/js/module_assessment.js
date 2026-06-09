@@ -1163,17 +1163,22 @@
     }
   }
 
+  function distributionKey(piId) {
+    return String(piId);
+  }
+
   function buildDistribution(students, pis) {
     var dist = {};
     pis.forEach(function (pi) {
-      dist[pi.id] = { pi_code: pi.code, pi_description: pi.description };
+      var key = distributionKey(pi.id);
+      dist[key] = { pi_id: pi.id, pi_code: pi.code, pi_description: pi.description };
       LEVEL_CRITERIA.forEach(function (level) {
-        dist[pi.id][level.distKey] = 0;
+        dist[key][level.distKey] = 0;
       });
     });
     students.forEach(function (s) {
       (s.assessments || []).forEach(function (a) {
-        var bucket = dist[a.perf_indicator_id];
+        var bucket = dist[distributionKey(a.perf_indicator_id)];
         if (!bucket) return;
         var meta = levelMetaByValue(a.level);
         if (meta) bucket[meta.distKey] = (bucket[meta.distKey] || 0) + 1;
@@ -1289,7 +1294,7 @@
   }
 
   function piDistributionSummary(dist, piId) {
-    var d = dist[piId];
+    var d = dist[distributionKey(piId)];
     if (!d) return "";
     return LEVEL_CRITERIA.map(function (level) {
       return level.labelEs + ": " + formatDistCell(d[level.distKey], activeStudentCount);
@@ -1316,27 +1321,41 @@
     });
     chartWrap.appendChild(legend);
 
-    Object.keys(dist).forEach(function (piId) {
-      var d = dist[piId];
+    piRows.forEach(function (pi) {
+      var d = dist[distributionKey(pi.id)];
+      if (!d) return;
       var row = document.createElement("div");
       row.className = "dist-chart-row";
       var label = document.createElement("span");
       label.className = "dist-chart-row-label";
       label.textContent = d.pi_code || "—";
+      label.title = d.pi_description || "";
       row.appendChild(label);
       var bar = document.createElement("div");
       bar.className = "dist-chart-bar";
+      var hasSegment = false;
       LEVEL_CRITERIA.forEach(function (level) {
         var count = Number(d[level.distKey]) || 0;
         var pct = exactDistPercent(count, activeStudentCount);
         if (pct <= 0) return;
+        hasSegment = true;
         var seg = document.createElement("div");
         seg.className = "dist-chart-segment";
+        seg.style.flexBasis = pct + "%";
         seg.style.width = pct + "%";
         seg.style.backgroundColor = level.chartColor;
         seg.title = level.labelEs + ": " + formatDistCell(count, activeStudentCount);
+        if (pct >= 7) {
+          seg.textContent = formatDistPercent(count, activeStudentCount) + "%";
+        }
         bar.appendChild(seg);
       });
+      if (!hasSegment) {
+        var empty = document.createElement("div");
+        empty.className = "dist-chart-empty";
+        empty.textContent = "Sin calificaciones";
+        bar.appendChild(empty);
+      }
       row.appendChild(bar);
       chartWrap.appendChild(row);
     });
@@ -1350,7 +1369,8 @@
     var dist = data.distribution || {};
     var intro = document.createElement("p");
     intro.className = "muted";
-    intro.textContent = "Distribución del módulo — " + activeStudentCount + " estudiantes activos (F04b). Porcentaje con dos decimales; conteo entre paréntesis.";
+    intro.textContent = "Resumen del módulo — " + activeStudentCount + " estudiantes activos. "
+      + "Cada valor muestra el porcentaje (dos decimales) y, entre paréntesis, cuántos estudiantes obtuvieron ese nivel.";
     distributionBody.appendChild(intro);
     renderDistributionChart(dist, distributionBody);
     var table = document.createElement("table");
@@ -1363,8 +1383,9 @@
     head.innerHTML = "<tr>" + headCells + "</tr>";
     table.appendChild(head);
     var body = document.createElement("tbody");
-    Object.keys(dist).forEach(function (piId) {
-      var d = dist[piId];
+    piRows.forEach(function (pi) {
+      var d = dist[distributionKey(pi.id)];
+      if (!d) return;
       var cells = "<td>" + escapeHtml(d.pi_code || "—") + "</td>";
       LEVEL_CRITERIA.forEach(function (level) {
         cells += "<td>" + formatDistCell(d[level.distKey], activeStudentCount) + "</td>";
