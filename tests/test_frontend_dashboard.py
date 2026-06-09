@@ -15,6 +15,8 @@ def test_dashboard_declares_modules_progress_surface():
     assert 'id="modules-status"' in html
     assert 'id="modules-table"' in html
     assert 'id="modules-body"' in html
+    assert 'id="teacher-xp-panel"' in html
+    assert 'id="teacher-xp-value"' in html
     assert "./js/dashboard.js" in html
     assert "./js/api.js" in html
     assert "./js/supabase-client.js" in html
@@ -27,6 +29,8 @@ def test_dashboard_js_uses_supabase_for_periods_and_modules():
     assert 'from("module_ra_evaluations")' in js
     assert "ensureSupabase" in js
     assert "renderModules" in js
+    assert "updateTeacherXpPanel" in js
+    assert "computeXpCumulative" in js
     assert 'fetch("/api/v1/periods"' not in js
 
 
