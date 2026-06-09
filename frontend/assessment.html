@@ -16,7 +16,7 @@
 <body class="dashboard-layout">
 
   <header class="site-header site-header--assessment" role="banner">
-    <div class="assessment-header-top">
+    <div class="assessment-header-bar">
       <div class="assessment-header-brand">
         <svg
           class="logo"
@@ -30,37 +30,36 @@
         </svg>
         <h1>Calificación de módulo</h1>
       </div>
-      <button id="submit-module-btn" class="btn-primary compact-btn" type="button" disabled>
-        Enviar módulo
-      </button>
-    </div>
-    <div class="assessment-header-sub">
-      <a class="back-link back-link--header" href="/dashboard.html">Volver al panel</a>
-      <div class="assessment-heading-row assessment-heading-row--header">
-        <h2 id="assessment-title">Evaluación de estudiantes</h2>
+      <div class="assessment-header-context">
+        <a class="back-link back-link--header" href="/dashboard.html">Volver al panel</a>
+        <h2 id="assessment-title" class="assessment-header-title">Evaluación de estudiantes</h2>
         <p id="assessment-status" class="status-message assessment-inline-status assessment-header-status" role="status" aria-live="polite">
           Cargando módulo…
         </p>
       </div>
+      <button id="submit-module-btn" class="btn-primary compact-btn assessment-header-submit" type="button" disabled>
+        Enviar módulo
+      </button>
     </div>
-    <nav class="wizard-steps wizard-steps--header" aria-label="Pasos de evaluación del módulo">
-      <button class="wizard-step" type="button" data-step-target="general" aria-current="step">
-        <span>1</span> Información
-      </button>
-      <button class="wizard-step" type="button" data-step-target="roster">
-        <span>2</span> Lista
-      </button>
-      <button class="wizard-step" type="button" data-step-target="grading">
-        <span>3</span> Calificaciones
-      </button>
-      <button class="wizard-step" type="button" data-step-target="analysis">
-        <span>4</span> Análisis
-      </button>
-      <button class="wizard-step" type="button" data-step-target="submit">
-        <span>5</span> Envío
-      </button>
-    </nav>
   </header>
+
+  <nav class="wizard-steps wizard-steps--toolbar" aria-label="Pasos de evaluación del módulo">
+    <button class="wizard-step" type="button" data-step-target="general" aria-current="step">
+      <span>1</span> Información
+    </button>
+    <button class="wizard-step" type="button" data-step-target="roster">
+      <span>2</span> Lista
+    </button>
+    <button class="wizard-step" type="button" data-step-target="grading">
+      <span>3</span> Calificaciones
+    </button>
+    <button class="wizard-step" type="button" data-step-target="analysis">
+      <span>4</span> Análisis
+    </button>
+    <button class="wizard-step" type="button" data-step-target="submit">
+      <span>5</span> Envío
+    </button>
+  </nav>
 
   <main class="dashboard-main assessment-main">
 
