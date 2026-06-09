@@ -38,8 +38,8 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 - Encabezado: `Estudiante N de Y` + nombre en **texto grande** + documento.
 - Por cada PI activo (bloque apilado vertical):
   - Código + descripción del criterio + peso `%`.
-  - Matriz de 4 descriptores largos (Poor…Exemplary), alineada al Excel.
-  - Selector de nivel con etiqueta corta: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)` — **sin** «No / Sí, pero / Sí» en el selector (esos textos permanecen solo en encabezados de la matriz de rúbrica).
+  - Matriz de 4 descriptores largos; encabezados de columna en **español ABET**: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)` — sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…).
+  - Selector de nivel con la **misma** etiqueta: `Deficiente (1)`, etc.
 - Navegación:
   - **Anterior** — estudiante previo en orden de lista.
   - Al completar los 4 PIs del estudiante activo: cuenta regresiva **3 segundos** con mensaje visible → avance automático al **siguiente pendiente**.

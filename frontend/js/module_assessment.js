@@ -109,10 +109,10 @@
   var piWeightsValid = true;
 
   var LEVEL_CRITERIA = [
-    { value: 1, labelEs: "Deficiente", shortAbet: "No", distKey: "Deficiente", header: "Poor / 1 / (No)" },
-    { value: 2, labelEs: "Insuficiente", shortAbet: "Sí, pero", distKey: "Insuficiente", header: "Inadequate / 2 / (Sí, pero)" },
-    { value: 4, labelEs: "Bueno", shortAbet: "Sí", distKey: "Bueno", header: "Adequate / 4 / (Sí)" },
-    { value: 5, labelEs: "Sobresaliente", shortAbet: "Sí, aún más", distKey: "Sobresaliente", header: "Exemplary / 5 / (Sí, aún más)" },
+    { value: 1, labelEs: "Deficiente", distKey: "Deficiente" },
+    { value: 2, labelEs: "Insuficiente", distKey: "Insuficiente" },
+    { value: 4, labelEs: "Bueno", distKey: "Bueno" },
+    { value: 5, labelEs: "Sobresaliente", distKey: "Sobresaliente" },
   ];
 
   function escapeHtml(text) {
@@ -127,8 +127,12 @@
     return LEVEL_CRITERIA.find(function (level) { return level.value === Number(levelValue); }) || null;
   }
 
-  function buildSelectorLabel(level) {
+  function buildLevelColumnLabel(level) {
     return level.labelEs + " (" + level.value + ")";
+  }
+
+  function buildSelectorLabel(level) {
+    return buildLevelColumnLabel(level);
   }
 
   function buildLevelSelectOptions() {
@@ -741,7 +745,7 @@
   function buildRubricReadOnlyHtml(pis) {
     var head = "<thead><tr><th scope=\"col\">Criterio</th><th scope=\"col\">%</th>";
     LEVEL_CRITERIA.forEach(function (level) {
-      head += '<th scope="col">' + escapeHtml(level.header) + "</th>";
+      head += '<th scope="col">' + escapeHtml(buildLevelColumnLabel(level)) + "</th>";
     });
     head += "</tr></thead><tbody>";
     var body = "";
@@ -939,7 +943,7 @@
       var table = document.createElement("table");
       table.className = "rubric-matrix student-pi-matrix";
       var head = "<thead><tr>";
-      LEVEL_CRITERIA.forEach(function (level) { head += '<th scope="col">' + escapeHtml(level.header) + "</th>"; });
+      LEVEL_CRITERIA.forEach(function (level) { head += '<th scope="col">' + escapeHtml(buildLevelColumnLabel(level)) + "</th>"; });
       head += "</tr></thead><tbody><tr>";
       LEVEL_CRITERIA.forEach(function (level) {
         head += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
