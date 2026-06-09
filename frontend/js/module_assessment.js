@@ -139,9 +139,13 @@
     return html;
   }
 
+  function piWeightIsSet(pi) {
+    return pi.pi_weight != null && pi.pi_weight !== "" && !Number.isNaN(Number(pi.pi_weight));
+  }
+
   function sumPiWeights() {
     return piRows.reduce(function (sum, pi) {
-      return sum + Number(pi.pi_weight != null ? pi.pi_weight : 0);
+      return sum + (piWeightIsSet(pi) ? Number(pi.pi_weight) : 0);
     }, 0);
   }
 
@@ -154,23 +158,30 @@
       piWeightsValid = true;
       return true;
     }
-    piWeightsValid = Math.abs(formatWeightTotal(sumPiWeights()) - 100) < 0.01;
+    var allSet = piRows.every(piWeightIsSet);
+    piWeightsValid = allSet && Math.abs(formatWeightTotal(sumPiWeights()) - 100) < 0.01;
     return piWeightsValid;
   }
 
   function buildWeightTotalHtml() {
     var total = formatWeightTotal(sumPiWeights());
-    var valid = validatePiWeights();
+    var allSet = piRows.every(piWeightIsSet);
+    var valid = allSet && Math.abs(total - 100) < 0.01;
     var cls = valid ? "weight-total weight-total-ok" : "weight-total weight-total-error";
-    var msg = valid
-      ? "Total ponderación: " + total + "%"
-      : "Total ponderación: " + total + "% — debe sumar exactamente 100%";
+    var msg;
+    if (!allSet) {
+      msg = "Ingrese el % de cada criterio. Total actual: " + total + "%";
+    } else if (valid) {
+      msg = "Total ponderación: " + total + "%";
+    } else {
+      msg = "Total ponderación: " + total + "% — debe sumar exactamente 100%";
+    }
     return '<p class="' + cls + '" role="status" aria-live="polite">' + escapeHtml(msg) + "</p>";
   }
 
   function buildWeightInputHtml(pi) {
-    var value = pi.pi_weight != null ? pi.pi_weight : "";
-    return '<input type="number" class="pi-weight-input" data-pi-id="' + pi.id + '" min="0" max="100" step="0.01" value="' + escapeHtml(String(value)) + '" aria-label="Ponderación ' + escapeHtml(pi.code) + '">';
+    var valueAttr = piWeightIsSet(pi) ? ' value="' + escapeHtml(String(pi.pi_weight)) + '"' : "";
+    return '<input type="number" class="pi-weight-input" data-pi-id="' + pi.id + '" min="0" max="100" step="0.01"' + valueAttr + ' placeholder="%" aria-label="Ponderación ' + escapeHtml(pi.code) + '">';
   }
 
   function descriptorForPi(pi, levelValue) {
@@ -776,9 +787,16 @@
   function queuePiWeightSave(input) {
     if (!currentEvaluation || !input) return;
     var piId = Number(input.dataset.piId);
-    var weight = Number(input.value);
-    if (!piId || Number.isNaN(weight)) return;
+    var raw = (input.value || "").trim();
+    if (!piId) return;
     var pi = piRows.find(function (row) { return row.id === piId; });
+    if (!raw) {
+      if (pi) pi.pi_weight = null;
+      updateWeightTotalDisplay(input.closest(".grading-subpanel") || gradingWeightsContent);
+      return;
+    }
+    var weight = Number(raw);
+    if (Number.isNaN(weight)) return;
     if (pi) pi.pi_weight = weight;
     pendingWeightUpserts.set(String(piId), {
       module_ra_evaluation_id: currentEvaluation.id,
@@ -826,8 +844,7 @@
       byPi[row.perf_indicator_id] = Number(row.pi_weight);
     });
     piRows.forEach(function (pi) {
-      if (byPi[pi.id] != null) pi.pi_weight = byPi[pi.id];
-      pi.default_pi_weight = pi.default_pi_weight != null ? pi.default_pi_weight : Number(pi.pi_weight);
+      pi.pi_weight = byPi[pi.id] != null ? byPi[pi.id] : null;
     });
     validatePiWeights();
   }
@@ -1316,7 +1333,7 @@
         .order("position");
       piRows = (pis || []).map(function (pi) {
         pi.pi_levels = pi.pi_levels || [];
-        pi.default_pi_weight = Number(pi.pi_weight);
+        pi.pi_weight = null;
         return pi;
       });
 

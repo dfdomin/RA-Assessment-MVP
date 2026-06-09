@@ -427,7 +427,7 @@ Performance Indicators (PIs) de una rúbrica. Hasta 15 PIs activos por SO.
 
 ### 3.5a `module_ra_evaluation_pi_weights`
 
-Ponderación de cada PI **por asignación módulo×RA** (`module_ra_evaluation_id`). El docente ajusta estos valores al calificar; si no hay fila, se usa `perf_indicators.pi_weight` de la rúbrica del período.
+Ponderación de cada PI **por asignación módulo×RA** (`module_ra_evaluation_id`). El docente ingresa estos valores en el subpaso 3a (fila 12 del Excel por módulo). Si no hay fila guardada, el frontend muestra campos vacíos — **no** precarga `perf_indicators.pi_weight` de la plantilla del período.
 
 | Columna | Tipo | Nulo | Descripción |
 |---|---|---|---|
