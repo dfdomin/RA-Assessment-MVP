@@ -8,9 +8,10 @@ alwaysApply: false
 
 Al diseñar o modificar pantallas del wizard (especialmente **3c Calificar**):
 
-1. **Metadatos en línea**: título + estado (`Evaluación de estudiantes` + `Datos cargados…`), nombre + documento del estudiante, posición + identidad — en la misma fila cuando quepan (flex-wrap permitido, no columnas estrechas por defecto).
-2. **Fijo vs scroll**: lo que el docente debe ver siempre (nombre del estudiante activo, progreso del subpaso) va **fuera** del contenedor con scroll; solo el contenido largo (PIs, descriptores) scrollea.
-3. **Controles de captura**: preferir **radios en fila** por PI frente a `<select>` cuando hay 4 opciones fijas — menos clics, mejor uso horizontal.
-4. **Antes de apilar verticalmente**, preguntar si dos campos relacionados pueden ir lado a lado sin romper 1024×768 px (Guía IUB).
+1. **Barra azul del assessment**: logo, título del módulo, `Enviar módulo`, `Volver al panel`, `Evaluación de estudiantes` + estado, y pasos 1–5 del wizard — **todos en el `site-header`**, no debajo en gris.
+2. **Metadatos en línea**: nombre + documento del estudiante + `Estudiante N de Y` — en la misma fila cuando quepan (flex-wrap permitido).
+3. **Fijo vs scroll**: lo que el docente debe ver siempre (nombre del estudiante activo, progreso del subpaso) va **fuera** del contenedor con scroll; solo el contenido largo (PIs, descriptores) scrollea.
+4. **Controles de captura**: **radio en cada celda de descriptor** (esquina inferior derecha), no en encabezado ni en `<select>` — el docente lee el texto y marca al lado.
+5. **Antes de apilar verticalmente**, preguntar si dos campos relacionados pueden ir lado a lado sin romper 1024×768 px (Guía IUB).
 
 Referencia: `docs/adr/0003-subpasos-calificacion-vista-estudiante-modogrilla.md` §2.

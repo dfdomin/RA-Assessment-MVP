@@ -48,6 +48,96 @@ body {
   color: #ffffff;
 }
 
+.site-header--assessment {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.5rem 1rem 0.6rem;
+}
+
+.assessment-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.assessment-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.assessment-header-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1.25rem;
+}
+
+.back-link--header {
+  color: var(--color-accent);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.back-link--header:visited {
+  color: var(--color-accent);
+}
+
+.assessment-heading-row--header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #ffffff;
+}
+
+.assessment-header-status {
+  margin: 0;
+  color: #d1fae5;
+  font-size: 0.8125rem;
+}
+
+.assessment-header-status.error {
+  color: #fecaca;
+}
+
+.assessment-header-status.info {
+  color: #bfdbfe;
+}
+
+.wizard-steps--header {
+  margin-bottom: 0;
+}
+
+.wizard-steps--header .wizard-step {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
+  font-size: 0.75rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.45rem;
+}
+
+.wizard-steps--header .wizard-step span {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 0.7rem;
+}
+
+.wizard-steps--header .wizard-step[aria-current="step"] {
+  background: var(--color-accent);
+  color: var(--color-primary);
+  border-color: var(--color-accent);
+}
+
+.wizard-steps--header .wizard-step[aria-current="step"] span {
+  background: var(--color-primary);
+  color: var(--color-accent);
+}
+
 /* ── Main content ── */
 main {
   flex: 1;
@@ -509,16 +599,20 @@ select:focus {
   width: 100%;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 0.5rem 1rem 1rem;
+  padding: 0.35rem 1rem 0.75rem;
+}
+
+.assessment-main.assessment-main h2 {
+  margin-bottom: 0;
 }
 
 .grading-viewport {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  height: calc(100vh - 10.5rem);
-  max-height: 40rem;
-  min-height: 36rem;
+  height: calc(100vh - 13.5rem);
+  max-height: 42rem;
+  min-height: 32rem;
   overflow: hidden;
 }
 
@@ -1009,31 +1103,31 @@ select:focus {
   font-size: 0.72rem;
 }
 
-.student-pi-level-head {
-  vertical-align: middle;
-  padding: 0.35rem 0.4rem;
+.student-pi-level-cell {
+  vertical-align: top;
+  position: relative;
+  padding: 0.35rem 0.4rem 1.65rem;
+  min-height: 3.5rem;
 }
 
-.student-pi-level-head-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
-  width: 100%;
+.student-pi-descriptor {
   margin: 0;
-  font-weight: 600;
-  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.student-pi-level-cell-radio {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.3rem;
+  display: flex;
+  margin: 0;
   cursor: pointer;
 }
 
-.student-pi-level-head-text {
-  line-height: 1.2;
-  text-align: left;
-}
-
-.student-pi-level-head .level-radio {
-  flex-shrink: 0;
+.student-pi-level-cell-radio .level-radio {
   margin: 0;
+  width: 1rem;
+  height: 1rem;
 }
 
 .level-radio-group {
@@ -1161,8 +1255,8 @@ select:focus {
 
 @media (max-width: 1024px), (max-height: 768px) {
   .grading-viewport {
-    max-height: calc(100vh - 9rem);
-    min-height: 28rem;
+    max-height: calc(100vh - 12rem);
+    min-height: 26rem;
   }
 }
 

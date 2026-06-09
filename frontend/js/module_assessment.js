@@ -272,7 +272,8 @@
 
   function setStatus(text, kind) {
     statusMsg.textContent = text;
-    statusMsg.className = "status-message" + (kind ? " " + kind : "");
+    statusMsg.className = "status-message assessment-inline-status assessment-header-status"
+      + (kind ? " " + kind : "");
   }
 
   function setSaveIndicator(text, kind) {
@@ -936,15 +937,7 @@
     LEVEL_CRITERIA.forEach(function (level) {
       var th = document.createElement("th");
       th.scope = "col";
-      th.className = "student-pi-level-head";
-      var label = document.createElement("label");
-      label.className = "student-pi-level-head-label";
-      var text = document.createElement("span");
-      text.className = "student-pi-level-head-text";
-      text.textContent = buildLevelColumnLabel(level);
-      label.appendChild(text);
-      label.appendChild(createLevelRadio(student, pi, level, selected));
-      th.appendChild(label);
+      th.textContent = buildLevelColumnLabel(level);
       headRow.appendChild(th);
     });
     thead.appendChild(headRow);
@@ -953,7 +946,15 @@
     var bodyRow = document.createElement("tr");
     LEVEL_CRITERIA.forEach(function (level) {
       var td = document.createElement("td");
-      td.textContent = descriptorForPi(pi, level.value);
+      td.className = "student-pi-level-cell";
+      var desc = document.createElement("p");
+      desc.className = "student-pi-descriptor";
+      desc.textContent = descriptorForPi(pi, level.value);
+      var label = document.createElement("label");
+      label.className = "student-pi-level-cell-radio";
+      label.appendChild(createLevelRadio(student, pi, level, selected));
+      td.appendChild(desc);
+      td.appendChild(label);
       bodyRow.appendChild(td);
     });
     tbody.appendChild(bodyRow);

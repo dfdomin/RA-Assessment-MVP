@@ -41,7 +41,7 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 - Por cada PI activo:
   - Línea de contexto: `PI-3.1 · descripción · 30%`.
   - Matriz de 4 descriptores largos; encabezados en **español ABET**: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`.
-  - **Radio en el encabezado de cada columna** de la matriz de descriptores (junto a `Deficiente (1)`, etc.) — exclusivo por PI; sin fila extra ni `<select>`.
+  - **Radio en la esquina inferior derecha de cada celda** de descriptor (encabezado solo con `Deficiente (1)`, etc.) — exclusivo por PI; sin `<select>`.
 - **Consigna UX**: aprovechar espacio horizontal (metadatos en línea, no apilar en bloques estrechos). Ver `.cursor/rules/espacio-horizontal.mdc`.
 - Navegación:
   - **Anterior** — estudiante previo en orden de lista.
