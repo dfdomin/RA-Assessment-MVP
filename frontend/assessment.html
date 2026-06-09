@@ -31,11 +31,8 @@
         <h1>Calificación de módulo</h1>
       </div>
       <div class="assessment-header-context">
-        <a class="back-link back-link--header" href="/dashboard.html">Volver al panel</a>
+        <a class="back-link back-link--header" href="./dashboard.html">Volver al panel</a>
         <h2 id="assessment-title" class="assessment-header-title">Evaluación de estudiantes</h2>
-        <p id="assessment-status" class="status-message assessment-inline-status assessment-header-status" role="status" aria-live="polite">
-          Cargando módulo…
-        </p>
       </div>
       <button id="submit-module-btn" class="btn-primary compact-btn assessment-header-submit" type="button" disabled>
         Enviar módulo
@@ -332,9 +329,9 @@
               Interprete los resultados por indicador y registre conclusiones, recomendaciones y medidas del módulo.
             </p>
           </div>
-          <button id="save-qualitative-btn" class="btn-secondary" type="button" disabled>
-            Guardar análisis
-          </button>
+          <span id="qualitative-save-indicator" class="qualitative-save-indicator muted" role="status" aria-live="polite">
+            Se guarda automáticamente
+          </span>
         </div>
 
         <div id="analysis-body" class="analysis-list">
@@ -382,6 +379,9 @@
       <button id="wizard-prev-btn" class="btn-secondary" type="button" disabled>
         Anterior
       </button>
+      <p id="assessment-status" class="wizard-footer-status" role="status" aria-live="polite">
+        Cargando módulo…
+      </p>
       <button id="wizard-next-btn" class="btn-secondary" type="button">
         Siguiente
       </button>

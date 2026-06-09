@@ -47,7 +47,7 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="roster-table-wrap"' in html
     assert 'id="roster-import-notice"' in html
     assert "Excluir" in html
-    assert 'id="save-qualitative-btn"' in html
+    assert 'id="qualitative-save-indicator"' in html
     assert 'id="submit-module-btn"' in html
     assert "./js/module_assessment.js" in html
     assert "./js/supabase-client.js" in html
@@ -96,7 +96,11 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "showAnalysisSubStep" in js
     assert "tryAdvanceAnalysisSubStep" in js
     assert "collectModuleQualitativeFields" in js
+    assert "flushQualitativeSave" in js
+    assert "queueQualitativeSave" in js
     assert "renderSubmitReadiness" in js
+    assert 'class="wizard-footer-status"' in html
+    assert 'href="./dashboard.html"' in html
     assert "showSubmitCelebration" in js
     assert 'id="submit-celebration"' in html
     assert "conclusions_text" in js

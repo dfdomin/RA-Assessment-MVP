@@ -1855,6 +1855,7 @@ select:focus {
 
 .wizard-actions {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   margin-top: 1rem;
@@ -1862,6 +1863,53 @@ select:focus {
 
 .wizard-actions .btn-secondary {
   min-width: 9rem;
+  flex-shrink: 0;
+}
+
+.wizard-footer-status {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.wizard-footer-status.success {
+  color: #166534;
+  font-weight: 600;
+}
+
+.wizard-footer-status.error {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+.wizard-footer-status.info {
+  color: var(--color-primary);
+}
+
+.wizard-footer-status.saving {
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.qualitative-save-indicator {
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.qualitative-save-indicator.saving {
+  color: var(--color-primary);
+  font-style: italic;
+}
+
+.qualitative-save-indicator.success {
+  color: #166534;
+}
+
+.qualitative-save-indicator.error {
+  color: var(--color-error);
 }
 
 .submit-celebration {

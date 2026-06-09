@@ -38,7 +38,7 @@
   var correctiveMeasuresText = document.getElementById("corrective-measures-text");
   var improvementPlanText = document.getElementById("improvement-plan-text");
   var submitModuleBtn = document.getElementById("submit-module-btn");
-  var saveQualitativeBtn = document.getElementById("save-qualitative-btn");
+  var qualitativeSaveIndicator = document.getElementById("qualitative-save-indicator");
   var statusMsg = document.getElementById("assessment-status");
   var rubricRaTitle = document.getElementById("rubric-ra-title");
   var rubricRaDescription = document.getElementById("rubric-ra-description");
@@ -126,6 +126,8 @@
   var saveDebounceTimer = null;
   var pendingWeightUpserts = new Map();
   var weightSaveDebounceTimer = null;
+  var qualitativeSaveDebounceTimer = null;
+  var qualitativeSaveQueued = false;
   var piWeightsValid = true;
 
   var LEVEL_CRITERIA = [
@@ -279,9 +281,16 @@
   function redirectToLogin() { window.location.replace("./index.html"); }
 
   function setStatus(text, kind) {
+    if (!statusMsg) return;
     statusMsg.textContent = text;
-    statusMsg.className = "status-message assessment-inline-status assessment-header-status"
-      + (kind ? " " + kind : "");
+    statusMsg.className = "wizard-footer-status" + (kind ? " " + kind : "");
+  }
+
+  function setQualitativeSaveIndicator(text, kind) {
+    if (!qualitativeSaveIndicator) return;
+    qualitativeSaveIndicator.textContent = text;
+    qualitativeSaveIndicator.className = "qualitative-save-indicator"
+      + (kind ? " " + kind : "") + (kind ? "" : " muted");
   }
 
   function setSaveIndicator(text, kind) {
@@ -293,7 +302,6 @@
   function enableActions() {
     wizardNextBtn.disabled = false;
     wizardPrevBtn.disabled = false;
-    saveQualitativeBtn.disabled = false;
   }
 
   function normalizeDocumentNumber(raw) {
@@ -655,6 +663,9 @@
   }
 
   function showStep(stepTarget) {
+    if (stepOrder[currentStepIndex] === "analysis" && analysisSubStep === "qualitative") {
+      flushQualitativeSave(true);
+    }
     if (!canEnterStep(stepTarget)) {
       setStatus("Agregue al menos un estudiante activo en Lista de estudiantes antes de continuar.", "error");
       return;
@@ -1679,8 +1690,57 @@
     readinessAnalysis.textContent = analysisDone ? "Análisis (4a y 4b): completo" : "Análisis (4a y 4b): pendiente";
   }
 
+  function queueQualitativeSave() {
+    qualitativeSaveQueued = true;
+    setQualitativeSaveIndicator("Guardando análisis…", "saving");
+    clearTimeout(qualitativeSaveDebounceTimer);
+    qualitativeSaveDebounceTimer = setTimeout(function () {
+      flushQualitativeSave(false);
+    }, SAVE_DEBOUNCE_MS);
+    updateWizardState();
+  }
+
+  async function flushQualitativeSave(force) {
+    if (!qualitativeSaveQueued && !force) return;
+    var evalId = currentEvaluation && currentEvaluation.id;
+    if (!evalId) return;
+    qualitativeSaveQueued = false;
+    clearTimeout(qualitativeSaveDebounceTimer);
+    try {
+      await requireAuthOrRedirect();
+      var client = assertSupabase();
+      var payload = collectAnalyses().map(function (a) {
+        return {
+          module_ra_evaluation_id: Number(evalId),
+          perf_indicator_id: a.perf_indicator_id,
+          analysis_text: a.analysis_text,
+        };
+      });
+      if (payload.length) {
+        var upsertResult = await client.from("module_analysis").upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
+        if (upsertResult.error) throw upsertResult.error;
+        qualitativeData.analyses = collectAnalyses();
+      }
+      var moduleFields = collectModuleQualitativeFields();
+      var hasModuleContent = Object.keys(moduleFields).some(function (key) { return moduleFields[key]; });
+      if (hasModuleContent || force) {
+        var updateResult = await client.from("module_ra_evaluations").update(moduleFields).eq("id", evalId);
+        if (updateResult.error && /(conclusions|recommendations|preventive|corrective|improvement)/i.test(updateResult.error.message || "")) {
+          setQualitativeSaveIndicator("Migración 0020 pendiente en Supabase", "error");
+          return;
+        }
+        if (updateResult.error) throw updateResult.error;
+        qualitativeData.module = moduleFields;
+      }
+      setQualitativeSaveIndicator("Análisis guardado", "success");
+      updateWizardState();
+    } catch (e) {
+      qualitativeSaveQueued = true;
+      if (!isAuthError(e)) setQualitativeSaveIndicator("Error al guardar", "error");
+    }
+  }
+
   function updateWizardState() {
-    if (saveQualitativeBtn) saveQualitativeBtn.disabled = false;
     renderSubmitReadiness();
     submitModuleBtn.disabled = !piWeightsValid || !allActiveStudentsFullyGraded() || !allAnalysesComplete();
   }
@@ -1899,40 +1959,6 @@
     });
   }
 
-  saveQualitativeBtn.addEventListener("click", async function () {
-    saveQualitativeBtn.disabled = true;
-    setStatus("Guardando análisis...");
-    try {
-      await requireAuthOrRedirect();
-      var evalId = currentEvaluation && currentEvaluation.id;
-      var client = assertSupabase();
-      var payload = collectAnalyses().map(function (a) {
-        return {
-          module_ra_evaluation_id: Number(evalId),
-          perf_indicator_id: a.perf_indicator_id,
-          analysis_text: a.analysis_text,
-        };
-      });
-      if (payload.length) {
-        var upsertResult = await client.from("module_analysis").upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
-        if (upsertResult.error) throw upsertResult.error;
-        qualitativeData.analyses = collectAnalyses();
-      }
-      var moduleFields = collectModuleQualitativeFields();
-      var updateResult = await client.from("module_ra_evaluations").update(moduleFields).eq("id", evalId);
-      if (updateResult.error && /(conclusions|recommendations|preventive|corrective|improvement)/i.test(updateResult.error.message || "")) {
-        setStatus("Guarde el análisis por indicador. Aplique la migración 0020 en Supabase para las conclusiones y medidas del módulo.", "error");
-        saveQualitativeBtn.disabled = false;
-        return;
-      }
-      if (updateResult.error) throw updateResult.error;
-      qualitativeData.module = moduleFields;
-      setStatus("Análisis guardado.", "success");
-      updateWizardState();
-    } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); }
-    saveQualitativeBtn.disabled = false;
-  });
-
   submitModuleBtn.addEventListener("click", async function () {
     if (!allActiveStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
     submitModuleBtn.disabled = true;
@@ -1940,6 +1966,7 @@
     if (submitCelebration) submitCelebration.hidden = true;
     try {
       await flushPendingSaves(true);
+      await flushQualitativeSave(true);
       var session = await requireAuthOrRedirect();
       if (!session) return;
       var client = assertSupabase();
@@ -1965,12 +1992,12 @@
 
   if (analysisBody) {
     analysisBody.addEventListener("input", function (e) {
-      if (e.target.tagName === "TEXTAREA") updateWizardState();
+      if (e.target.tagName === "TEXTAREA") queueQualitativeSave();
     });
   }
   if (moduleQualitativeSection) {
     moduleQualitativeSection.addEventListener("input", function (e) {
-      if (e.target.tagName === "TEXTAREA") updateWizardState();
+      if (e.target.tagName === "TEXTAREA") queueQualitativeSave();
     });
   }
   wizardSteps.forEach(function (s) {
