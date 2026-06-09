@@ -37,7 +37,8 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 
 - **Barra superior del paso 3** (una fila): `Calificaciones` · `Resultado de Aprendizaje N` · subpasos 3a/3b/3c · `Editar lista de evaluación`.
 - **Cabecera fija** (fuera del scroll): fila 1 — nombre · `Doc. …` · `Estudiante N de Y`; fila 2 — `Estudiantes calificados: X de Y`.
-- **Navegación entre estudiantes** (columna derecha de la cabecera): `Anterior estudiante` y debajo `Siguiente estudiante` (orden de lista; sin cuenta regresiva ni avance automático).
+- **Navegación entre estudiantes** (columna derecha de la cabecera): control compacto `« Anterior estudiante` | `Siguiente estudiante »` con hover institucional (chevrons + resaltado `#FFDF2D`); orden de lista; sin cuenta regresiva.
+- **Matriz 3c** dentro del mismo contenedor que 3b (`rubric-scroll-wrap` + `rubric-readonly-wrap` + título `Rúbrica RAx`).
 - **Una sola matriz** por estudiante: columnas `Criterio | Deficiente (1) | … | Sobresaliente (5)` — **sin columna `%`**. Peso del PI en **recuadro azul institucional** (`#1E2843`) junto al texto del criterio en la primera columna.
   - **Radio** en la esquina inferior derecha de cada celda de descriptor de nivel — exclusivo por fila PI; sin `<select>`.
 - Botón inferior del wizard en 3c: `Regresa a 3b Rúbrica` (no confundir con `Anterior estudiante`).

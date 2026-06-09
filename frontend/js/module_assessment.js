@@ -43,6 +43,7 @@
   var studentCardName = document.getElementById("student-card-name");
   var studentCardDoc = document.getElementById("student-card-doc");
   var studentCardPis = document.getElementById("student-card-pis");
+  var captureRubricTitle = document.getElementById("capture-rubric-title");
   var btnNextStudent = document.getElementById("btn-next-student");
   var btnPrevStudent = document.getElementById("btn-prev-student");
   var gridPendingOnly = document.getElementById("grid-pending-only");
@@ -1011,6 +1012,9 @@
     if (studentCardDoc) {
       studentCardDoc.textContent = student.internal_id ? "Doc. " + student.internal_id : "";
       studentCardDoc.hidden = !student.internal_id;
+    }
+    if (captureRubricTitle && rubricRaTitle) {
+      captureRubricTitle.textContent = rubricRaTitle.textContent;
     }
     studentCardPis.innerHTML = "";
     studentCardPis.appendChild(buildStudentGradingMatrix(student));

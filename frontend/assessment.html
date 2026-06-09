@@ -234,12 +234,19 @@
               </div>
               <p id="grading-progress" class="grading-progress-subline">Estudiantes calificados: —</p>
             </div>
-            <div class="student-nav-inline">
-              <button id="btn-prev-student" class="btn-secondary compact" type="button" disabled>Anterior estudiante</button>
-              <button id="btn-next-student" class="btn-primary compact" type="button" disabled>Siguiente estudiante</button>
-            </div>
+            <nav class="student-nav-chevrons" aria-label="Navegación entre estudiantes">
+              <button id="btn-prev-student" class="student-nav-chevron student-nav-chevron--prev" type="button" title="Estudiante anterior en la lista" disabled>
+                <span class="chevron-icon" aria-hidden="true">«</span>
+                <span class="student-nav-label">Anterior estudiante</span>
+              </button>
+              <button id="btn-next-student" class="student-nav-chevron student-nav-chevron--next" type="button" title="Siguiente estudiante en la lista" disabled>
+                <span class="student-nav-label">Siguiente estudiante</span>
+                <span class="chevron-icon" aria-hidden="true">»</span>
+              </button>
+            </nav>
           </header>
-          <div id="student-card-pis" class="student-card-pis"></div>
+          <h4 id="capture-rubric-title" class="rubric-subtitle">Rúbrica del RA</h4>
+          <div id="student-card-pis" class="rubric-scroll-wrap rubric-readonly-wrap capture-matrix-wrap"></div>
         </div>
 
         <div id="grid-view" class="grid-view" hidden>
