@@ -97,6 +97,8 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "tryAdvanceAnalysisSubStep" in js
     assert "collectModuleQualitativeFields" in js
     assert "renderSubmitReadiness" in js
+    assert "showSubmitCelebration" in js
+    assert 'id="submit-celebration"' in html
     assert "conclusions_text" in js
     assert "improvement_plan_text" in js
     assert "showStep" in js

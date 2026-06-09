@@ -68,6 +68,11 @@
   var continueQualitativeBtn = document.getElementById("continue-qualitative-btn");
   var readinessGrading = document.getElementById("readiness-grading");
   var readinessAnalysis = document.getElementById("readiness-analysis");
+  var submitCelebration = document.getElementById("submit-celebration");
+  var celebrationBubbles = document.getElementById("celebration-bubbles");
+  var celebrationXpEarned = document.getElementById("celebration-xp-earned");
+  var celebrationXpTotal = document.getElementById("celebration-xp-total");
+  var celebrationFollowup = document.getElementById("celebration-followup");
   var rosterBody = document.getElementById("roster-body");
   var rosterStats = document.getElementById("roster-stats");
   var rosterPdfInput = document.getElementById("roster-pdf-input");
@@ -1603,6 +1608,67 @@
     return piComplete && moduleQualitativeFieldsComplete();
   }
 
+  function computeXpProgress(completed, total) {
+    var safeTotal = total > 0 ? total : 1;
+    var safeCompleted = Math.min(Math.max(completed, 0), safeTotal);
+    var cumulative = Math.round((safeCompleted / safeTotal) * 100);
+    var previous = Math.round(((safeCompleted - 1) / safeTotal) * 100);
+    var earned = Math.max(cumulative - previous, 0);
+    if (safeCompleted === safeTotal) cumulative = 100;
+    return { earned: earned, cumulative: cumulative, allComplete: safeCompleted === safeTotal };
+  }
+
+  async function teacherEvaluationProgress(client, userId, cycleId) {
+    var staffRes = await client.from("module_staff").select("module_id").eq("user_id", userId);
+    if (staffRes.error) throw staffRes.error;
+    var moduleIds = [];
+    (staffRes.data || []).forEach(function (row) {
+      if (row.module_id != null) moduleIds.push(row.module_id);
+    });
+    if (!moduleIds.length) return { total: 1, completed: 1 };
+    var evalRes = await client.from("module_ra_evaluations")
+      .select("id, status, period:periods(cycle_id)")
+      .in("module_id", moduleIds);
+    if (evalRes.error) throw evalRes.error;
+    var rows = (evalRes.data || []).filter(function (row) {
+      return !cycleId || (row.period && row.period.cycle_id === cycleId);
+    });
+    if (!rows.length) return { total: 1, completed: 1 };
+    return {
+      total: rows.length,
+      completed: rows.filter(function (row) { return row.status === "completed"; }).length,
+    };
+  }
+
+  function launchCelebrationBubbles() {
+    if (!celebrationBubbles) return;
+    celebrationBubbles.innerHTML = "";
+    var icons = ["🎉", "✨", "🎊", "⭐", "🏆", "💫"];
+    for (var i = 0; i < 28; i++) {
+      var bubble = document.createElement("span");
+      bubble.className = "celebration-bubble";
+      bubble.textContent = icons[i % icons.length];
+      bubble.style.left = (8 + Math.random() * 84) + "%";
+      bubble.style.animationDelay = (Math.random() * 0.9) + "s";
+      bubble.style.animationDuration = (2.2 + Math.random() * 1.6) + "s";
+      celebrationBubbles.appendChild(bubble);
+    }
+  }
+
+  function showSubmitCelebration(xpEarned, xpCumulative, allComplete) {
+    if (!submitCelebration) return;
+    launchCelebrationBubbles();
+    if (celebrationXpEarned) celebrationXpEarned.textContent = "+" + xpEarned + " XP";
+    if (celebrationXpTotal) celebrationXpTotal.textContent = String(xpCumulative);
+    if (celebrationFollowup) {
+      celebrationFollowup.textContent = allComplete
+        ? "¡Felicitaciones! Completó todos sus módulos del cuatrimestre y alcanzó 100 XP."
+        : "Siga con los módulos pendientes en su panel para llegar a 100 XP.";
+    }
+    submitCelebration.hidden = false;
+    submitCelebration.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
   function renderSubmitReadiness() {
     if (!readinessGrading || !readinessAnalysis) return;
     var graded = allActiveStudentsFullyGraded();
@@ -1871,16 +1937,30 @@
     if (!allActiveStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
     submitModuleBtn.disabled = true;
     setStatus("Enviando módulo...");
+    if (submitCelebration) submitCelebration.hidden = true;
     try {
       await flushPendingSaves(true);
-      await requireAuthOrRedirect();
+      var session = await requireAuthOrRedirect();
+      if (!session) return;
+      var client = assertSupabase();
       var evalId = currentEvaluation && currentEvaluation.id;
-      var { error } = await assertSupabase().from("module_ra_evaluations")
+      var cycleId = currentModule && currentModule.period && currentModule.period.cycle_id;
+      var { error } = await client.from("module_ra_evaluations")
         .update({ status: "completed", submitted_at: new Date().toISOString() })
         .eq("id", evalId);
       if (error) throw error;
-      setStatus("Módulo enviado.", "success");
-    } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); submitModuleBtn.disabled = false; }
+      if (currentEvaluation) currentEvaluation.status = "completed";
+      showStep("submit");
+      renderSubmitReadiness();
+      var progress = await teacherEvaluationProgress(client, session.user.id, cycleId);
+      var xp = computeXpProgress(progress.completed, progress.total);
+      setStatus("", "");
+      submitModuleBtn.textContent = "Módulo enviado";
+      showSubmitCelebration(xp.earned, xp.cumulative, xp.allComplete);
+    } catch (e) {
+      if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error");
+      submitModuleBtn.disabled = false;
+    }
   });
 
   if (analysisBody) {
