@@ -29,8 +29,10 @@ def test_dashboard_js_uses_supabase_for_periods_and_modules():
     assert 'from("module_ra_evaluations")' in js
     assert "ensureSupabase" in js
     assert "renderModules" in js
-    assert "updateTeacherXpPanel" in js
+    assert "syncTeacherXpUi" in js
+    assert "appendXpCell" in js
     assert "computeXpCumulative" in js
+    assert 'id="modules-xp-head"' in html
     assert 'fetch("/api/v1/periods"' not in js
 
 

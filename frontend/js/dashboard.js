@@ -36,6 +36,7 @@
   const teacherXpBar = document.getElementById("teacher-xp-bar");
   const teacherXpDetail = document.getElementById("teacher-xp-detail");
   const teacherXpCheer = document.getElementById("teacher-xp-cheer");
+  const modulesXpHead = document.getElementById("modules-xp-head");
 
   var adminTeachersCache = [];
 
@@ -133,25 +134,36 @@
     return Math.round((safeCompleted / safeTotal) * 100);
   }
 
-  async function teacherEvaluationProgress(sb, userId, cycleId) {
-    var staffRes = await sb.from("module_staff").select("module_id").eq("user_id", userId);
-    if (staffRes.error) throw staffRes.error;
-    var moduleIds = [];
-    (staffRes.data || []).forEach(function (row) {
-      if (row.module_id != null) moduleIds.push(row.module_id);
-    });
-    if (!moduleIds.length) return { total: 0, completed: 0 };
-    var evalRes = await sb.from("module_ra_evaluations")
-      .select("id, status, period:periods(cycle_id)")
-      .in("module_id", moduleIds);
-    if (evalRes.error) throw evalRes.error;
-    var rows = (evalRes.data || []).filter(function (row) {
-      return !cycleId || (row.period && row.period.cycle_id === cycleId);
-    });
-    return {
-      total: rows.length,
-      completed: rows.filter(function (row) { return row.status === "completed"; }).length,
-    };
+  function xpPerModuleValue(total) {
+    if (total <= 0) return 0;
+    return Math.max(Math.round(100 / total), 1);
+  }
+
+  function appendXpCell(row, module, total) {
+    var cell = document.createElement("td");
+    if (!isTeacher()) {
+      cell.textContent = "—";
+      row.appendChild(cell);
+      return;
+    }
+    var per = xpPerModuleValue(total);
+    var span = document.createElement("span");
+    span.className = module.status === "completed" ? "module-xp-earned" : "module-xp-pending";
+    span.textContent = "🎈 +" + per + " XP";
+    cell.appendChild(span);
+    row.appendChild(cell);
+  }
+
+  function syncTeacherXpUi(modules) {
+    if (!teacherXpPanel) return;
+    if (!isTeacher()) {
+      teacherXpPanel.hidden = true;
+      return;
+    }
+    teacherXpPanel.hidden = false;
+    var total = modules.length;
+    var completed = modules.filter(function (m) { return m.status === "completed"; }).length;
+    renderTeacherXpPanel({ total: total, completed: completed });
   }
 
   function renderTeacherXpPanel(progress) {
@@ -176,25 +188,6 @@
         teacherXpCheer.textContent = "Cuando tengas módulos asignados, cada envío sumará experiencia.";
         teacherXpPanel.classList.remove("teacher-xp-panel--max");
       }
-    }
-  }
-
-  async function updateTeacherXpPanel(periodId) {
-    if (!teacherXpPanel || !isTeacher() || !periodId) {
-      if (teacherXpPanel) teacherXpPanel.hidden = true;
-      return;
-    }
-    teacherXpPanel.hidden = false;
-    try {
-      await requireSession();
-      var sb = ensureSupabase();
-      var periodRes = await sb.from("periods").select("cycle_id").eq("id", periodId).maybeSingle();
-      if (periodRes.error) throw periodRes.error;
-      var cycleId = periodRes.data && periodRes.data.cycle_id;
-      var progress = await teacherEvaluationProgress(sb, currentUser.id, cycleId);
-      renderTeacherXpPanel(progress);
-    } catch (e) {
-      console.error(e);
     }
   }
 
@@ -443,7 +436,8 @@
   function renderEmpty(message) {
     modulesBody.innerHTML = "";
     const row = document.createElement("tr"), cell = document.createElement("td");
-    cell.colSpan = 7; cell.textContent = message;
+    cell.colSpan = isTeacher() ? 8 : 7;
+    cell.textContent = message;
     row.appendChild(cell); modulesBody.appendChild(row);
   }
 
@@ -465,6 +459,7 @@
   function renderModules(modules) {
     currentModules = modules;
     modulesBody.innerHTML = "";
+    syncTeacherXpUi(modules);
     updatePeriodProgress(modules);
     if (!modules.length) {
       const message = emptyModulesMessage();
@@ -477,6 +472,7 @@
       const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id;
       [safeText(m.course_name), safeText(m.ra_code), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
         .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
+      appendXpCell(row, m, modules.length);
       const ac = document.createElement("td"), a = document.createElement("a");
       a.className = "table-action"; a.href = actionHref;
       a.textContent = isLeader() ? "Revisar" : "Calificar";
@@ -559,6 +555,7 @@
       if (adminPanel) adminPanel.hidden = !admin;
       if (modulesPanel) modulesPanel.hidden = admin;
       if (teacherXpPanel) teacherXpPanel.hidden = !isTeacher() || admin;
+      if (modulesXpHead) modulesXpHead.hidden = !isTeacher() || admin;
       leaderPanel.hidden = !isLeader() || admin;
       leaderReportPdfBtn.hidden = !isLeader() || admin;
       leaderReportDocxBtn.hidden = !isLeader() || admin;
@@ -680,7 +677,6 @@
         } catch (e) { console.error(e); }
       }));
       renderModules(modules);
-      await updateTeacherXpPanel(periodId);
       if (isLeader() && currentProgramId) await loadLeaderDashboard(periodId);
     } catch (e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
   }
