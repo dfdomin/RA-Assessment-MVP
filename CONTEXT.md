@@ -144,9 +144,12 @@ _Avoid_: Asumir que el docente ya sabe excluir sin guía
 Una de cuatro opciones discretas por criterio y estudiante. Valores mostrados al docente: **1, 2, 4 y 5** (no existe el 3). Etiquetas ABET: Poor, Inadequate, Adequate, Exemplary.
 _Avoid_: Nota continua, escala 1–5 completa, valor interno 3
 
-**Etiqueta de nivel (matriz y selector)**:
-Nombre ABET en español + valor canónico entre paréntesis. Ejemplo: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`. Sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…) en encabezados ni selectores. Los párrafos largos del descriptor viven solo en la matriz de rúbrica.
+**Etiqueta de nivel (matriz y captura)**:
+Nombre ABET en español + valor canónico entre paréntesis. Ejemplo: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`. Sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…). En **3c Calificar**, cada PI usa **radios horizontales** (uno exclusivo por nivel), no lista desplegable.
 _Avoid_: Solo el número, descriptor completo repetido en cada celda, columnas bilingües tipo `Poor / 1 / (No)`
+
+**Espacio horizontal (consigna UX)**:
+Aprovechar filas antes de apilar: título + estado del módulo en una línea; nombre + `Doc.` del estudiante en una línea; cabecera del estudiante **fija** fuera del scroll. Ver `.cursor/rules/espacio-horizontal.mdc`.
 
 ### Flagged ambiguities
 

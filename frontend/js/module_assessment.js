@@ -135,14 +135,6 @@
     return buildLevelColumnLabel(level);
   }
 
-  function buildLevelSelectOptions() {
-    var html = '<option value="">—</option>';
-    LEVEL_CRITERIA.forEach(function (level) {
-      html += '<option value="' + level.value + '">' + buildSelectorLabel(level) + "</option>";
-    });
-    return html;
-  }
-
   function piWeightIsSet(pi) {
     return pi.pi_weight != null && pi.pi_weight !== "" && !Number.isNaN(Number(pi.pi_weight));
   }
@@ -911,16 +903,33 @@
     });
   }
 
-  function createLevelSelect(student, pi) {
-    var sel = document.createElement("select");
-    sel.className = "level-select";
-    sel.title = pi.code + ": " + (pi.description || "");
-    sel.dataset.moduleStudentId = student.module_student_id;
-    sel.dataset.piId = pi.id;
-    sel.innerHTML = buildLevelSelectOptions();
+  function getExistingLevel(student, pi) {
     var existing = (student.assessments || []).find(function (a) { return a.perf_indicator_id === pi.id; });
-    if (existing) sel.value = String(existing.level);
-    return sel;
+    return existing ? Number(existing.level) : null;
+  }
+
+  function createLevelRadioGroup(student, pi, compact) {
+    var fieldset = document.createElement("fieldset");
+    fieldset.className = "level-radio-group" + (compact ? " level-radio-group--compact" : "");
+    fieldset.setAttribute("role", "radiogroup");
+    fieldset.setAttribute("aria-label", "Nivel " + pi.code);
+    var selected = getExistingLevel(student, pi);
+    LEVEL_CRITERIA.forEach(function (level) {
+      var label = document.createElement("label");
+      label.className = "level-radio-label";
+      var input = document.createElement("input");
+      input.type = "radio";
+      input.className = "level-radio";
+      input.name = "level-" + student.module_student_id + "-" + pi.id;
+      input.value = String(level.value);
+      input.dataset.moduleStudentId = String(student.module_student_id);
+      input.dataset.piId = String(pi.id);
+      if (selected === level.value) input.checked = true;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(buildLevelColumnLabel(level)));
+      fieldset.appendChild(label);
+    });
+    return fieldset;
   }
 
   function renderStudentCard() {
@@ -931,7 +940,10 @@
       studentPosition.textContent = "Estudiante " + (currentStudentIndex + 1) + " de " + activeStudentCount;
     }
     if (studentCardName) studentCardName.textContent = student.full_name || "—";
-    if (studentCardDoc) studentCardDoc.textContent = student.internal_id ? "Doc. " + student.internal_id : "—";
+    if (studentCardDoc) {
+      studentCardDoc.textContent = student.internal_id ? "Doc. " + student.internal_id : "";
+      studentCardDoc.hidden = !student.internal_id;
+    }
     studentCardPis.innerHTML = "";
     piRows.forEach(function (pi) {
       var block = document.createElement("section");
@@ -951,11 +963,7 @@
       head += "</tr></tbody>";
       table.innerHTML = head;
       block.appendChild(table);
-      var label = document.createElement("label");
-      label.className = "student-pi-level-label";
-      label.appendChild(document.createTextNode("Nivel "));
-      label.appendChild(createLevelSelect(student, pi));
-      block.appendChild(label);
+      block.appendChild(createLevelRadioGroup(student, pi, false));
       studentCardPis.appendChild(block);
     });
     if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
@@ -980,7 +988,8 @@
       row.innerHTML = "<td>" + escapeHtml(s.full_name || "—") + "</td><td>" + escapeHtml(s.internal_id || "—") + "</td>";
       piRows.forEach(function (pi) {
         var cell = document.createElement("td");
-        cell.appendChild(createLevelSelect(s, pi));
+        cell.className = "pi-grade-cell";
+        cell.appendChild(createLevelRadioGroup(s, pi, true));
         row.appendChild(cell);
       });
       studentsBody.appendChild(row);
@@ -1363,15 +1372,17 @@
     }
   }
 
-  function handleLevelSelectChange(e) {
-    if (!e.target.classList.contains("level-select")) return;
-    if (!e.target.value) return;
+  function handleLevelCaptureChange(e) {
+    var input = e.target;
+    if (!input.classList || (!input.classList.contains("level-radio") && !input.classList.contains("level-select"))) return;
+    if (!input.value) return;
+    if (input.type === "radio" && !input.checked) return;
     cancelAdvanceCountdown();
-    queueSave(e.target.dataset.moduleStudentId, e.target.dataset.piId, e.target.value);
+    queueSave(input.dataset.moduleStudentId, input.dataset.piId, input.value);
   }
 
-  if (studentsBody) studentsBody.addEventListener("change", handleLevelSelectChange);
-  if (studentCardPis) studentCardPis.addEventListener("change", handleLevelSelectChange);
+  if (studentsBody) studentsBody.addEventListener("change", handleLevelCaptureChange);
+  if (studentCardPis) studentCardPis.addEventListener("change", handleLevelCaptureChange);
 
   gradingSubstepBtns.forEach(function (btn) {
     btn.addEventListener("click", function () { showGradingSubStep(btn.dataset.gradingSub); });

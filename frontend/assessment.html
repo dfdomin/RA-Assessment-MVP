@@ -33,10 +33,12 @@
     <section class="dashboard-toolbar" aria-labelledby="assessment-title">
       <div>
         <a class="back-link" href="/dashboard.html">Volver al panel</a>
-        <h2 id="assessment-title">Evaluación de estudiantes</h2>
-        <p id="assessment-status" class="status-message" role="status" aria-live="polite">
-          Cargando módulo…
-        </p>
+        <div class="assessment-heading-row">
+          <h2 id="assessment-title">Evaluación de estudiantes</h2>
+          <p id="assessment-status" class="status-message assessment-inline-status" role="status" aria-live="polite">
+            Cargando módulo…
+          </p>
+        </div>
       </div>
       <button id="submit-module-btn" class="btn-primary compact-btn" type="button" disabled>
         Enviar módulo
@@ -229,9 +231,13 @@
         </div>
 
         <div id="student-card-view" class="student-card-view">
-          <p id="student-position" class="student-position muted">Estudiante — de —</p>
-          <h4 id="student-card-name" class="student-card-name">—</h4>
-          <p id="student-card-doc" class="student-card-doc muted">—</p>
+          <header class="student-card-header">
+            <p id="student-position" class="student-position muted">Estudiante — de —</p>
+            <div class="student-card-identity">
+              <h4 id="student-card-name" class="student-card-name">—</h4>
+              <span id="student-card-doc" class="student-card-doc muted">—</span>
+            </div>
+          </header>
           <div id="student-card-pis" class="student-card-pis"></div>
           <div id="advance-countdown" class="advance-countdown" hidden role="status" aria-live="polite">
             <p id="advance-countdown-text"></p>

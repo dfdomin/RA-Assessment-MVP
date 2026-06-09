@@ -35,11 +35,13 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 
 **Layout (un estudiante activo):**
 
-- Encabezado: `Estudiante N de Y` + nombre en **texto grande** + documento.
-- Por cada PI activo (bloque apilado vertical):
-  - Código + descripción del criterio + peso `%`.
-  - Matriz de 4 descriptores largos; encabezados de columna en **español ABET**: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)` — sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…).
-  - Selector de nivel con la **misma** etiqueta: `Deficiente (1)`, etc.
+- **Cabecera fija** (fuera del scroll): `Estudiante N de Y`; nombre y `Doc. …` en la **misma línea** horizontal.
+- **Zona con scroll**: bloques por PI apilados verticalmente.
+- Por cada PI activo:
+  - Línea de contexto: `PI-3.1 · descripción · 30%`.
+  - Matriz de 4 descriptores largos; encabezados en **español ABET**: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`.
+  - **Radios horizontales** (uno por nivel, exclusivos por PI) — sin `<select>`; más rápido que lista desplegable.
+- **Consigna UX**: aprovechar espacio horizontal (metadatos en línea, no apilar en bloques estrechos). Ver `.cursor/rules/espacio-horizontal.mdc`.
 - Navegación:
   - **Anterior** — estudiante previo en orden de lista.
   - Al completar los 4 PIs del estudiante activo: cuenta regresiva **3 segundos** con mensaje visible → avance automático al **siguiente pendiente**.
