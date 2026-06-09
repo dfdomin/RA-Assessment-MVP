@@ -1330,6 +1330,8 @@
 
       renderGradingHeader();
       renderWeightsPanel();
+      renderRubricReviewPanel();
+      showGradingSubStep("weights");
       renderAnalyses({ analyses: (qualRows || []).map(function (r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) });
       enableActions();
       updateWizardState();

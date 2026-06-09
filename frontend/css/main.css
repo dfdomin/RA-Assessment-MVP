@@ -784,6 +784,15 @@ select:focus {
   overflow: hidden;
 }
 
+/* display:flex above overrides the native [hidden] rule — restore it */
+.grading-subpanel[hidden],
+.view-mode-picker[hidden],
+.student-card-view[hidden],
+.grid-view[hidden],
+.advance-countdown[hidden] {
+  display: none !important;
+}
+
 .grading-intro {
   flex-shrink: 0;
   font-size: 0.85rem;
