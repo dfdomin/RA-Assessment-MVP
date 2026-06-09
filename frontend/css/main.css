@@ -1973,7 +1973,7 @@ select:focus {
   margin: 0.25rem 0;
   font-size: 1.75rem;
   font-weight: 700;
-  color: #166534;
+  color: var(--color-primary);
 }
 
 .celebration-xp-track {
@@ -1993,21 +1993,27 @@ select:focus {
   min-width: 12rem;
 }
 
+.teacher-period-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  max-width: 36rem;
+}
+
 .teacher-xp-panel {
   position: relative;
   overflow: hidden;
   margin: 0 0 1rem;
   padding: 1rem 1.1rem;
-  border: 2px solid #86efac;
+  border: 2px solid var(--color-accent);
   border-radius: var(--border-radius);
-  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 50%, #dcfce7 100%);
-  box-shadow: 0 2px 8px rgba(22, 101, 52, 0.08);
+  background: linear-gradient(135deg, #fffef5 0%, #fff9db 50%, #fffef0 100%);
+  box-shadow: 0 2px 8px rgba(30, 40, 67, 0.08);
 }
 
 .teacher-xp-panel--max {
-  border-color: #22c55e;
-  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 45%, #bbf7d0 100%);
-  box-shadow: 0 4px 14px rgba(22, 101, 52, 0.16);
+  border-color: #e6c200;
+  background: linear-gradient(135deg, #fff6b8 0%, #fffef5 45%, #ffefb0 100%);
+  box-shadow: 0 4px 14px rgba(255, 223, 45, 0.35);
 }
 
 .teacher-xp-bubbles {
@@ -2059,18 +2065,18 @@ select:focus {
   min-width: 2.5rem;
   height: 2.5rem;
   border-radius: 999px;
-  background: #22c55e;
-  color: #ffffff;
+  background: var(--color-accent);
+  color: var(--color-primary);
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.04em;
-  box-shadow: 0 2px 0 rgba(21, 128, 61, 0.35);
+  box-shadow: 0 2px 0 rgba(30, 40, 67, 0.18);
 }
 
 .teacher-xp-heading h4 {
   margin: 0;
   font-size: 1rem;
-  color: #166534;
+  color: var(--color-primary);
 }
 
 .teacher-xp-score-row {
@@ -2083,38 +2089,38 @@ select:focus {
 .teacher-xp-value {
   font-size: 2rem;
   line-height: 1;
-  color: #166534;
+  color: var(--color-primary);
 }
 
 .teacher-xp-max {
   font-size: 1rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-primary);
 }
 
 .teacher-xp-track {
   margin-bottom: 0.5rem;
   height: 0.65rem;
   border-radius: 999px;
-  background: #bbf7d0;
+  background: #f3f4f6;
 }
 
 .teacher-xp-bar {
-  background: linear-gradient(90deg, #4ade80 0%, #16a34a 100%);
+  background: linear-gradient(90deg, #ffe566 0%, var(--color-accent) 55%, #e6c200 100%);
   border-radius: 999px;
 }
 
 .teacher-xp-detail {
   margin: 0;
   font-size: 0.8125rem;
-  color: #166534;
+  color: var(--color-primary);
 }
 
 .teacher-xp-cheer {
   margin: 0.5rem 0 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #15803d;
+  color: var(--color-primary);
 }
 
 .module-xp-earned {
@@ -2123,8 +2129,8 @@ select:focus {
   gap: 0.15rem;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-accent);
+  color: var(--color-primary);
   font-size: 0.8125rem;
   font-weight: 700;
   white-space: nowrap;
@@ -2136,16 +2142,28 @@ select:focus {
   gap: 0.15rem;
   padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  background: #f0fdf4;
-  color: #4ade80;
+  background: #fffef5;
+  color: var(--color-muted);
   font-size: 0.8125rem;
   font-weight: 600;
   white-space: nowrap;
-  border: 1px dashed #86efac;
+  border: 1px dashed #e6c200;
 }
 
 #modules-xp-head {
-  color: #166534;
+  color: var(--color-primary);
+}
+
+.modules-table tr.module-row--completed {
+  background: #fffbeb;
+}
+
+.modules-table tr.module-row--completed td {
+  border-top-color: #fde68a;
+}
+
+.modules-table tr.module-row--completed .table-action {
+  font-weight: 700;
 }
 
 .btn-secondary:disabled {

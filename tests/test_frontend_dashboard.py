@@ -10,12 +10,15 @@ def read_frontend(path: str) -> str:
 
 def test_dashboard_declares_modules_progress_surface():
     html = read_frontend("dashboard.html")
+    js = read_frontend("js/dashboard.js")
 
     assert 'id="period-select"' in html
     assert 'id="modules-status"' in html
     assert 'id="modules-table"' in html
     assert 'id="modules-body"' in html
     assert 'id="teacher-xp-panel"' in html
+    assert 'id="teacher-period-hint"' in html
+    assert "Todos mis módulos" in js
     assert 'id="teacher-xp-value"' in html
     assert "./js/dashboard.js" in html
     assert "./js/api.js" in html
@@ -23,6 +26,7 @@ def test_dashboard_declares_modules_progress_surface():
 
 
 def test_dashboard_js_uses_supabase_for_periods_and_modules():
+    html = read_frontend("dashboard.html")
     js = read_frontend("js/dashboard.js")
 
     assert 'from("periods")' in js
@@ -30,6 +34,8 @@ def test_dashboard_js_uses_supabase_for_periods_and_modules():
     assert "ensureSupabase" in js
     assert "renderModules" in js
     assert "syncTeacherXpUi" in js
+    assert "teacherCycleProgress" in js
+    assert "module-row--completed" in js
     assert "appendXpCell" in js
     assert "computeXpCumulative" in js
     assert 'id="modules-xp-head"' in html

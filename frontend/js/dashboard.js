@@ -37,6 +37,9 @@
   const teacherXpDetail = document.getElementById("teacher-xp-detail");
   const teacherXpCheer = document.getElementById("teacher-xp-cheer");
   const modulesXpHead = document.getElementById("modules-xp-head");
+  const teacherPeriodHint = document.getElementById("teacher-period-hint");
+  const periodSelectLabel = document.getElementById("period-select-label");
+  const TEACHER_ALL_PERIODS = "all";
 
   var adminTeachersCache = [];
 
@@ -154,16 +157,66 @@
     row.appendChild(cell);
   }
 
-  function syncTeacherXpUi(modules) {
+  async function teacherCycleProgress(sb, userId, cycleId) {
+    var staffRes = await sb.from("module_staff").select("module_id").eq("user_id", userId);
+    if (staffRes.error) throw staffRes.error;
+    var moduleIds = [];
+    (staffRes.data || []).forEach(function (row) {
+      if (row.module_id != null) moduleIds.push(row.module_id);
+    });
+    if (!moduleIds.length) return { total: 0, completed: 0 };
+    var evalRes = await sb.from("module_ra_evaluations")
+      .select("id, status, period:periods(cycle_id)")
+      .in("module_id", moduleIds);
+    if (evalRes.error) throw evalRes.error;
+    var rows = (evalRes.data || []).filter(function (row) {
+      return !cycleId || (row.period && row.period.cycle_id === cycleId);
+    });
+    return {
+      total: rows.length,
+      completed: rows.filter(function (row) { return row.status === "completed"; }).length,
+    };
+  }
+
+  async function syncTeacherXpUi(modules, periodId) {
     if (!teacherXpPanel) return;
     if (!isTeacher()) {
       teacherXpPanel.hidden = true;
       return;
     }
     teacherXpPanel.hidden = false;
-    var total = modules.length;
-    var completed = modules.filter(function (m) { return m.status === "completed"; }).length;
-    renderTeacherXpPanel({ total: total, completed: completed });
+    var visibleTotal = modules.length;
+    var visibleCompleted = modules.filter(function (m) { return m.status === "completed"; }).length;
+    var cycleProgress = { total: visibleTotal, completed: visibleCompleted };
+    try {
+      await requireSession();
+      var sb = ensureSupabase();
+      var cycleId = null;
+      if (periodId && periodId !== TEACHER_ALL_PERIODS) {
+        var periodRes = await sb.from("periods").select("cycle_id").eq("id", periodId).maybeSingle();
+        if (!periodRes.error && periodRes.data) cycleId = periodRes.data.cycle_id;
+      } else if (periodId === TEACHER_ALL_PERIODS) {
+        var teacherIds = await teacherPeriodIds();
+        if (teacherIds && teacherIds.size) {
+          var cycleRes = await sb.from("periods").select("cycle_id")
+            .in("id", Array.from(teacherIds))
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (!cycleRes.error && cycleRes.data) cycleId = cycleRes.data.cycle_id;
+        }
+      }
+      cycleProgress = await teacherCycleProgress(sb, currentUser.id, cycleId);
+    } catch (e) {
+      console.error(e);
+    }
+    renderTeacherXpPanel({
+      total: cycleProgress.total,
+      completed: cycleProgress.completed,
+      visibleTotal: visibleTotal,
+      visibleCompleted: visibleCompleted,
+      viewingAll: periodId === TEACHER_ALL_PERIODS,
+    });
   }
 
   function renderTeacherXpPanel(progress) {
@@ -172,8 +225,13 @@
     if (teacherXpValue) teacherXpValue.textContent = String(xp);
     if (teacherXpBar) teacherXpBar.style.width = xp + "%";
     if (teacherXpDetail) {
-      teacherXpDetail.textContent = progress.completed + " de " + progress.total
-        + " módulos enviados en el cuatrimestre";
+      if (progress.visibleTotal != null && progress.visibleTotal !== progress.total && !progress.viewingAll) {
+        teacherXpDetail.textContent = progress.visibleCompleted + " de " + progress.visibleTotal
+          + " en este RA · " + progress.completed + " de " + progress.total + " en el cuatrimestre";
+      } else {
+        teacherXpDetail.textContent = progress.completed + " de " + progress.total
+          + " módulos enviados en el cuatrimestre";
+      }
     }
     if (teacherXpCheer) {
       if (progress.total > 0 && progress.completed === progress.total) {
@@ -456,10 +514,10 @@
     return "Sin módulos en " + periodName + ".";
   }
 
-  function renderModules(modules) {
+  function renderModules(modules, periodId) {
     currentModules = modules;
     modulesBody.innerHTML = "";
-    syncTeacherXpUi(modules);
+    syncTeacherXpUi(modules, periodId || currentPeriodId);
     updatePeriodProgress(modules);
     if (!modules.length) {
       const message = emptyModulesMessage();
@@ -469,6 +527,7 @@
     }
     modules.forEach(function(m) {
       const row = document.createElement("tr");
+      if (m.status === "completed") row.classList.add("module-row--completed");
       const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id;
       [safeText(m.course_name), safeText(m.ra_code), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
         .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
@@ -556,6 +615,8 @@
       if (modulesPanel) modulesPanel.hidden = admin;
       if (teacherXpPanel) teacherXpPanel.hidden = !isTeacher() || admin;
       if (modulesXpHead) modulesXpHead.hidden = !isTeacher() || admin;
+      if (teacherPeriodHint) teacherPeriodHint.hidden = !isTeacher() || admin;
+      if (periodSelectLabel && isTeacher() && !admin) periodSelectLabel.textContent = "RA / período";
       leaderPanel.hidden = !isLeader() || admin;
       leaderReportPdfBtn.hidden = !isLeader() || admin;
       leaderReportDocxBtn.hidden = !isLeader() || admin;
@@ -645,10 +706,21 @@
     try {
       await requireSession();
       const sb = ensureSupabase();
-      if (isLeader()) await loadLeaderPrograms(periodId);
-      const { data: rows, error } = await sb.from("module_ra_evaluations")
-        .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))")
-        .eq("period_id", periodId)
+      if (isLeader() && periodId !== TEACHER_ALL_PERIODS) await loadLeaderPrograms(periodId);
+      var evalQuery = sb.from("module_ra_evaluations")
+        .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))");
+      if (periodId === TEACHER_ALL_PERIODS && isTeacher()) {
+        var teacherIds = await teacherPeriodIds();
+        if (!teacherIds || !teacherIds.size) {
+          renderModules([], periodId);
+          setStatus("Sin módulos asignados.", "info");
+          return;
+        }
+        evalQuery = evalQuery.in("period_id", Array.from(teacherIds));
+      } else {
+        evalQuery = evalQuery.eq("period_id", periodId);
+      }
+      const { data: rows, error } = await evalQuery
         .order("course_code", { foreignTable: "modules" })
         .order("group_name", { foreignTable: "modules" });
       if (error) throw error;
@@ -676,8 +748,8 @@
           m.students_graded = await countGraded(m.id, piIds);
         } catch (e) { console.error(e); }
       }));
-      renderModules(modules);
-      if (isLeader() && currentProgramId) await loadLeaderDashboard(periodId);
+      renderModules(modules, periodId);
+      if (isLeader() && currentProgramId && periodId !== TEACHER_ALL_PERIODS) await loadLeaderDashboard(periodId);
     } catch (e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
   }
 
@@ -883,13 +955,24 @@
         periodSelect.appendChild(new Option("Sin períodos", ""));
         return;
       }
-      periods.forEach(function (p) { periodSelect.appendChild(new Option(p.name, p.id)); });
-      periodSelect.disabled = false;
       let periodIdsWithData = await teacherPeriodIds();
       if (!periodIdsWithData && currentUser && (currentUser.role === "leader" || currentUser.role === "admin")) {
         periodIdsWithData = await periodsWithModules();
       }
-      const defaultPeriodId = pickDefaultPeriodId(periods, periodIdsWithData);
+      if (isTeacher() && periodIdsWithData && periodIdsWithData.size) {
+        periodSelect.appendChild(new Option("Todos mis módulos (cuatrimestre)", TEACHER_ALL_PERIODS));
+        periods.forEach(function (p) {
+          if (periodIdsWithData.has(String(p.id))) {
+            periodSelect.appendChild(new Option(p.name, p.id));
+          }
+        });
+      } else {
+        periods.forEach(function (p) { periodSelect.appendChild(new Option(p.name, p.id)); });
+      }
+      periodSelect.disabled = false;
+      const defaultPeriodId = isTeacher() && periodIdsWithData && periodIdsWithData.size
+        ? TEACHER_ALL_PERIODS
+        : pickDefaultPeriodId(periods, periodIdsWithData);
       periodSelect.value = defaultPeriodId;
       currentPeriodId = defaultPeriodId;
       await loadModules(defaultPeriodId);
