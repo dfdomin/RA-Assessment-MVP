@@ -18,8 +18,15 @@ def test_assessment_page_declares_grading_surface():
     assert 'data-step-target="roster"' in html
     assert 'data-step-target="grading"' in html
     assert 'data-step-target="analysis"' in html
+    assert 'data-step-target="quantitative"' not in html
+    assert 'data-step-target="qualitative"' not in html
     assert 'data-step-target="distribution"' not in html
     assert 'data-step-target="submit"' in html
+    assert 'data-analysis-sub="quantitative"' in html
+    assert 'data-analysis-sub="qualitative"' in html
+    assert 'id="continue-qualitative-btn"' in html
+    assert 'id="conclusions-text"' in html
+    assert 'id="improvement-plan-text"' in html
     assert 'id="wizard-next-btn"' in html
     assert 'id="wizard-prev-btn"' in html
     assert 'id="module-summary"' in html
@@ -84,6 +91,11 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "renderDistributionChart" in js
     assert "toFixed(2)" in js
     assert 'stepOrder = ["general", "roster", "grading", "analysis", "submit"]' in js
+    assert "showAnalysisSubStep" in js
+    assert "tryAdvanceAnalysisSubStep" in js
+    assert "collectModuleQualitativeFields" in js
+    assert "conclusions_text" in js
+    assert "improvement_plan_text" in js
     assert "showStep" in js
     assert 'document.querySelectorAll("[data-step-target]")' in js
     assert 'document.querySelectorAll("[data-step-panel]")' in js

@@ -29,7 +29,14 @@
   var submitLeaderEmail = document.getElementById("submit-leader-email");
   var studentsBody = document.getElementById("students-body");
   var distributionBody = document.getElementById("distribution-body");
+  var quantitativePiSummaries = document.getElementById("quantitative-pi-summaries");
   var analysisBody = document.getElementById("analysis-body");
+  var moduleQualitativeSection = document.getElementById("module-qualitative-section");
+  var conclusionsText = document.getElementById("conclusions-text");
+  var recommendationsText = document.getElementById("recommendations-text");
+  var preventiveMeasuresText = document.getElementById("preventive-measures-text");
+  var correctiveMeasuresText = document.getElementById("corrective-measures-text");
+  var improvementPlanText = document.getElementById("improvement-plan-text");
   var submitModuleBtn = document.getElementById("submit-module-btn");
   var saveQualitativeBtn = document.getElementById("save-qualitative-btn");
   var statusMsg = document.getElementById("assessment-status");
@@ -58,6 +65,7 @@
   var captureHint = document.getElementById("capture-hint");
   var gridCaptureHint = document.getElementById("grid-capture-hint");
   var continueAnalysisBtn = document.getElementById("continue-analysis-btn");
+  var continueQualitativeBtn = document.getElementById("continue-qualitative-btn");
   var rosterBody = document.getElementById("roster-body");
   var rosterStats = document.getElementById("roster-stats");
   var rosterPdfInput = document.getElementById("roster-pdf-input");
@@ -92,6 +100,7 @@
   var rosterPreviewData = null;
   var pendingExcludeMsId = null;
   var piRows = [];
+  var qualitativeData = { analyses: [], module: {} };
   var activeStudentCount = 0;
   var currentModule = null;
   var currentEvaluation = null;
@@ -99,6 +108,9 @@
   var currentRaLabel = "";
 
   var gradingSubStep = "weights";
+  var analysisSubStep = "quantitative";
+  var analysisSubstepBtns = Array.from(document.querySelectorAll("[data-analysis-sub]"));
+  var analysisSubpanels = Array.from(document.querySelectorAll("[data-analysis-panel]"));
   var captureViewMode = "student_card";
   var currentUserGridEnabled = false;
   var currentStudentIndex = 0;
@@ -657,9 +669,46 @@
       showGradingSubStep(gradingSubStep);
     }
     if (stepTarget === "analysis") {
+      showAnalysisSubStep(analysisSubStep);
+    }
+  }
+
+  function canEnterAnalysisSub(sub) {
+    if (sub === "quantitative") return allActiveStudentsFullyGraded();
+    if (sub === "qualitative") return allActiveStudentsFullyGraded();
+    return false;
+  }
+
+  function showAnalysisSubStep(sub) {
+    if (!canEnterAnalysisSub(sub)) {
+      setStatus("Complete las calificaciones de todos los estudiantes activos antes del análisis.", "error");
+      return;
+    }
+    analysisSubStep = sub;
+    analysisSubpanels.forEach(function (p) { p.hidden = p.dataset.analysisPanel !== sub; });
+    analysisSubstepBtns.forEach(function (btn) {
+      var active = btn.dataset.analysisSub === sub;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-current", active ? "step" : "false");
+    });
+    if (sub === "quantitative") {
       var dist = buildDistribution(studentsData.students, piRows);
       renderDistribution({ distribution: dist });
     }
+    if (sub === "qualitative") {
+      renderAnalyses({ analyses: qualitativeData.analyses || [] });
+      applyModuleQualitativeFields(qualitativeData.module || {});
+    }
+    updateWizardNavLabels();
+    updateWizardChrome();
+  }
+
+  function tryAdvanceAnalysisSubStep() {
+    if (analysisSubStep === "quantitative") {
+      showAnalysisSubStep("qualitative");
+      return false;
+    }
+    return true;
   }
 
   function canEnterGradingSub(sub) {
@@ -705,6 +754,9 @@
     if (stepOrder[currentStepIndex] === "grading") {
       if (gradingSubStep === "capture") wizardPrevBtn.textContent = "Regresa a 3b Rúbrica";
       else if (gradingSubStep === "rubric") wizardPrevBtn.textContent = "Regresa a 3a Ponderación";
+      else wizardPrevBtn.textContent = "Anterior";
+    } else if (stepOrder[currentStepIndex] === "analysis") {
+      if (analysisSubStep === "qualitative") wizardPrevBtn.textContent = "Regresa a 4a Cuantitativo";
       else wizardPrevBtn.textContent = "Anterior";
     } else {
       wizardPrevBtn.textContent = "Anterior";
@@ -1120,7 +1172,7 @@
     var allGraded = allActiveStudentsFullyGraded();
     if (continueAnalysisBtn) continueAnalysisBtn.hidden = !allGraded;
     if (allGraded) {
-      setCaptureHintText("Todos los estudiantes activos están calificados. Puede continuar al análisis.");
+      setCaptureHintText("Todos los estudiantes activos están calificados. Puede continuar al análisis cuantitativo.");
     } else if (effectiveCaptureViewMode() === "student_card") {
       setCaptureHintText("Complete los cuatro criterios del estudiante activo.");
     } else {
@@ -1301,6 +1353,64 @@
     }).join(" · ");
   }
 
+  function suggestStandardAndAction(dist, piId) {
+    var d = dist[distributionKey(piId)];
+    if (!d || activeStudentCount <= 0) {
+      return { standard: "Medium", standardEs: "Medio", actionType: "preventive" };
+    }
+    var counts = LEVEL_CRITERIA.map(function (level) {
+      return { level: level.value, count: Number(d[level.distKey]) || 0 };
+    });
+    var maxCount = Math.max.apply(null, counts.map(function (c) { return c.count; }));
+    if (maxCount <= 0) {
+      return { standard: "Medium", standardEs: "Medio", actionType: "preventive" };
+    }
+    var majorityLevel = counts.filter(function (c) { return c.count === maxCount; })
+      .sort(function (a, b) { return a.level - b.level; })[0].level;
+    if (majorityLevel === 1) {
+      return { standard: "Low", standardEs: "Bajo", actionType: "corrective" };
+    }
+    if (majorityLevel === 2) {
+      return { standard: "Low", standardEs: "Bajo", actionType: "preventive" };
+    }
+    if (majorityLevel === 4) {
+      return { standard: "Medium", standardEs: "Medio", actionType: "preventive" };
+    }
+    return { standard: "High", standardEs: "Alto", actionType: "improvement" };
+  }
+
+  function actionTypeLabel(value) {
+    if (value === "corrective") return "Acciones correctivas";
+    if (value === "preventive") return "Acciones preventivas";
+    if (value === "improvement") return "Plan de mejora / mantenimiento";
+    return value;
+  }
+
+  function renderQuantitativePiSummaries(dist) {
+    if (!quantitativePiSummaries) return;
+    quantitativePiSummaries.innerHTML = "";
+    var heading = document.createElement("h4");
+    heading.className = "quantitative-pi-heading";
+    heading.textContent = "Resumen por indicador";
+    quantitativePiSummaries.appendChild(heading);
+    piRows.forEach(function (pi) {
+      var suggestion = suggestStandardAndAction(dist, pi.id);
+      var card = document.createElement("article");
+      card.className = "quantitative-pi-card";
+      card.innerHTML = "<h5>" + escapeHtml(pi.code) + " — " + escapeHtml(pi.description || "") + "</h5>";
+      var distLine = document.createElement("p");
+      distLine.className = "muted";
+      distLine.textContent = piDistributionSummary(dist, pi.id);
+      card.appendChild(distLine);
+      var meta = document.createElement("p");
+      meta.className = "analysis-pi-meta";
+      meta.innerHTML = '<span class="analysis-standard-badge">Estándar: ' + escapeHtml(suggestion.standardEs)
+        + '</span> <span class="analysis-action-hint">Acción sugerida: ' + escapeHtml(actionTypeLabel(suggestion.actionType)) + "</span>";
+      card.appendChild(meta);
+      quantitativePiSummaries.appendChild(card);
+    });
+  }
+
   function renderDistributionChart(dist, container) {
     var chartWrap = document.createElement("div");
     chartWrap.className = "dist-chart";
@@ -1380,50 +1490,93 @@
     LEVEL_CRITERIA.forEach(function (level) {
       headCells += '<th scope="col">' + escapeHtml(level.labelEs) + "</th>";
     });
+    headCells += '<th scope="col">Estándar</th><th scope="col">Acción sugerida</th>';
     head.innerHTML = "<tr>" + headCells + "</tr>";
     table.appendChild(head);
     var body = document.createElement("tbody");
     piRows.forEach(function (pi) {
       var d = dist[distributionKey(pi.id)];
       if (!d) return;
+      var suggestion = suggestStandardAndAction(dist, pi.id);
       var cells = "<td>" + escapeHtml(d.pi_code || "—") + "</td>";
       LEVEL_CRITERIA.forEach(function (level) {
         cells += "<td>" + formatDistCell(d[level.distKey], activeStudentCount) + "</td>";
       });
+      cells += "<td>" + escapeHtml(suggestion.standardEs) + "</td>";
+      cells += "<td>" + escapeHtml(actionTypeLabel(suggestion.actionType)) + "</td>";
       var row = document.createElement("tr");
       row.innerHTML = cells;
       body.appendChild(row);
     });
     table.appendChild(body);
     distributionBody.appendChild(table);
+    renderQuantitativePiSummaries(dist);
+  }
+
+  function applyModuleQualitativeFields(moduleFields) {
+    if (conclusionsText) conclusionsText.value = moduleFields.conclusions_text || "";
+    if (recommendationsText) recommendationsText.value = moduleFields.recommendations_text || "";
+    if (preventiveMeasuresText) preventiveMeasuresText.value = moduleFields.preventive_measures_text || "";
+    if (correctiveMeasuresText) correctiveMeasuresText.value = moduleFields.corrective_measures_text || "";
+    if (improvementPlanText) improvementPlanText.value = moduleFields.improvement_plan_text || "";
+  }
+
+  function collectModuleQualitativeFields() {
+    return {
+      conclusions_text: conclusionsText ? conclusionsText.value.trim() : "",
+      recommendations_text: recommendationsText ? recommendationsText.value.trim() : "",
+      preventive_measures_text: preventiveMeasuresText ? preventiveMeasuresText.value.trim() : "",
+      corrective_measures_text: correctiveMeasuresText ? correctiveMeasuresText.value.trim() : "",
+      improvement_plan_text: improvementPlanText ? improvementPlanText.value.trim() : "",
+    };
+  }
+
+  function moduleQualitativeFieldsComplete() {
+    var fields = collectModuleQualitativeFields();
+    return Object.keys(fields).every(function (key) { return fields[key] !== ""; });
   }
 
   function renderAnalyses(data) {
+    if (!analysisBody) return;
     analysisBody.innerHTML = "";
     var dist = buildDistribution(studentsData.students, piRows);
     piRows.forEach(function (pi) {
       var existing = (data.analyses || []).find(function (a) { return a.perf_indicator_id === pi.id; });
       var div = document.createElement("div");
       div.className = "analysis-item";
+      div.dataset.piId = pi.id;
       div.innerHTML = "<label>" + escapeHtml(pi.code) + " — " + escapeHtml(pi.description || "") + "</label>";
-      var summary = document.createElement("p");
-      summary.className = "muted analysis-pi-dist";
-      summary.textContent = "Distribución: " + piDistributionSummary(dist, pi.id);
-      div.appendChild(summary);
-      var ta = document.createElement("textarea");
-      ta.dataset.piId = pi.id;
-      ta.maxLength = 2000;
-      ta.placeholder = "Indique el análisis de los resultados encontrados en la medición de este criterio…";
-      ta.value = existing ? existing.analysis_text || "" : "";
-      div.appendChild(ta);
+
+      var hint = document.createElement("p");
+      hint.className = "muted analysis-pi-dist";
+      hint.textContent = "Referencia cuantitativa (4a): " + piDistributionSummary(dist, pi.id);
+      div.appendChild(hint);
+
+      var analysisLabel = document.createElement("label");
+      analysisLabel.className = "analysis-field-label";
+      analysisLabel.textContent = "Análisis del indicador";
+      div.appendChild(analysisLabel);
+      var analysisTa = document.createElement("textarea");
+      analysisTa.dataset.field = "analysis";
+      analysisTa.maxLength = 2000;
+      analysisTa.placeholder = "Interprete el desempeño del grupo en este indicador: niveles alcanzados, fortalezas, brechas y ajustes pedagógicos sugeridos para este criterio…";
+      analysisTa.value = existing ? existing.analysis_text || "" : "";
+      div.appendChild(analysisTa);
+
       analysisBody.appendChild(div);
     });
   }
 
   function collectAnalyses() {
-    return Array.from(analysisBody.querySelectorAll("textarea")).filter(function (ta) { return ta.value.trim() !== ""; }).map(function (ta) {
-      return { perf_indicator_id: Number(ta.dataset.piId), analysis_text: ta.value };
-    });
+    if (!analysisBody) return [];
+    return Array.from(analysisBody.querySelectorAll(".analysis-item")).map(function (item) {
+      var piId = Number(item.dataset.piId);
+      var analysisTa = item.querySelector('textarea[data-field="analysis"]');
+      return {
+        perf_indicator_id: piId,
+        analysis_text: analysisTa ? analysisTa.value.trim() : "",
+      };
+    }).filter(function (a) { return a.analysis_text; });
   }
 
   function allActiveStudentsFullyGraded() {
@@ -1431,7 +1584,14 @@
   }
 
   function allAnalysesComplete() {
-    return piRows.length === 0 || Array.from(analysisBody.querySelectorAll("textarea")).every(function (ta) { return ta.value.trim() !== ""; });
+    if (piRows.length === 0) return moduleQualitativeFieldsComplete();
+    var items = analysisBody ? Array.from(analysisBody.querySelectorAll(".analysis-item")) : [];
+    if (items.length !== piRows.length) return false;
+    var piComplete = items.every(function (item) {
+      var analysisTa = item.querySelector('textarea[data-field="analysis"]');
+      return analysisTa && analysisTa.value.trim() !== "";
+    });
+    return piComplete && moduleQualitativeFieldsComplete();
   }
 
   function updateWizardState() {
@@ -1449,10 +1609,17 @@
       var resolvedId = await resolveEvaluationId(client);
       if (!resolvedId) { setStatus("Evaluación no encontrada.", "error"); return; }
 
-      var { data: evaluation } = await client.from("module_ra_evaluations")
-        .select("id, status, grading_view_mode, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+      var evalResult = await client.from("module_ra_evaluations")
+        .select("id, status, grading_view_mode, conclusions_text, recommendations_text, preventive_measures_text, corrective_measures_text, improvement_plan_text, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
         .eq("id", resolvedId)
         .single();
+      if (evalResult.error) {
+        evalResult = await client.from("module_ra_evaluations")
+          .select("id, status, grading_view_mode, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+          .eq("id", resolvedId)
+          .single();
+      }
+      var evaluation = evalResult.data;
       if (!evaluation || !evaluation.module) { setStatus("Módulo no encontrado.", "error"); return; }
 
       var { data: profile } = await client.from("users")
@@ -1484,15 +1651,29 @@
 
       await reloadRosterData();
 
-      var { data: qualRows } = await client.from("module_analysis")
+      var qualResult = await client.from("module_analysis")
         .select("perf_indicator_id, analysis_text")
         .eq("module_ra_evaluation_id", resolvedId);
+      var qualRows = qualResult.data;
+
+      qualitativeData.analyses = (qualRows || []).map(function (r) {
+        return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text };
+      });
+      qualitativeData.module = {
+        conclusions_text: evaluation.conclusions_text || "",
+        recommendations_text: evaluation.recommendations_text || "",
+        preventive_measures_text: evaluation.preventive_measures_text || "",
+        corrective_measures_text: evaluation.corrective_measures_text || "",
+        improvement_plan_text: evaluation.improvement_plan_text || "",
+      };
 
       renderGradingHeader();
       renderWeightsPanel();
       renderRubricReviewPanel();
       showGradingSubStep("weights");
-      renderAnalyses({ analyses: (qualRows || []).map(function (r) { return { perf_indicator_id: r.perf_indicator_id, analysis_text: r.analysis_text }; }) });
+      analysisSubStep = "quantitative";
+      applyModuleQualitativeFields(qualitativeData.module);
+      renderAnalyses({ analyses: qualitativeData.analyses });
       enableActions();
       updateWizardState();
       setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");
@@ -1526,6 +1707,13 @@
 
   gradingSubstepBtns.forEach(function (btn) {
     btn.addEventListener("click", function () { showGradingSubStep(btn.dataset.gradingSub); });
+  });
+
+  analysisSubstepBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      if (stepOrder[currentStepIndex] !== "analysis") showStep("analysis");
+      showAnalysisSubStep(btn.dataset.analysisSub);
+    });
   });
 
   if (gradingToolbarToggle) {
@@ -1607,25 +1795,53 @@
     continueAnalysisBtn.addEventListener("click", async function () {
       if (!allActiveStudentsFullyGraded()) return;
       await flushPendingSaves(true);
+      analysisSubStep = "quantitative";
       showStep("analysis");
-      setStatus("Registre el análisis cualitativo por criterio.", "success");
+      setStatus("Revise la distribución por indicador (4a) antes del análisis cualitativo.", "success");
+    });
+  }
+
+  if (continueQualitativeBtn) {
+    continueQualitativeBtn.addEventListener("click", function () {
+      if (!allActiveStudentsFullyGraded()) {
+        setStatus("Complete las calificaciones de todos los estudiantes activos primero.", "error");
+        return;
+      }
+      if (stepOrder[currentStepIndex] !== "analysis") showStep("analysis");
+      showAnalysisSubStep("qualitative");
+      setStatus("Registre el análisis por indicador y las conclusiones del módulo (4b).", "success");
     });
   }
 
   saveQualitativeBtn.addEventListener("click", async function () {
     saveQualitativeBtn.disabled = true;
-    setStatus("Guardando analisis...");
+    setStatus("Guardando análisis...");
     try {
       await requireAuthOrRedirect();
       var evalId = currentEvaluation && currentEvaluation.id;
+      var client = assertSupabase();
       var payload = collectAnalyses().map(function (a) {
-        return { module_ra_evaluation_id: Number(evalId), perf_indicator_id: a.perf_indicator_id, analysis_text: a.analysis_text };
+        return {
+          module_ra_evaluation_id: Number(evalId),
+          perf_indicator_id: a.perf_indicator_id,
+          analysis_text: a.analysis_text,
+        };
       });
       if (payload.length) {
-        var { error } = await assertSupabase().from("module_analysis").upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
-        if (error) throw error;
+        var upsertResult = await client.from("module_analysis").upsert(payload, { onConflict: "module_ra_evaluation_id,perf_indicator_id" });
+        if (upsertResult.error) throw upsertResult.error;
+        qualitativeData.analyses = collectAnalyses();
       }
-      setStatus("Analisis guardado.", "success");
+      var moduleFields = collectModuleQualitativeFields();
+      var updateResult = await client.from("module_ra_evaluations").update(moduleFields).eq("id", evalId);
+      if (updateResult.error && /(conclusions|recommendations|preventive|corrective|improvement)/i.test(updateResult.error.message || "")) {
+        setStatus("Guarde el análisis por indicador. Aplique la migración 0020 en Supabase para las conclusiones y medidas del módulo.", "error");
+        saveQualitativeBtn.disabled = false;
+        return;
+      }
+      if (updateResult.error) throw updateResult.error;
+      qualitativeData.module = moduleFields;
+      setStatus("Análisis guardado.", "success");
       updateWizardState();
     } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); }
     saveQualitativeBtn.disabled = false;
@@ -1647,12 +1863,22 @@
     } catch (e) { if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error"); submitModuleBtn.disabled = false; }
   });
 
-  analysisBody.addEventListener("input", function (e) { if (e.target.tagName === "TEXTAREA") updateWizardState(); });
+  if (analysisBody) {
+    analysisBody.addEventListener("input", function (e) {
+      if (e.target.tagName === "TEXTAREA") updateWizardState();
+    });
+  }
+  if (moduleQualitativeSection) {
+    moduleQualitativeSection.addEventListener("input", function (e) {
+      if (e.target.tagName === "TEXTAREA") updateWizardState();
+    });
+  }
   wizardSteps.forEach(function (s) {
     s.addEventListener("click", function () { showStep(s.dataset.stepTarget); });
   });
   wizardNextBtn.addEventListener("click", function () {
     if (stepOrder[currentStepIndex] === "grading" && !tryAdvanceGradingSubStep()) return;
+    if (stepOrder[currentStepIndex] === "analysis" && !tryAdvanceAnalysisSubStep()) return;
     showStep(stepOrder[Math.min(currentStepIndex + 1, stepOrder.length - 1)]);
   });
 
@@ -1660,6 +1886,9 @@
     if (stepOrder[currentStepIndex] === "grading") {
       if (gradingSubStep === "capture") { showGradingSubStep("rubric"); return; }
       if (gradingSubStep === "rubric") { showGradingSubStep("weights"); return; }
+    }
+    if (stepOrder[currentStepIndex] === "analysis") {
+      if (analysisSubStep === "qualitative") { showAnalysisSubStep("quantitative"); return; }
     }
     showStep(stepOrder[Math.max(currentStepIndex - 1, 0)]);
   });

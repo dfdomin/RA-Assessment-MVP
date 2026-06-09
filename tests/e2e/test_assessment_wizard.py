@@ -37,4 +37,10 @@ def test_pw06_teacher_assessment_wizard_blocks_submit_until_ready(
 
     browser_page.click('[data-step-target="analysis"]')
     assert browser_page.locator('[data-step-panel="analysis"]').is_visible()
+    assert browser_page.locator('[data-analysis-panel="quantitative"]').is_visible()
     assert browser_page.locator("#distribution-body").is_visible()
+
+    browser_page.click('[data-analysis-sub="qualitative"]')
+    assert browser_page.locator('[data-analysis-panel="qualitative"]').is_visible()
+    assert browser_page.locator("#analysis-body").is_visible()
+    assert browser_page.locator("#conclusions-text").is_visible()

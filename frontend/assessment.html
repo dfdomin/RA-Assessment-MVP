@@ -264,7 +264,7 @@
             <p id="grading-progress" class="grading-progress-footer">Estudiantes calificados: —</p>
             <h4 id="capture-rubric-title" class="capture-rubric-footer-title">Rúbrica del RA</h4>
             <button id="continue-analysis-btn" class="btn-primary compact-btn capture-continue-btn" type="button" hidden>
-              Continuar al análisis
+              Continuar al análisis cuantitativo
             </button>
           </div>
         </div>
@@ -291,21 +291,72 @@
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel" data-step-panel="analysis" aria-labelledby="analysis-title" hidden>
-      <div class="modules-header">
-        <div>
-          <h3 id="analysis-title">Distribución y análisis cualitativo</h3>
-          <p class="muted">Revise cuántos estudiantes obtuvieron cada nivel de desempeño por indicador y registre su análisis cualitativo.</p>
+      <div class="grading-toolbar-zone">
+        <div class="grading-toolbar-panel">
+          <div class="grading-toolbar">
+            <div class="grading-toolbar-row">
+              <h3 id="analysis-title">Análisis</h3>
+              <p class="muted grading-ra-label">Revise primero los resultados cuantitativos y luego redacte el análisis cualitativo.</p>
+              <nav class="grading-substeps" aria-label="Subpasos de análisis">
+                <button type="button" class="grading-substep active" data-analysis-sub="quantitative" aria-current="step">
+                  <span>4a</span> Cuantitativo
+                </button>
+                <button type="button" class="grading-substep" data-analysis-sub="qualitative">
+                  <span>4b</span> Cualitativo
+                </button>
+              </nav>
+            </div>
+          </div>
         </div>
-        <button id="save-qualitative-btn" class="btn-secondary" type="button" disabled>
-          Guardar análisis
-        </button>
       </div>
 
-      <div id="distribution-body" class="distribution-grid analysis-distribution" aria-label="Distribución del módulo">
-        <p class="muted">Cargando distribución…</p>
+      <div class="analysis-subpanel" data-analysis-panel="quantitative">
+        <p class="muted grading-intro">
+          Distribución de niveles por indicador (% y conteo). Use estos datos como base para el análisis cualitativo.
+        </p>
+        <div id="distribution-body" class="distribution-grid analysis-distribution" aria-label="Distribución del módulo">
+          <p class="muted">Cargando distribución…</p>
+        </div>
+        <div id="quantitative-pi-summaries" class="quantitative-pi-summaries" aria-label="Resumen cuantitativo por indicador"></div>
+        <div class="quantitative-footer">
+          <button id="continue-qualitative-btn" class="btn-primary compact-btn" type="button">
+            Continuar al análisis cualitativo (4b)
+          </button>
+        </div>
       </div>
-      <div id="analysis-body" class="analysis-list">
-        <p class="muted">Cargando indicadores…</p>
+
+      <div class="analysis-subpanel" data-analysis-panel="qualitative" hidden>
+        <div class="modules-header">
+          <div>
+            <p class="muted grading-intro">
+              Interprete los resultados por indicador y registre conclusiones, recomendaciones y medidas del módulo.
+            </p>
+          </div>
+          <button id="save-qualitative-btn" class="btn-secondary" type="button" disabled>
+            Guardar análisis
+          </button>
+        </div>
+
+        <div id="analysis-body" class="analysis-list">
+          <p class="muted">Cargando indicadores…</p>
+        </div>
+
+        <div id="module-qualitative-section" class="module-qualitative-section">
+          <h4 class="module-qualitative-heading">Conclusiones</h4>
+          <textarea id="conclusions-text" class="module-qualitative-field" data-module-field="conclusions" maxlength="4000" rows="5" placeholder="Sintetice el logro general del RA en el módulo a partir de los tres indicadores…"></textarea>
+
+          <h4 class="module-qualitative-heading">Recomendaciones</h4>
+          <textarea id="recommendations-text" class="module-qualitative-field" data-module-field="recommendations" maxlength="4000" rows="5" placeholder="Estrategias didácticas generales para el siguiente periodo…"></textarea>
+
+          <h4 class="module-qualitative-heading">Medidas preventivas</h4>
+          <textarea id="preventive-measures-text" class="module-qualitative-field" data-module-field="preventive" maxlength="4000" rows="5" placeholder="Acciones para anticipar dificultades (diagnósticos tempranos, rúbricas, sesiones prácticas…)"></textarea>
+
+          <h4 class="module-qualitative-heading">Medidas correctivas</h4>
+          <textarea id="corrective-measures-text" class="module-qualitative-field" data-module-field="corrective" maxlength="4000" rows="6" placeholder="Acciones para estudiantes con desempeño insuficiente (revisión guiada, reentrenamiento, reformulación, seguimiento…)"></textarea>
+
+          <h4 class="module-qualitative-heading">Plan de mejoramiento</h4>
+          <textarea id="improvement-plan-text" class="module-qualitative-field" data-module-field="improvement" maxlength="4000" rows="5" placeholder="Talleres, metas medibles y cronograma para elevar el desempeño en los indicadores priorizados…"></textarea>
+        </div>
       </div>
     </section>
 
@@ -318,7 +369,7 @@
       </div>
       <ul id="submit-readiness" class="readiness-list" aria-live="polite">
         <li>Calificaciones: pendiente</li>
-        <li>Análisis cualitativo: pendiente</li>
+        <li>Análisis (4a y 4b): pendiente</li>
       </ul>
       <div id="submit-leader-notice" class="leader-contact-hint submit-leader-notice" hidden>
         <p><strong>Líder consolidador:</strong> <span id="submit-leader-name">—</span></p>
