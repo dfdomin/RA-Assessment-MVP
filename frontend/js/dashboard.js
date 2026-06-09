@@ -143,19 +143,34 @@
     return Math.max(Math.round(100 / total), 1);
   }
 
-  function appendXpCell(row, module, total) {
+  function appendXpCell(row, module, cycleModuleTotal) {
     var cell = document.createElement("td");
     if (!isTeacher()) {
       cell.textContent = "—";
       row.appendChild(cell);
       return;
     }
-    var per = xpPerModuleValue(total);
+    var per = xpPerModuleValue(cycleModuleTotal);
     var span = document.createElement("span");
     span.className = module.status === "completed" ? "module-xp-earned" : "module-xp-pending";
     span.textContent = "🎈 +" + per + " XP";
     cell.appendChild(span);
     row.appendChild(cell);
+  }
+
+  async function resolveTeacherCycleId(sb, periodId) {
+    if (periodId === TEACHER_ALL_PERIODS && teacherAllCycleId) return teacherAllCycleId;
+    if (periodId && periodId !== TEACHER_ALL_PERIODS) {
+      var periodRes = await sb.from("periods").select("cycle_id").eq("id", periodId).maybeSingle();
+      if (!periodRes.error && periodRes.data) return periodRes.data.cycle_id;
+    }
+    return null;
+  }
+
+  async function fetchTeacherCycleProgress(periodId) {
+    var sb = ensureSupabase();
+    var cycleId = await resolveTeacherCycleId(sb, periodId);
+    return teacherCycleProgress(sb, currentUser.id, cycleId);
   }
 
   async function teacherCycleProgress(sb, userId, cycleId) {
@@ -179,7 +194,7 @@
     };
   }
 
-  async function syncTeacherXpUi(modules, periodId) {
+  async function syncTeacherXpUi(modules, periodId, cycleProgress) {
     if (!teacherXpPanel) return;
     if (!isTeacher()) {
       teacherXpPanel.hidden = true;
@@ -188,20 +203,14 @@
     teacherXpPanel.hidden = false;
     var visibleTotal = modules.length;
     var visibleCompleted = modules.filter(function (m) { return m.status === "completed"; }).length;
-    var cycleProgress = { total: visibleTotal, completed: visibleCompleted };
-    try {
-      await requireSession();
-      var sb = ensureSupabase();
-      var cycleId = null;
-      if (periodId && periodId !== TEACHER_ALL_PERIODS) {
-        var periodRes = await sb.from("periods").select("cycle_id").eq("id", periodId).maybeSingle();
-        if (!periodRes.error && periodRes.data) cycleId = periodRes.data.cycle_id;
-      } else if (periodId === TEACHER_ALL_PERIODS && teacherAllCycleId) {
-        cycleId = teacherAllCycleId;
+    if (!cycleProgress) {
+      try {
+        await requireSession();
+        cycleProgress = await fetchTeacherCycleProgress(periodId);
+      } catch (e) {
+        console.error(e);
+        cycleProgress = { total: visibleTotal, completed: visibleCompleted };
       }
-      cycleProgress = await teacherCycleProgress(sb, currentUser.id, cycleId);
-    } catch (e) {
-      console.error(e);
     }
     renderTeacherXpPanel({
       total: cycleProgress.total,
@@ -507,11 +516,15 @@
     return "Sin módulos en " + periodName + ".";
   }
 
-  function renderModules(modules, periodId) {
+  function renderModules(modules, periodId, cycleProgress) {
     currentModules = modules;
     modulesBody.innerHTML = "";
-    syncTeacherXpUi(modules, periodId || currentPeriodId);
+    var resolvedPeriodId = periodId || currentPeriodId;
+    syncTeacherXpUi(modules, resolvedPeriodId, cycleProgress);
     updatePeriodProgress(modules);
+    var xpModuleTotal = cycleProgress && cycleProgress.total > 0
+      ? cycleProgress.total
+      : modules.length;
     if (!modules.length) {
       const message = emptyModulesMessage();
       renderEmpty(message);
@@ -524,7 +537,7 @@
       const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id;
       [safeText(m.course_name), safeText(m.ra_code), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
         .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
-      appendXpCell(row, m, modules.length);
+      appendXpCell(row, m, xpModuleTotal);
       const ac = document.createElement("td"), a = document.createElement("a");
       a.className = "table-action"; a.href = actionHref;
       a.textContent = isLeader() ? "Revisar" : "Calificar";
@@ -784,10 +797,14 @@
       if (isLeader() && periodId !== TEACHER_ALL_PERIODS) await loadLeaderPrograms(periodId);
       var evalQuery = sb.from("module_ra_evaluations")
         .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))");
+      var cycleProgress = null;
+      if (isTeacher()) {
+        try { cycleProgress = await fetchTeacherCycleProgress(periodId); } catch (e) { console.error(e); }
+      }
       if (periodId === TEACHER_ALL_PERIODS && isTeacher()) {
         var teacherIds = await teacherPeriodIdsInCycle(teacherAllCycleId);
         if (!teacherIds || !teacherIds.size) {
-          renderModules([], periodId);
+          renderModules([], periodId, cycleProgress);
           setStatus("Sin módulos asignados en este cuatrimestre.", "info");
           return;
         }

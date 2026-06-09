@@ -37,6 +37,8 @@ def test_dashboard_js_uses_supabase_for_periods_and_modules():
     assert "syncTeacherXpUi" in js
     assert "teacherCycleProgress" in js
     assert "teacherPeriodIdsInCycle" in js
+    assert "fetchTeacherCycleProgress" in js
+    assert "xpModuleTotal" in js
     assert "buildTeacherPeriodSelect" in js
     assert "module-row--completed" in js
     assert "appendXpCell" in js
