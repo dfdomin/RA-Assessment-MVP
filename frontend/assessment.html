@@ -172,25 +172,25 @@
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="grading-title" hidden>
-      <div class="grading-header">
-        <div>
+      <div class="grading-toolbar">
+        <div class="grading-toolbar-row">
           <h3 id="grading-title">Calificaciones</h3>
-          <p id="rubric-ra-description" class="muted rubric-ra-description"></p>
+          <p id="rubric-ra-description" class="grading-ra-label muted"></p>
+          <nav class="grading-substeps" aria-label="Subpasos de calificación">
+            <button type="button" class="grading-substep active" data-grading-sub="weights" aria-current="step">
+              <span>3a</span> Ponderación
+            </button>
+            <button type="button" class="grading-substep" data-grading-sub="rubric">
+              <span>3b</span> Rúbrica
+            </button>
+            <button type="button" class="grading-substep" data-grading-sub="capture">
+              <span>3c</span> Calificar
+            </button>
+          </nav>
+          <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
         </div>
         <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
       </div>
-
-      <nav class="grading-substeps" aria-label="Subpasos de calificación">
-        <button type="button" class="grading-substep active" data-grading-sub="weights" aria-current="step">
-          <span>3a</span> Ponderación
-        </button>
-        <button type="button" class="grading-substep" data-grading-sub="rubric">
-          <span>3b</span> Rúbrica
-        </button>
-        <button type="button" class="grading-substep" data-grading-sub="capture">
-          <span>3c</span> Calificar
-        </button>
-      </nav>
 
       <div id="grading-panel-weights" class="grading-subpanel" data-grading-panel="weights">
         <p class="muted grading-intro">Defina el peso de cada indicador de desempeño. La suma debe ser exactamente 100%.</p>
@@ -217,13 +217,6 @@
       </div>
 
       <div id="grading-panel-capture" class="grading-subpanel grading-capture-panel" data-grading-panel="capture" hidden>
-        <div class="capture-toolbar">
-          <div class="lot-meta">
-            <strong id="grading-progress">Estudiantes calificados: —</strong>
-          </div>
-          <button id="edit-roster-btn" class="btn-secondary compact" type="button">Editar lista de evaluación</button>
-        </div>
-
         <div id="view-mode-picker" class="view-mode-picker" hidden role="group" aria-label="Modo de calificación">
           <span class="muted">Vista:</span>
           <label><input type="radio" name="capture-view-mode" value="student_card" checked /> Por estudiante</label>
@@ -232,10 +225,14 @@
 
         <div id="student-card-view" class="student-card-view">
           <header class="student-card-header">
-            <p id="student-position" class="student-position muted">Estudiante — de —</p>
-            <div class="student-card-identity">
+            <div class="student-card-row">
               <h4 id="student-card-name" class="student-card-name">—</h4>
               <span id="student-card-doc" class="student-card-doc muted">—</span>
+              <span id="student-position" class="student-position muted">Estudiante — de —</span>
+              <strong id="grading-progress" class="grading-progress-inline">Estudiantes calificados: —</strong>
+            </div>
+            <div class="student-nav-inline">
+              <button id="btn-prev-student" class="btn-secondary compact" type="button" disabled>Anterior</button>
             </div>
           </header>
           <div id="student-card-pis" class="student-card-pis"></div>
@@ -245,9 +242,6 @@
               <button id="btn-stay-here" class="btn-secondary" type="button">Permanecer aquí</button>
               <button id="btn-next-student" class="btn-primary" type="button" hidden>Sgte Estudiante</button>
             </div>
-          </div>
-          <div class="student-nav-actions student-nav-primary">
-            <button id="btn-prev-student" class="btn-secondary" type="button" disabled>Anterior</button>
           </div>
         </div>
 

@@ -845,12 +845,18 @@
     validatePiWeights();
   }
 
+  function formatRaOutcomeLabel(so) {
+    if (!so) return "";
+    var code = so.code || "";
+    var match = code.match(/^RA(\d+)$/i);
+    if (match) return "Resultado de Aprendizaje " + match[1];
+    return code;
+  }
+
   function renderGradingHeader() {
     var so = currentModule && currentModule.period && currentModule.period.student_outcome;
     if (rubricRaTitle) rubricRaTitle.textContent = so && so.code ? "Rúbrica " + so.code : "Rúbrica del RA";
-    if (rubricRaDescription) {
-      rubricRaDescription.textContent = so && so.description ? so.description : "";
-    }
+    if (rubricRaDescription) rubricRaDescription.textContent = formatRaOutcomeLabel(so);
   }
 
   function renderWeightsPanel() {
@@ -908,6 +914,53 @@
     return existing ? Number(existing.level) : null;
   }
 
+  function createLevelRadio(student, pi, level, selected) {
+    var input = document.createElement("input");
+    input.type = "radio";
+    input.className = "level-radio";
+    input.name = "level-" + student.module_student_id + "-" + pi.id;
+    input.value = String(level.value);
+    input.dataset.moduleStudentId = String(student.module_student_id);
+    input.dataset.piId = String(pi.id);
+    input.setAttribute("aria-label", buildLevelColumnLabel(level) + " — " + pi.code);
+    if (selected === level.value) input.checked = true;
+    return input;
+  }
+
+  function buildStudentPiTable(student, pi) {
+    var table = document.createElement("table");
+    table.className = "rubric-matrix student-pi-matrix";
+    var selected = getExistingLevel(student, pi);
+    var thead = document.createElement("thead");
+    var headRow = document.createElement("tr");
+    LEVEL_CRITERIA.forEach(function (level) {
+      var th = document.createElement("th");
+      th.scope = "col";
+      th.className = "student-pi-level-head";
+      var label = document.createElement("label");
+      label.className = "student-pi-level-head-label";
+      var text = document.createElement("span");
+      text.className = "student-pi-level-head-text";
+      text.textContent = buildLevelColumnLabel(level);
+      label.appendChild(text);
+      label.appendChild(createLevelRadio(student, pi, level, selected));
+      th.appendChild(label);
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    var bodyRow = document.createElement("tr");
+    LEVEL_CRITERIA.forEach(function (level) {
+      var td = document.createElement("td");
+      td.textContent = descriptorForPi(pi, level.value);
+      bodyRow.appendChild(td);
+    });
+    tbody.appendChild(bodyRow);
+    table.appendChild(tbody);
+    return table;
+  }
+
   function createLevelRadioGroup(student, pi, compact) {
     var fieldset = document.createElement("fieldset");
     fieldset.className = "level-radio-group" + (compact ? " level-radio-group--compact" : "");
@@ -917,14 +970,7 @@
     LEVEL_CRITERIA.forEach(function (level) {
       var label = document.createElement("label");
       label.className = "level-radio-label";
-      var input = document.createElement("input");
-      input.type = "radio";
-      input.className = "level-radio";
-      input.name = "level-" + student.module_student_id + "-" + pi.id;
-      input.value = String(level.value);
-      input.dataset.moduleStudentId = String(student.module_student_id);
-      input.dataset.piId = String(pi.id);
-      if (selected === level.value) input.checked = true;
+      var input = createLevelRadio(student, pi, level, selected);
       label.appendChild(input);
       label.appendChild(document.createTextNode(buildLevelColumnLabel(level)));
       fieldset.appendChild(label);
@@ -952,18 +998,7 @@
       title.className = "student-pi-title";
       title.textContent = pi.code + " · " + (pi.description || "") + " · " + (pi.pi_weight != null ? pi.pi_weight : "") + "%";
       block.appendChild(title);
-      var table = document.createElement("table");
-      table.className = "rubric-matrix student-pi-matrix";
-      var head = "<thead><tr>";
-      LEVEL_CRITERIA.forEach(function (level) { head += '<th scope="col">' + escapeHtml(buildLevelColumnLabel(level)) + "</th>"; });
-      head += "</tr></thead><tbody><tr>";
-      LEVEL_CRITERIA.forEach(function (level) {
-        head += "<td>" + escapeHtml(descriptorForPi(pi, level.value)) + "</td>";
-      });
-      head += "</tr></tbody>";
-      table.innerHTML = head;
-      block.appendChild(table);
-      block.appendChild(createLevelRadioGroup(student, pi, false));
+      block.appendChild(buildStudentPiTable(student, pi));
       studentCardPis.appendChild(block);
     });
     if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
