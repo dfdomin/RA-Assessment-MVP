@@ -928,6 +928,16 @@
   function buildStudentGradingMatrix(student) {
     var table = document.createElement("table");
     table.className = "rubric-matrix student-grading-matrix";
+    var colgroup = document.createElement("colgroup");
+    var colCrit = document.createElement("col");
+    colCrit.className = "col-criterion";
+    colgroup.appendChild(colCrit);
+    LEVEL_CRITERIA.forEach(function () {
+      var colLevel = document.createElement("col");
+      colLevel.className = "col-level";
+      colgroup.appendChild(colLevel);
+    });
+    table.appendChild(colgroup);
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
     var thCrit = document.createElement("th");
@@ -947,19 +957,12 @@
       var tr = document.createElement("tr");
       var tdCrit = document.createElement("td");
       tdCrit.className = "criterion-cell";
-      var critWrap = document.createElement("div");
-      critWrap.className = "criterion-cell-content";
-      var critText = document.createElement("span");
-      critText.className = "criterion-cell-text";
-      critText.innerHTML = "<strong>" + escapeHtml(pi.code) + ":</strong> " + escapeHtml(pi.description || "");
-      critWrap.appendChild(critText);
+      var critHtml = "<strong>" + escapeHtml(pi.code) + ":</strong>";
       if (pi.pi_weight != null && pi.pi_weight !== "") {
-        var badge = document.createElement("span");
-        badge.className = "pi-weight-badge";
-        badge.textContent = pi.pi_weight + " %";
-        critWrap.appendChild(badge);
+        critHtml += ' <span class="pi-weight-badge pi-weight-badge--inline">' + escapeHtml(String(pi.pi_weight)) + " %</span>";
       }
-      tdCrit.appendChild(critWrap);
+      critHtml += " " + escapeHtml(pi.description || "");
+      tdCrit.innerHTML = critHtml;
       tr.appendChild(tdCrit);
       var selected = getExistingLevel(student, pi);
       LEVEL_CRITERIA.forEach(function (level) {
