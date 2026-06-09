@@ -607,7 +607,7 @@ select:focus {
   width: 100%;
   align-items: stretch;
   justify-content: flex-start;
-  padding: 0.35rem 1rem 0.75rem;
+  padding: 0.2rem 0.75rem 0.5rem;
 }
 
 .assessment-main.assessment-main h2 {
@@ -879,9 +879,6 @@ select:focus {
 
 .grading-toolbar-zone {
   flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
 }
 
 .grading-toolbar-panel.is-collapsed {
@@ -889,20 +886,24 @@ select:focus {
 }
 
 .grading-ribbon-toggle {
-  align-self: center;
-  width: 2.75rem;
-  height: 0.9rem;
   margin: 0;
   padding: 0;
   border: 1px solid var(--color-border);
-  border-radius: 0 0 4px 4px;
   background: #f8fafc;
   color: var(--color-muted);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  flex-shrink: 0;
+}
+
+.grading-ribbon-toggle--inline {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 4px;
+  align-self: center;
 }
 
 .grading-ribbon-toggle:hover,
@@ -921,12 +922,54 @@ select:focus {
   content: "▼";
 }
 
+.grading-viewport--focus {
+  padding: 0.4rem 0.65rem 0.5rem;
+  gap: 0.1rem;
+}
+
 .grading-viewport--focus .grading-capture-panel {
-  gap: 0.25rem;
+  gap: 0.1rem;
+}
+
+.grading-viewport--focus .student-card-view {
+  gap: 0.15rem;
 }
 
 .grading-viewport--focus .student-card-header {
-  padding-bottom: 0.2rem;
+  padding-bottom: 0.15rem;
+  border-bottom: none;
+}
+
+.grading-viewport--focus .student-card-identity-row {
+  gap: 0.35rem 0.65rem;
+}
+
+.grading-viewport--focus .student-card-name {
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.grading-viewport--focus .student-card-doc {
+  font-size: 0.75rem;
+}
+
+.grading-viewport--focus .student-nav-chevron {
+  padding: 0.28rem 0.45rem;
+  font-size: 0.65rem;
+}
+
+.grading-viewport--focus .student-position-center {
+  padding: 0.28rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.grading-viewport--focus .capture-matrix-wrap {
+  padding: 0.2rem 0.25rem;
+}
+
+.grading-viewport--focus .capture-footer-row {
+  gap: 0.35rem 0.75rem;
+  padding-top: 0;
 }
 
 .visually-hidden {
@@ -1485,7 +1528,11 @@ select:focus {
 }
 
 .assessment-panel {
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.grading-viewport--focus.assessment-panel {
+  margin-top: 0.15rem;
 }
 
 .wizard-steps {

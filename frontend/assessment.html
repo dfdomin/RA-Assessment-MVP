@@ -172,7 +172,7 @@
     </section>
 
     <section class="modules-panel assessment-panel wizard-panel grading-viewport" data-step-panel="grading" aria-labelledby="grading-title" hidden>
-      <div class="grading-toolbar-zone">
+      <div id="grading-toolbar-zone" class="grading-toolbar-zone">
         <div id="grading-toolbar-panel" class="grading-toolbar-panel">
           <div class="grading-toolbar">
             <div class="grading-toolbar-row">
@@ -194,17 +194,6 @@
             <span id="save-indicator" class="save-indicator muted" role="status" aria-live="polite"></span>
           </div>
         </div>
-        <button
-          id="grading-toolbar-toggle"
-          class="grading-ribbon-toggle"
-          type="button"
-          aria-expanded="true"
-          aria-controls="grading-toolbar-panel"
-          title="Mostrar u ocultar herramientas de calificación"
-        >
-          <span class="grading-ribbon-toggle-chevron" aria-hidden="true"></span>
-          <span class="visually-hidden">Herramientas de calificación</span>
-        </button>
       </div>
 
       <div id="grading-panel-weights" class="grading-subpanel" data-grading-panel="weights">
@@ -241,6 +230,17 @@
         <div id="student-card-view" class="student-card-view">
           <header class="student-card-header">
             <div class="student-card-identity-row">
+              <button
+                id="grading-toolbar-toggle"
+                class="grading-ribbon-toggle grading-ribbon-toggle--inline"
+                type="button"
+                aria-expanded="false"
+                aria-controls="grading-toolbar-panel"
+                title="Mostrar u ocultar herramientas de calificación"
+              >
+                <span class="grading-ribbon-toggle-chevron" aria-hidden="true"></span>
+                <span class="visually-hidden">Herramientas de calificación</span>
+              </button>
               <div class="student-card-identity-main">
                 <h4 id="student-card-name" class="student-card-name">—</h4>
                 <span id="student-card-doc" class="student-card-doc muted">—</span>

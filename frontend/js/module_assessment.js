@@ -16,6 +16,7 @@
   var wizardNextBtn = document.getElementById("wizard-next-btn");
   var wizardPrevBtn = document.getElementById("wizard-prev-btn");
   var wizardActions = document.getElementById("wizard-actions");
+  var gradingToolbarZone = document.getElementById("grading-toolbar-zone");
   var gradingToolbarPanel = document.getElementById("grading-toolbar-panel");
   var gradingToolbarToggle = document.getElementById("grading-toolbar-toggle");
   var gradingViewport = document.querySelector(".grading-viewport");
@@ -712,10 +713,11 @@
 
   function setGradingToolbarCollapsed(collapsed) {
     if (!gradingToolbarPanel || !gradingToolbarToggle) return;
+    var inCapture = stepOrder[currentStepIndex] === "grading" && gradingSubStep === "capture";
     gradingToolbarPanel.classList.toggle("is-collapsed", collapsed);
     gradingToolbarToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    if (gradingToolbarZone) gradingToolbarZone.hidden = collapsed && inCapture;
     if (gradingViewport) {
-      var inCapture = stepOrder[currentStepIndex] === "grading" && gradingSubStep === "capture";
       gradingViewport.classList.toggle("grading-viewport--focus", collapsed && inCapture);
     }
   }
