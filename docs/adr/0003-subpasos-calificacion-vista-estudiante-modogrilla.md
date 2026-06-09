@@ -36,17 +36,12 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 **Layout (un estudiante activo):**
 
 - **Barra superior del paso 3** (una fila): `Calificaciones` · `Resultado de Aprendizaje N` · subpasos 3a/3b/3c · `Editar lista de evaluación`.
-- **Cabecera fija** (fuera del scroll): nombre · `Doc. …` · `Estudiante N de Y` · progreso de calificados — en la **misma línea**.
-- **Zona con scroll**: bloques por PI apilados verticalmente.
-- **Una sola matriz** por estudiante (como 3b / Excel): columnas `Criterio | % | Deficiente (1) | … | Sobresaliente (5)`; **una fila por PI** (criterio en la primera columna, no bloques apilados).
-  - **Radio** en la esquina inferior derecha de cada celda de descriptor — exclusivo por fila PI; sin `<select>`.
-- Botón de estudiante: `Anterior estudiante` (no confundir con `Regresa a 3b Rúbrica` del wizard inferior).
-- **Consigna UX**: aprovechar espacio horizontal (metadatos en línea, no apilar en bloques estrechos). Ver `.cursor/rules/espacio-horizontal.mdc`.
-- Navegación:
-  - **Anterior** — estudiante previo en orden de lista.
-  - Al completar los 4 PIs del estudiante activo: cuenta regresiva **3 segundos** con mensaje visible → avance automático al **siguiente pendiente**.
-  - **Permanecer aquí** — cancela el salto automático.
-  - **Sgte Estudiante** — visible tras cancelar (o para avanzar manualmente).
+- **Cabecera fija** (fuera del scroll): fila 1 — nombre · `Doc. …` · `Estudiante N de Y`; fila 2 — `Estudiantes calificados: X de Y`.
+- **Navegación entre estudiantes** (columna derecha de la cabecera): `Anterior estudiante` y debajo `Siguiente estudiante` (orden de lista; sin cuenta regresiva ni avance automático).
+- **Una sola matriz** por estudiante: columnas `Criterio | Deficiente (1) | … | Sobresaliente (5)` — **sin columna `%`**. Peso del PI en **recuadro azul institucional** (`#1E2843`) junto al texto del criterio en la primera columna.
+  - **Radio** en la esquina inferior derecha de cada celda de descriptor de nivel — exclusivo por fila PI; sin `<select>`.
+- Botón inferior del wizard en 3c: `Regresa a 3b Rúbrica` (no confundir con `Anterior estudiante`).
+- **Consigna UX**: aprovechar espacio horizontal. Ver `.cursor/rules/espacio-horizontal.mdc`.
 - Progreso global: `Estudiantes calificados: X de Y` (activos, orden de lista del módulo).
 - Persistencia: auto-guardado debounced (ADR-0001); escala {1, 2, 4, 5}.
 
@@ -107,7 +102,7 @@ Habilitación **solo por administrador** (ver §4). Oculta para el resto.
 |---|---|---|
 | Captura docente | Pestaña grilla todos × todos | **Default:** tarjeta por estudiante; **Opcional:** ModoGrilla |
 | Rúbrica visible al calificar | Pestaña aparte | Integrada en 3b + bloques por PI en vista estudiante |
-| Siguiente pendiente | Scroll manual | Auto-siguiente con cuenta regresiva |
+| Siguiente pendiente | Scroll manual | Botones `Anterior estudiante` / `Siguiente estudiante` |
 | Reportes / tendencias | Dashboard NAU | Paso Análisis + panel líder (fuera de este ADR) |
 
 ## Alternativas consideradas
@@ -126,7 +121,8 @@ Habilitación **solo por administrador** (ver §4). Oculta para el resto.
 
 - ❌ Lote de 5 estudiantes en zona de captura (default).
 - ❌ Panel de rúbrica fijo + pestañas PI en la misma pantalla que la grilla.
-- ❌ Botón «Calificar más estudiantes» por lote (reemplazado por cuenta regresiva + «Sgte Estudiante»).
+- ❌ Botón «Calificar más estudiantes» por lote (reemplazado por `Siguiente estudiante` en cabecera).
+- ❌ Cuenta regresiva de 3 s y «Permanecer aquí» (navegación manual exclusiva).
 - ✅ Escala {1, 2, 4, 5}, auto-guardado, pesos por módulo, progreso X de Y, exclusión de inactivos.
 
 ### Implementación pendiente

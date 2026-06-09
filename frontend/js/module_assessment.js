@@ -2,7 +2,6 @@
   "use strict";
 
   var SAVE_DEBOUNCE_MS = 1000;
-  var ADVANCE_COUNTDOWN_SEC = 3;
 
   var params = new URLSearchParams(window.location.search);
   var evaluationId = params.get("evaluation_id");
@@ -44,9 +43,6 @@
   var studentCardName = document.getElementById("student-card-name");
   var studentCardDoc = document.getElementById("student-card-doc");
   var studentCardPis = document.getElementById("student-card-pis");
-  var advanceCountdown = document.getElementById("advance-countdown");
-  var advanceCountdownText = document.getElementById("advance-countdown-text");
-  var btnStayHere = document.getElementById("btn-stay-here");
   var btnNextStudent = document.getElementById("btn-next-student");
   var btnPrevStudent = document.getElementById("btn-prev-student");
   var gridPendingOnly = document.getElementById("grid-pending-only");
@@ -99,8 +95,6 @@
   var captureViewMode = "student_card";
   var currentUserGridEnabled = false;
   var currentStudentIndex = 0;
-  var advanceCountdownTimer = null;
-  var advanceCountdownValue = 0;
 
   var pendingUpserts = new Map();
   var saveDebounceTimer = null;
@@ -203,18 +197,6 @@
   function findFirstPendingStudentIndex() {
     var idx = studentsData.students.findIndex(function (s) { return !isStudentFullyGraded(s); });
     return idx >= 0 ? idx : 0;
-  }
-
-  function findNextPendingStudentIndex(fromIndex) {
-    var students = studentsData.students;
-    var i;
-    for (i = fromIndex + 1; i < students.length; i++) {
-      if (!isStudentFullyGraded(students[i])) return i;
-    }
-    for (i = 0; i < fromIndex; i++) {
-      if (!isStudentFullyGraded(students[i])) return i;
-    }
-    return -1;
   }
 
   function isViewModeLocked() {
@@ -946,12 +928,10 @@
     table.className = "rubric-matrix student-grading-matrix";
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    ["Criterio", "%"].forEach(function (label) {
-      var th = document.createElement("th");
-      th.scope = "col";
-      th.textContent = label;
-      headRow.appendChild(th);
-    });
+    var thCrit = document.createElement("th");
+    thCrit.scope = "col";
+    thCrit.textContent = "Criterio";
+    headRow.appendChild(thCrit);
     LEVEL_CRITERIA.forEach(function (level) {
       var th = document.createElement("th");
       th.scope = "col";
@@ -965,12 +945,20 @@
       var tr = document.createElement("tr");
       var tdCrit = document.createElement("td");
       tdCrit.className = "criterion-cell";
-      tdCrit.innerHTML = "<strong>" + escapeHtml(pi.code) + ":</strong> " + escapeHtml(pi.description || "");
-      var tdWeight = document.createElement("td");
-      tdWeight.className = "weight-cell";
-      tdWeight.textContent = pi.pi_weight != null ? String(pi.pi_weight) : "";
+      var critWrap = document.createElement("div");
+      critWrap.className = "criterion-cell-content";
+      var critText = document.createElement("span");
+      critText.className = "criterion-cell-text";
+      critText.innerHTML = "<strong>" + escapeHtml(pi.code) + ":</strong> " + escapeHtml(pi.description || "");
+      critWrap.appendChild(critText);
+      if (pi.pi_weight != null && pi.pi_weight !== "") {
+        var badge = document.createElement("span");
+        badge.className = "pi-weight-badge";
+        badge.textContent = pi.pi_weight + " %";
+        critWrap.appendChild(badge);
+      }
+      tdCrit.appendChild(critWrap);
       tr.appendChild(tdCrit);
-      tr.appendChild(tdWeight);
       var selected = getExistingLevel(student, pi);
       LEVEL_CRITERIA.forEach(function (level) {
         var td = document.createElement("td");
@@ -1008,8 +996,12 @@
     return fieldset;
   }
 
+  function updateStudentNavButtons() {
+    if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
+    if (btnNextStudent) btnNextStudent.disabled = currentStudentIndex >= activeStudentCount - 1;
+  }
+
   function renderStudentCard() {
-    cancelAdvanceCountdown();
     var student = getCurrentStudent();
     if (!studentCardPis || !student) return;
     if (studentPosition) {
@@ -1022,9 +1014,7 @@
     }
     studentCardPis.innerHTML = "";
     studentCardPis.appendChild(buildStudentGradingMatrix(student));
-    if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
-    if (btnNextStudent) btnNextStudent.hidden = true;
-    if (advanceCountdown) advanceCountdown.hidden = true;
+    updateStudentNavButtons();
   }
 
   function renderGridView() {
@@ -1052,49 +1042,14 @@
     });
   }
 
-  function cancelAdvanceCountdown() {
-    if (advanceCountdownTimer) {
-      clearInterval(advanceCountdownTimer);
-      advanceCountdownTimer = null;
-    }
-    advanceCountdownValue = 0;
-  }
-
-  function maybeStartAdvanceCountdown() {
-    var student = getCurrentStudent();
-    if (!student || !isStudentFullyGraded(student)) return;
-    if (!advanceCountdown || !advanceCountdownText) return;
-    cancelAdvanceCountdown();
-    advanceCountdown.hidden = false;
-    if (btnNextStudent) btnNextStudent.hidden = true;
-    advanceCountdownValue = ADVANCE_COUNTDOWN_SEC;
-    advanceCountdownText.textContent = "Siguiente estudiante en " + advanceCountdownValue + " s…";
-    advanceCountdownTimer = setInterval(function () {
-      advanceCountdownValue -= 1;
-      if (advanceCountdownValue <= 0) {
-        cancelAdvanceCountdown();
-        goToNextPendingStudent();
-        return;
-      }
-      advanceCountdownText.textContent = "Siguiente estudiante en " + advanceCountdownValue + " s…";
-    }, 1000);
-  }
-
-  function goToNextPendingStudent() {
-    cancelAdvanceCountdown();
-    var next = findNextPendingStudentIndex(currentStudentIndex);
-    if (next < 0 || allActiveStudentsFullyGraded()) {
-      if (advanceCountdown) advanceCountdown.hidden = true;
-      updateCaptureChrome();
-      return;
-    }
-    currentStudentIndex = next;
+  function goToNextStudent() {
+    if (currentStudentIndex >= activeStudentCount - 1) return;
+    currentStudentIndex += 1;
     renderStudentCard();
     updateCaptureChrome();
   }
 
   function goToPrevStudent() {
-    cancelAdvanceCountdown();
     if (currentStudentIndex <= 0) return;
     currentStudentIndex -= 1;
     renderStudentCard();
@@ -1158,8 +1113,7 @@
       setSaveIndicator("Guardado", "saved");
       var dist = buildDistribution(studentsData.students, piRows);
       renderDistribution({ distribution: dist });
-      if (effectiveCaptureViewMode() === "student_card") maybeStartAdvanceCountdown();
-      else if (effectiveCaptureViewMode() === "grid") renderGridView();
+      if (effectiveCaptureViewMode() === "grid") renderGridView();
     } catch (e) {
       payload.forEach(function (item) {
         pendingUpserts.set(String(item.module_student_id) + "-" + String(item.perf_indicator_id), item);
@@ -1433,7 +1387,6 @@
     if (!input.classList || (!input.classList.contains("level-radio") && !input.classList.contains("level-select"))) return;
     if (!input.value) return;
     if (input.type === "radio" && !input.checked) return;
-    cancelAdvanceCountdown();
     queueSave(input.dataset.moduleStudentId, input.dataset.piId, input.value);
   }
 
@@ -1457,15 +1410,7 @@
     gridPendingOnly.addEventListener("change", function () { renderGridView(); });
   }
 
-  if (btnStayHere) {
-    btnStayHere.addEventListener("click", function () {
-      cancelAdvanceCountdown();
-      if (advanceCountdown) advanceCountdown.hidden = true;
-      if (btnNextStudent) btnNextStudent.hidden = false;
-    });
-  }
-
-  if (btnNextStudent) btnNextStudent.addEventListener("click", function () { goToNextPendingStudent(); });
+  if (btnNextStudent) btnNextStudent.addEventListener("click", function () { goToNextStudent(); });
   if (btnPrevStudent) btnPrevStudent.addEventListener("click", function () { goToPrevStudent(); });
 
   if (editRosterBtn) {

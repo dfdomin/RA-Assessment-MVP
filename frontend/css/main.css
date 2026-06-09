@@ -949,8 +949,7 @@ select:focus {
 .grading-subpanel[hidden],
 .view-mode-picker[hidden],
 .student-card-view[hidden],
-.grid-view[hidden],
-.advance-countdown[hidden] {
+.grid-view[hidden] {
   display: none !important;
 }
 
@@ -1060,9 +1059,16 @@ select:focus {
 
 .student-nav-inline {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.35rem;
   flex-shrink: 0;
+  align-items: stretch;
+}
+
+.student-nav-inline .btn-primary,
+.student-nav-inline .btn-secondary {
+  width: 100%;
+  min-width: 9.5rem;
 }
 
 .student-card-name {
@@ -1098,27 +1104,47 @@ select:focus {
 }
 
 .student-grading-matrix .criterion-cell {
-  width: 22%;
+  width: 26%;
   font-weight: 400;
   background: #f0f4fa;
+  vertical-align: middle;
 }
 
 .student-grading-matrix .criterion-cell strong {
   font-weight: 600;
 }
 
-.student-grading-matrix .weight-cell {
-  width: 4%;
-  text-align: center;
-  vertical-align: middle;
-  background: #f0f4fa;
+.criterion-cell-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
-.student-grading-matrix tbody tr:nth-child(even) td:not(.criterion-cell):not(.weight-cell) {
+.criterion-cell-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.pi-weight-badge {
+  flex-shrink: 0;
+  align-self: flex-start;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.student-grading-matrix tbody tr:nth-child(even) td:not(.criterion-cell) {
   background: #f8fafc;
 }
 
-.student-grading-matrix tbody tr:nth-child(odd) td:not(.criterion-cell):not(.weight-cell) {
+.student-grading-matrix tbody tr:nth-child(odd) td:not(.criterion-cell) {
   background: #ffffff;
 }
 
@@ -1183,20 +1209,6 @@ select:focus {
 .assessment-table .pi-grade-cell {
   vertical-align: top;
   min-width: 7.5rem;
-}
-
-.advance-countdown {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  background: #eff6ff;
-  border: 1px solid #93c5fd;
-  border-radius: var(--border-radius);
-}
-
-.advance-countdown p {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  font-weight: 600;
 }
 
 .student-nav-actions {

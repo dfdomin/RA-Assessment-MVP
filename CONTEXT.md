@@ -145,11 +145,15 @@ Una de cuatro opciones discretas por criterio y estudiante. Valores mostrados al
 _Avoid_: Nota continua, escala 1–5 completa, valor interno 3
 
 **Etiqueta de nivel (matriz y captura)**:
-Nombre ABET en español + valor canónico entre paréntesis. Ejemplo: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`. Sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…). En **3c Calificar**, cada PI usa **radios horizontales** (uno exclusivo por nivel), no lista desplegable.
+Nombre ABET en español + valor canónico entre paréntesis. Ejemplo: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`. Sin inglés (`Poor`…) ni interpretación corta (`No`, `Sí, pero`…). En **3c Calificar**, matriz única con **radio en cada celda de descriptor** (esquina inferior derecha); sin `<select>` ni cuenta regresiva.
 _Avoid_: Solo el número, descriptor completo repetido en cada celda, columnas bilingües tipo `Poor / 1 / (No)`
 
+**Peso por PI en 3c**:
+Sin columna `%` en la matriz de captura. El porcentaje va en un **recuadro azul institucional** (`#1E2843`) al lado del texto del criterio (columna `Criterio`). Los valores vienen de `module_ra_evaluation_pi_weights` (definidos en 3a).
+_Avoid_: Columna `%` separada, badges rojos o porcentajes por defecto de la plantilla del período
+
 **Espacio horizontal (consigna UX)**:
-Aprovechar filas antes de apilar: título + estado del módulo en una línea; nombre + `Doc.` del estudiante en una línea; cabecera del estudiante **fija** fuera del scroll. Ver `.cursor/rules/espacio-horizontal.mdc`.
+Aprovechar filas antes de apilar: chrome del assessment en barra azul; nombre + `Doc.` + posición en una línea; cabecera del estudiante **fija** fuera del scroll; `Anterior estudiante` / `Siguiente estudiante` apilados a la derecha. Ver `.cursor/rules/espacio-horizontal.mdc`.
 
 ### Flagged ambiguities
 
