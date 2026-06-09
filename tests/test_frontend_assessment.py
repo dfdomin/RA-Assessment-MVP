@@ -25,6 +25,8 @@ def test_assessment_page_declares_grading_surface():
     assert 'data-analysis-sub="quantitative"' in html
     assert 'data-analysis-sub="qualitative"' in html
     assert 'id="continue-qualitative-btn"' in html
+    assert 'id="readiness-grading"' in html
+    assert 'id="readiness-analysis"' in html
     assert 'id="conclusions-text"' in html
     assert 'id="improvement-plan-text"' in html
     assert 'id="wizard-next-btn"' in html
@@ -94,6 +96,7 @@ def test_assessment_js_renders_distribution_and_wizard_navigation():
     assert "showAnalysisSubStep" in js
     assert "tryAdvanceAnalysisSubStep" in js
     assert "collectModuleQualitativeFields" in js
+    assert "renderSubmitReadiness" in js
     assert "conclusions_text" in js
     assert "improvement_plan_text" in js
     assert "showStep" in js

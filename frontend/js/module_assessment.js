@@ -66,6 +66,8 @@
   var gridCaptureHint = document.getElementById("grid-capture-hint");
   var continueAnalysisBtn = document.getElementById("continue-analysis-btn");
   var continueQualitativeBtn = document.getElementById("continue-qualitative-btn");
+  var readinessGrading = document.getElementById("readiness-grading");
+  var readinessAnalysis = document.getElementById("readiness-analysis");
   var rosterBody = document.getElementById("roster-body");
   var rosterStats = document.getElementById("roster-stats");
   var rosterPdfInput = document.getElementById("roster-pdf-input");
@@ -670,6 +672,13 @@
     }
     if (stepTarget === "analysis") {
       showAnalysisSubStep(analysisSubStep);
+    }
+    if (stepTarget === "submit") {
+      if (analysisBody && piRows.length && analysisBody.querySelectorAll(".analysis-item").length !== piRows.length) {
+        renderAnalyses({ analyses: qualitativeData.analyses || [] });
+        applyModuleQualitativeFields(qualitativeData.module || {});
+      }
+      updateWizardState();
     }
   }
 
@@ -1594,8 +1603,19 @@
     return piComplete && moduleQualitativeFieldsComplete();
   }
 
+  function renderSubmitReadiness() {
+    if (!readinessGrading || !readinessAnalysis) return;
+    var graded = allActiveStudentsFullyGraded();
+    var analysisDone = allAnalysesComplete();
+    readinessGrading.className = graded ? "ready" : "pending";
+    readinessGrading.textContent = graded ? "Calificaciones: completo" : "Calificaciones: pendiente";
+    readinessAnalysis.className = analysisDone ? "ready" : "pending";
+    readinessAnalysis.textContent = analysisDone ? "Análisis (4a y 4b): completo" : "Análisis (4a y 4b): pendiente";
+  }
+
   function updateWizardState() {
-    saveQualitativeBtn.disabled = false;
+    if (saveQualitativeBtn) saveQualitativeBtn.disabled = false;
+    renderSubmitReadiness();
     submitModuleBtn.disabled = !piWeightsValid || !allActiveStudentsFullyGraded() || !allAnalysesComplete();
   }
 
