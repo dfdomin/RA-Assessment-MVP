@@ -1616,6 +1616,71 @@ select:focus {
   margin-bottom: 1.5rem;
 }
 
+.dist-chart {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: #ffffff;
+}
+
+.dist-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--color-primary);
+}
+
+.dist-chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dist-chart-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+  border: 1px solid rgba(30, 40, 67, 0.15);
+  flex-shrink: 0;
+}
+
+.dist-chart-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dist-chart-row-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.dist-chart-bar {
+  display: flex;
+  width: 100%;
+  min-height: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.dist-chart-segment {
+  min-width: 0;
+  height: 100%;
+  transition: opacity 0.15s ease;
+}
+
+.dist-chart-segment:hover {
+  opacity: 0.85;
+}
+
 .analysis-item .analysis-pi-dist {
   margin: 0.25rem 0 0.5rem;
   font-size: 0.875rem;

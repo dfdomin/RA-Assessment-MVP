@@ -110,10 +110,10 @@
   var piWeightsValid = true;
 
   var LEVEL_CRITERIA = [
-    { value: 1, labelEs: "Deficiente", distKey: "Deficiente" },
-    { value: 2, labelEs: "Insuficiente", distKey: "Insuficiente" },
-    { value: 4, labelEs: "Bueno", distKey: "Bueno" },
-    { value: 5, labelEs: "Sobresaliente", distKey: "Sobresaliente" },
+    { value: 1, labelEs: "Deficiente", distKey: "Deficiente", chartColor: "#dc2626" },
+    { value: 2, labelEs: "Insuficiente", distKey: "Insuficiente", chartColor: "#f97316" },
+    { value: 4, labelEs: "Bueno", distKey: "Bueno", chartColor: "#FFDF2D" },
+    { value: 5, labelEs: "Sobresaliente", distKey: "Sobresaliente", chartColor: "#16a34a" },
   ];
 
   function escapeHtml(text) {
@@ -1273,10 +1273,19 @@
     return data.id;
   }
 
+  function exactDistPercent(count, activeCount) {
+    var n = Number(count) || 0;
+    if (activeCount <= 0) return 0;
+    return (n / activeCount) * 100;
+  }
+
+  function formatDistPercent(count, activeCount) {
+    return exactDistPercent(count, activeCount).toFixed(2);
+  }
+
   function formatDistCell(count, activeCount) {
     var n = Number(count) || 0;
-    var pct = activeCount > 0 ? Math.round((n / activeCount) * 100) : 0;
-    return pct + "% (" + n + ")";
+    return formatDistPercent(n, activeCount) + "% (" + n + ")";
   }
 
   function piDistributionSummary(dist, piId) {
@@ -1287,14 +1296,63 @@
     }).join(" · ");
   }
 
+  function renderDistributionChart(dist, container) {
+    var chartWrap = document.createElement("div");
+    chartWrap.className = "dist-chart";
+    chartWrap.setAttribute("role", "img");
+    chartWrap.setAttribute("aria-label", "Gráfica de distribución por indicador de desempeño");
+
+    var legend = document.createElement("div");
+    legend.className = "dist-chart-legend";
+    LEVEL_CRITERIA.forEach(function (level) {
+      var item = document.createElement("span");
+      item.className = "dist-chart-legend-item";
+      var swatch = document.createElement("span");
+      swatch.className = "dist-chart-swatch";
+      swatch.style.backgroundColor = level.chartColor;
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(level.labelEs));
+      legend.appendChild(item);
+    });
+    chartWrap.appendChild(legend);
+
+    Object.keys(dist).forEach(function (piId) {
+      var d = dist[piId];
+      var row = document.createElement("div");
+      row.className = "dist-chart-row";
+      var label = document.createElement("span");
+      label.className = "dist-chart-row-label";
+      label.textContent = d.pi_code || "—";
+      row.appendChild(label);
+      var bar = document.createElement("div");
+      bar.className = "dist-chart-bar";
+      LEVEL_CRITERIA.forEach(function (level) {
+        var count = Number(d[level.distKey]) || 0;
+        var pct = exactDistPercent(count, activeStudentCount);
+        if (pct <= 0) return;
+        var seg = document.createElement("div");
+        seg.className = "dist-chart-segment";
+        seg.style.width = pct + "%";
+        seg.style.backgroundColor = level.chartColor;
+        seg.title = level.labelEs + ": " + formatDistCell(count, activeStudentCount);
+        bar.appendChild(seg);
+      });
+      row.appendChild(bar);
+      chartWrap.appendChild(row);
+    });
+
+    container.appendChild(chartWrap);
+  }
+
   function renderDistribution(data) {
     if (!distributionBody) return;
     distributionBody.innerHTML = "";
     var dist = data.distribution || {};
     var intro = document.createElement("p");
     intro.className = "muted";
-    intro.textContent = "Distribución del módulo — " + activeStudentCount + " estudiantes activos (F04b). Porcentaje primario, conteo entre paréntesis.";
+    intro.textContent = "Distribución del módulo — " + activeStudentCount + " estudiantes activos (F04b). Porcentaje con dos decimales; conteo entre paréntesis.";
     distributionBody.appendChild(intro);
+    renderDistributionChart(dist, distributionBody);
     var table = document.createElement("table");
     table.className = "modules-table";
     var head = document.createElement("thead");
