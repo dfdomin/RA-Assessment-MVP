@@ -965,13 +965,15 @@
       LEVEL_CRITERIA.forEach(function (level) {
         var td = document.createElement("td");
         td.className = "student-pi-level-cell";
-        var desc = document.createElement("p");
+        var label = document.createElement("label");
+        label.className = "student-pi-level-option";
+        if (selected === level.value) label.classList.add("is-selected");
+        var input = createLevelRadio(student, pi, level, selected);
+        label.appendChild(input);
+        var desc = document.createElement("span");
         desc.className = "student-pi-descriptor";
         desc.textContent = descriptorForPi(pi, level.value);
-        var label = document.createElement("label");
-        label.className = "student-pi-level-cell-radio";
-        label.appendChild(createLevelRadio(student, pi, level, selected));
-        td.appendChild(desc);
+        label.appendChild(desc);
         td.appendChild(label);
         tr.appendChild(td);
       });
@@ -1390,11 +1392,22 @@
     }
   }
 
+  function syncStudentLevelOptionStyles(input) {
+    if (!input || !input.classList || !input.classList.contains("level-radio")) return;
+    var row = input.closest("tr");
+    if (!row) return;
+    row.querySelectorAll(".student-pi-level-option").forEach(function (opt) {
+      var radio = opt.querySelector(".level-radio");
+      opt.classList.toggle("is-selected", !!(radio && radio.checked));
+    });
+  }
+
   function handleLevelCaptureChange(e) {
     var input = e.target;
     if (!input.classList || (!input.classList.contains("level-radio") && !input.classList.contains("level-select"))) return;
     if (!input.value) return;
     if (input.type === "radio" && !input.checked) return;
+    syncStudentLevelOptionStyles(input);
     queueSave(input.dataset.moduleStudentId, input.dataset.piId, input.value);
   }
 
