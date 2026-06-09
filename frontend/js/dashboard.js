@@ -42,6 +42,7 @@
   const TEACHER_ALL_PERIODS = "all";
 
   var adminTeachersCache = [];
+  var teacherAllCycleId = null;
 
   const MEASUREMENT_LINES = [
     {
@@ -195,16 +196,8 @@
       if (periodId && periodId !== TEACHER_ALL_PERIODS) {
         var periodRes = await sb.from("periods").select("cycle_id").eq("id", periodId).maybeSingle();
         if (!periodRes.error && periodRes.data) cycleId = periodRes.data.cycle_id;
-      } else if (periodId === TEACHER_ALL_PERIODS) {
-        var teacherIds = await teacherPeriodIds();
-        if (teacherIds && teacherIds.size) {
-          var cycleRes = await sb.from("periods").select("cycle_id")
-            .in("id", Array.from(teacherIds))
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!cycleRes.error && cycleRes.data) cycleId = cycleRes.data.cycle_id;
-        }
+      } else if (periodId === TEACHER_ALL_PERIODS && teacherAllCycleId) {
+        cycleId = teacherAllCycleId;
       }
       cycleProgress = await teacherCycleProgress(sb, currentUser.id, cycleId);
     } catch (e) {
@@ -558,6 +551,85 @@
     return ids;
   }
 
+  async function teacherPeriodIdsInCycle(cycleId) {
+    var allIds = await teacherPeriodIds();
+    if (!allIds || !allIds.size || !cycleId) return allIds || new Set();
+    var res = await ensureSupabase()
+      .from("periods")
+      .select("id")
+      .eq("cycle_id", cycleId)
+      .in("id", Array.from(allIds));
+    if (res.error) throw res.error;
+    var ids = new Set();
+    (res.data || []).forEach(function (row) {
+      if (row.id != null) ids.add(String(row.id));
+    });
+    return ids;
+  }
+
+  async function getActiveMeasurementCycle(sb) {
+    var openRes = await sb.from("measurement_cycles")
+      .select("id, code, name")
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!openRes.error && openRes.data) return openRes.data;
+    var fallbackRes = await sb.from("measurement_cycles")
+      .select("id, code, name")
+      .eq("code", "2025-2")
+      .maybeSingle();
+    if (!fallbackRes.error && fallbackRes.data) return fallbackRes.data;
+    return null;
+  }
+
+  function appendPeriodOptions(container, periodList) {
+    periodList.forEach(function (p) {
+      container.appendChild(new Option(p.name, p.id));
+    });
+  }
+
+  function buildTeacherPeriodSelect(periods, periodIdsWithData, activeCycle) {
+    periodSelect.innerHTML = "";
+    teacherAllCycleId = activeCycle ? activeCycle.id : null;
+    var teacherPeriods = periods.filter(function (p) {
+      return periodIdsWithData.has(String(p.id));
+    });
+    if (!teacherPeriods.length) {
+      periodSelect.appendChild(new Option("Sin módulos asignados", ""));
+      periodSelect.disabled = true;
+      return "";
+    }
+    var currentCyclePeriods = activeCycle
+      ? teacherPeriods.filter(function (p) { return p.cycle_id === activeCycle.id; })
+      : teacherPeriods.slice();
+    var archivePeriods = activeCycle
+      ? teacherPeriods.filter(function (p) { return p.cycle_id !== activeCycle.id; })
+      : [];
+
+    if (currentCyclePeriods.length) {
+      var currentGroup = document.createElement("optgroup");
+      currentGroup.label = activeCycle ? (activeCycle.name || activeCycle.code) : "Cuatrimestre actual";
+      appendPeriodOptions(currentGroup, currentCyclePeriods);
+      if (currentCyclePeriods.length > 1) {
+        currentGroup.appendChild(new Option(
+          "Todos mis módulos (" + (activeCycle ? activeCycle.code : "cuatrimestre") + ")",
+          TEACHER_ALL_PERIODS
+        ));
+      }
+      periodSelect.appendChild(currentGroup);
+    }
+    if (archivePeriods.length) {
+      var archiveGroup = document.createElement("optgroup");
+      archiveGroup.label = "Cuatrimestres anteriores";
+      appendPeriodOptions(archiveGroup, archivePeriods);
+      periodSelect.appendChild(archiveGroup);
+    }
+    periodSelect.disabled = false;
+    var defaultPool = currentCyclePeriods.length ? currentCyclePeriods : teacherPeriods;
+    return pickDefaultPeriodId(defaultPool, periodIdsWithData);
+  }
+
   async function periodsWithModules() {
     const { data, error } = await ensureSupabase().from("module_ra_evaluations").select("period_id");
     if (error) throw error;
@@ -570,11 +642,14 @@
 
   function pickDefaultPeriodId(periods, periodIdsWithData) {
     if (!periods.length) return "";
+    var candidates = periods;
     if (periodIdsWithData && periodIdsWithData.size) {
-      const match = periods.find(function (p) { return periodIdsWithData.has(String(p.id)); });
-      if (match) return String(match.id);
+      candidates = periods.filter(function (p) { return periodIdsWithData.has(String(p.id)); });
+      if (!candidates.length) return String(periods[0].id);
     }
-    return String(periods[0].id);
+    var openMatch = candidates.find(function (p) { return p.status === "open"; });
+    if (openMatch) return String(openMatch.id);
+    return String(candidates[0].id);
   }
 
   function filterEvaluationsForRole(rows) {
@@ -710,10 +785,10 @@
       var evalQuery = sb.from("module_ra_evaluations")
         .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))");
       if (periodId === TEACHER_ALL_PERIODS && isTeacher()) {
-        var teacherIds = await teacherPeriodIds();
+        var teacherIds = await teacherPeriodIdsInCycle(teacherAllCycleId);
         if (!teacherIds || !teacherIds.size) {
           renderModules([], periodId);
-          setStatus("Sin módulos asignados.", "info");
+          setStatus("Sin módulos asignados en este cuatrimestre.", "info");
           return;
         }
         evalQuery = evalQuery.in("period_id", Array.from(teacherIds));
@@ -730,12 +805,13 @@
           return row.module && String(row.module.program_id) === String(currentProgramId);
         });
       }
-      const piIds = await getActivePis(periodId);
+      const sharedPiIds = periodId === TEACHER_ALL_PERIODS ? null : await getActivePis(periodId);
       const modules = visibleRows.map(function (r) {
         const mod = r.module || {};
         const m = Object.assign({}, mod);
         m.evaluation_id = r.id;
         m.status = r.status;
+        m.period_id = r.period_id;
         m.ra_code = (r.period && r.period.student_outcome && r.period.student_outcome.code) || "—";
         m.teacher = normalizeTeacher(mod);
         m.students_active = 0;
@@ -745,6 +821,7 @@
       await Promise.all(modules.map(async function (m) {
         try {
           m.students_active = await countActive(m.id);
+          var piIds = sharedPiIds || await getActivePis(m.period_id);
           m.students_graded = await countGraded(m.id, piIds);
         } catch (e) { console.error(e); }
       }));
@@ -959,20 +1036,15 @@
       if (!periodIdsWithData && currentUser && (currentUser.role === "leader" || currentUser.role === "admin")) {
         periodIdsWithData = await periodsWithModules();
       }
+      var defaultPeriodId = "";
       if (isTeacher() && periodIdsWithData && periodIdsWithData.size) {
-        periodSelect.appendChild(new Option("Todos mis módulos (cuatrimestre)", TEACHER_ALL_PERIODS));
-        periods.forEach(function (p) {
-          if (periodIdsWithData.has(String(p.id))) {
-            periodSelect.appendChild(new Option(p.name, p.id));
-          }
-        });
+        var activeCycle = await getActiveMeasurementCycle(ensureSupabase());
+        defaultPeriodId = buildTeacherPeriodSelect(periods, periodIdsWithData, activeCycle);
       } else {
         periods.forEach(function (p) { periodSelect.appendChild(new Option(p.name, p.id)); });
+        periodSelect.disabled = false;
+        defaultPeriodId = pickDefaultPeriodId(periods, periodIdsWithData);
       }
-      periodSelect.disabled = false;
-      const defaultPeriodId = isTeacher() && periodIdsWithData && periodIdsWithData.size
-        ? TEACHER_ALL_PERIODS
-        : pickDefaultPeriodId(periods, periodIdsWithData);
       periodSelect.value = defaultPeriodId;
       currentPeriodId = defaultPeriodId;
       await loadModules(defaultPeriodId);
