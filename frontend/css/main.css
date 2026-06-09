@@ -1026,11 +1026,16 @@ select:focus {
   flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem 1rem;
   padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--color-border);
+}
+
+.student-card-header-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .student-card-row {
@@ -1038,8 +1043,6 @@ select:focus {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.35rem 1.25rem;
-  flex: 1;
-  min-width: 0;
 }
 
 .student-position {
@@ -1048,11 +1051,11 @@ select:focus {
   white-space: nowrap;
 }
 
-.grading-progress-inline {
+.grading-progress-subline {
+  margin: 0.15rem 0 0;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--color-primary);
-  white-space: nowrap;
 }
 
 .student-nav-inline {
@@ -1078,36 +1081,52 @@ select:focus {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding-top: 0.35rem;
+  padding-top: 0.25rem;
 }
 
-.student-pi-block {
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  padding: 0.75rem;
-  background: #fafafa;
-}
-
-.student-pi-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.85rem;
-  color: var(--color-primary);
-  line-height: 1.35;
-}
-
-.student-pi-matrix {
-  margin-bottom: 0;
+.student-grading-matrix {
+  width: 100%;
+  table-layout: fixed;
   font-size: 0.72rem;
+}
+
+.student-grading-matrix th,
+.student-grading-matrix td {
+  padding: 0.3rem 0.35rem;
+  line-height: 1.25;
+  vertical-align: top;
+}
+
+.student-grading-matrix .criterion-cell {
+  width: 22%;
+  font-weight: 400;
+  background: #f0f4fa;
+}
+
+.student-grading-matrix .criterion-cell strong {
+  font-weight: 600;
+}
+
+.student-grading-matrix .weight-cell {
+  width: 4%;
+  text-align: center;
+  vertical-align: middle;
+  background: #f0f4fa;
+}
+
+.student-grading-matrix tbody tr:nth-child(even) td:not(.criterion-cell):not(.weight-cell) {
+  background: #f8fafc;
+}
+
+.student-grading-matrix tbody tr:nth-child(odd) td:not(.criterion-cell):not(.weight-cell) {
+  background: #ffffff;
 }
 
 .student-pi-level-cell {
   vertical-align: top;
   position: relative;
-  padding: 0.35rem 0.4rem 1.65rem;
-  min-height: 3.5rem;
+  padding: 0.3rem 0.35rem 1.45rem;
+  min-height: 2.5rem;
 }
 
 .student-pi-descriptor {

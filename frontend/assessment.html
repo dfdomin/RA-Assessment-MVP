@@ -226,14 +226,16 @@
 
         <div id="student-card-view" class="student-card-view">
           <header class="student-card-header">
-            <div class="student-card-row">
-              <h4 id="student-card-name" class="student-card-name">—</h4>
-              <span id="student-card-doc" class="student-card-doc muted">—</span>
-              <span id="student-position" class="student-position muted">Estudiante — de —</span>
-              <strong id="grading-progress" class="grading-progress-inline">Estudiantes calificados: —</strong>
+            <div class="student-card-header-main">
+              <div class="student-card-row">
+                <h4 id="student-card-name" class="student-card-name">—</h4>
+                <span id="student-card-doc" class="student-card-doc muted">—</span>
+                <span id="student-position" class="student-position muted">Estudiante — de —</span>
+              </div>
+              <p id="grading-progress" class="grading-progress-subline">Estudiantes calificados: —</p>
             </div>
             <div class="student-nav-inline">
-              <button id="btn-prev-student" class="btn-secondary compact" type="button" disabled>Anterior</button>
+              <button id="btn-prev-student" class="btn-secondary compact" type="button" disabled>Anterior estudiante</button>
             </div>
           </header>
           <div id="student-card-pis" class="student-card-pis"></div>
@@ -241,7 +243,7 @@
             <p id="advance-countdown-text"></p>
             <div class="student-nav-actions">
               <button id="btn-stay-here" class="btn-secondary" type="button">Permanecer aquí</button>
-              <button id="btn-next-student" class="btn-primary" type="button" hidden>Sgte Estudiante</button>
+              <button id="btn-next-student" class="btn-primary" type="button" hidden>Siguiente estudiante</button>
             </div>
           </div>
         </div>

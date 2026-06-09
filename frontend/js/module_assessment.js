@@ -659,6 +659,7 @@
     });
     wizardNextBtn.hidden = currentStepIndex >= stepOrder.length - 1;
     wizardPrevBtn.hidden = currentStepIndex <= 0;
+    updateWizardNavLabels();
     if (stepTarget === "roster") {
       renderRosterPanel();
       maybeShowFirstRosterNotice();
@@ -702,6 +703,18 @@
       currentStudentIndex = findFirstPendingStudentIndex();
       renderCaptureView();
       updateCaptureChrome();
+    }
+    updateWizardNavLabels();
+  }
+
+  function updateWizardNavLabels() {
+    if (!wizardPrevBtn) return;
+    if (stepOrder[currentStepIndex] === "grading") {
+      if (gradingSubStep === "capture") wizardPrevBtn.textContent = "Regresa a 3b Rúbrica";
+      else if (gradingSubStep === "rubric") wizardPrevBtn.textContent = "Regresa a 3a Ponderación";
+      else wizardPrevBtn.textContent = "Anterior";
+    } else {
+      wizardPrevBtn.textContent = "Anterior";
     }
   }
 
@@ -928,12 +941,17 @@
     return input;
   }
 
-  function buildStudentPiTable(student, pi) {
+  function buildStudentGradingMatrix(student) {
     var table = document.createElement("table");
-    table.className = "rubric-matrix student-pi-matrix";
-    var selected = getExistingLevel(student, pi);
+    table.className = "rubric-matrix student-grading-matrix";
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
+    ["Criterio", "%"].forEach(function (label) {
+      var th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      headRow.appendChild(th);
+    });
     LEVEL_CRITERIA.forEach(function (level) {
       var th = document.createElement("th");
       th.scope = "col";
@@ -943,21 +961,32 @@
     thead.appendChild(headRow);
     table.appendChild(thead);
     var tbody = document.createElement("tbody");
-    var bodyRow = document.createElement("tr");
-    LEVEL_CRITERIA.forEach(function (level) {
-      var td = document.createElement("td");
-      td.className = "student-pi-level-cell";
-      var desc = document.createElement("p");
-      desc.className = "student-pi-descriptor";
-      desc.textContent = descriptorForPi(pi, level.value);
-      var label = document.createElement("label");
-      label.className = "student-pi-level-cell-radio";
-      label.appendChild(createLevelRadio(student, pi, level, selected));
-      td.appendChild(desc);
-      td.appendChild(label);
-      bodyRow.appendChild(td);
+    piRows.forEach(function (pi) {
+      var tr = document.createElement("tr");
+      var tdCrit = document.createElement("td");
+      tdCrit.className = "criterion-cell";
+      tdCrit.innerHTML = "<strong>" + escapeHtml(pi.code) + ":</strong> " + escapeHtml(pi.description || "");
+      var tdWeight = document.createElement("td");
+      tdWeight.className = "weight-cell";
+      tdWeight.textContent = pi.pi_weight != null ? String(pi.pi_weight) : "";
+      tr.appendChild(tdCrit);
+      tr.appendChild(tdWeight);
+      var selected = getExistingLevel(student, pi);
+      LEVEL_CRITERIA.forEach(function (level) {
+        var td = document.createElement("td");
+        td.className = "student-pi-level-cell";
+        var desc = document.createElement("p");
+        desc.className = "student-pi-descriptor";
+        desc.textContent = descriptorForPi(pi, level.value);
+        var label = document.createElement("label");
+        label.className = "student-pi-level-cell-radio";
+        label.appendChild(createLevelRadio(student, pi, level, selected));
+        td.appendChild(desc);
+        td.appendChild(label);
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
     });
-    tbody.appendChild(bodyRow);
     table.appendChild(tbody);
     return table;
   }
@@ -992,16 +1021,7 @@
       studentCardDoc.hidden = !student.internal_id;
     }
     studentCardPis.innerHTML = "";
-    piRows.forEach(function (pi) {
-      var block = document.createElement("section");
-      block.className = "student-pi-block";
-      var title = document.createElement("h5");
-      title.className = "student-pi-title";
-      title.textContent = pi.code + " · " + (pi.description || "") + " · " + (pi.pi_weight != null ? pi.pi_weight : "") + "%";
-      block.appendChild(title);
-      block.appendChild(buildStudentPiTable(student, pi));
-      studentCardPis.appendChild(block);
-    });
+    studentCardPis.appendChild(buildStudentGradingMatrix(student));
     if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
     if (btnNextStudent) btnNextStudent.hidden = true;
     if (advanceCountdown) advanceCountdown.hidden = true;

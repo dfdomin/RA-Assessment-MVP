@@ -38,10 +38,9 @@ Modo por defecto para **todos** los docentes (no requiere habilitación admin).
 - **Barra superior del paso 3** (una fila): `Calificaciones` · `Resultado de Aprendizaje N` · subpasos 3a/3b/3c · `Editar lista de evaluación`.
 - **Cabecera fija** (fuera del scroll): nombre · `Doc. …` · `Estudiante N de Y` · progreso de calificados — en la **misma línea**.
 - **Zona con scroll**: bloques por PI apilados verticalmente.
-- Por cada PI activo:
-  - Línea de contexto: `PI-3.1 · descripción · 30%`.
-  - Matriz de 4 descriptores largos; encabezados en **español ABET**: `Deficiente (1)`, `Insuficiente (2)`, `Bueno (4)`, `Sobresaliente (5)`.
-  - **Radio en la esquina inferior derecha de cada celda** de descriptor (encabezado solo con `Deficiente (1)`, etc.) — exclusivo por PI; sin `<select>`.
+- **Una sola matriz** por estudiante (como 3b / Excel): columnas `Criterio | % | Deficiente (1) | … | Sobresaliente (5)`; **una fila por PI** (criterio en la primera columna, no bloques apilados).
+  - **Radio** en la esquina inferior derecha de cada celda de descriptor — exclusivo por fila PI; sin `<select>`.
+- Botón de estudiante: `Anterior estudiante` (no confundir con `Regresa a 3b Rúbrica` del wizard inferior).
 - **Consigna UX**: aprovechar espacio horizontal (metadatos en línea, no apilar en bloques estrechos). Ver `.cursor/rules/espacio-horizontal.mdc`.
 - Navegación:
   - **Anterior** — estudiante previo en orden de lista.
