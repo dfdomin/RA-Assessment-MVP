@@ -51,6 +51,7 @@
   var saveIndicator = document.getElementById("save-indicator");
   var editRosterBtn = document.getElementById("edit-roster-btn");
   var captureHint = document.getElementById("capture-hint");
+  var gridCaptureHint = document.getElementById("grid-capture-hint");
   var continueAnalysisBtn = document.getElementById("continue-analysis-btn");
   var rosterBody = document.getElementById("roster-body");
   var rosterStats = document.getElementById("roster-stats");
@@ -1075,19 +1076,22 @@
     }
   }
 
+  function setCaptureHintText(text) {
+    if (captureHint) captureHint.textContent = text;
+    if (gridCaptureHint) gridCaptureHint.textContent = text;
+  }
+
   function updateCaptureChrome() {
     var graded = countGradedStudents();
     if (gradingProgress) gradingProgress.textContent = "Estudiantes calificados: " + graded + " de " + activeStudentCount;
     var allGraded = allActiveStudentsFullyGraded();
     if (continueAnalysisBtn) continueAnalysisBtn.hidden = !allGraded;
-    if (captureHint) {
-      if (allGraded) {
-        captureHint.textContent = "Todos los estudiantes activos están calificados. Puede continuar al análisis.";
-      } else if (effectiveCaptureViewMode() === "student_card") {
-        captureHint.textContent = "Complete los cuatro criterios del estudiante activo.";
-      } else {
-        captureHint.textContent = "Complete todos los criterios de cada estudiante visible.";
-      }
+    if (allGraded) {
+      setCaptureHintText("Todos los estudiantes activos están calificados. Puede continuar al análisis.");
+    } else if (effectiveCaptureViewMode() === "student_card") {
+      setCaptureHintText("Complete los cuatro criterios del estudiante activo.");
+    } else {
+      setCaptureHintText("Complete todos los criterios de cada estudiante visible.");
     }
     updateWizardState();
   }

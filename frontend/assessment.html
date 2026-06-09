@@ -226,27 +226,30 @@
 
         <div id="student-card-view" class="student-card-view">
           <header class="student-card-header">
-            <div class="student-card-header-main">
-              <div class="student-card-row">
-                <h4 id="student-card-name" class="student-card-name">—</h4>
-                <span id="student-card-doc" class="student-card-doc muted">—</span>
-                <span id="student-position" class="student-position muted">Estudiante — de —</span>
-              </div>
-              <p id="grading-progress" class="grading-progress-subline">Estudiantes calificados: —</p>
+            <div class="student-card-identity-row">
+              <h4 id="student-card-name" class="student-card-name">—</h4>
+              <span id="student-card-doc" class="student-card-doc muted">—</span>
             </div>
-            <nav class="student-nav-chevrons" aria-label="Navegación entre estudiantes">
-              <button id="btn-prev-student" class="student-nav-chevron student-nav-chevron--prev" type="button" title="Estudiante anterior en la lista" disabled>
-                <span class="chevron-icon" aria-hidden="true">«</span>
-                <span class="student-nav-label">Anterior estudiante</span>
-              </button>
-              <button id="btn-next-student" class="student-nav-chevron student-nav-chevron--next" type="button" title="Siguiente estudiante en la lista" disabled>
-                <span class="student-nav-label">Siguiente estudiante</span>
-                <span class="chevron-icon" aria-hidden="true">»</span>
-              </button>
-            </nav>
+            <div class="student-card-meta-row">
+              <nav class="student-nav-pill" aria-label="Navegación entre estudiantes">
+                <button id="btn-prev-student" class="student-nav-chevron student-nav-chevron--prev" type="button" title="Estudiante anterior en la lista" disabled>
+                  <span class="chevron-icon" aria-hidden="true">«</span>
+                  <span class="student-nav-label">Anterior</span>
+                </button>
+                <span id="student-position" class="student-position-center" aria-live="polite">Estudiante — de —</span>
+                <button id="btn-next-student" class="student-nav-chevron student-nav-chevron--next" type="button" title="Siguiente estudiante en la lista" disabled>
+                  <span class="student-nav-label">Siguiente</span>
+                  <span class="chevron-icon" aria-hidden="true">»</span>
+                </button>
+              </nav>
+              <p id="grading-progress" class="grading-progress-inline">Estudiantes calificados: —</p>
+            </div>
           </header>
-          <h4 id="capture-rubric-title" class="rubric-subtitle">Rúbrica del RA</h4>
           <div id="student-card-pis" class="rubric-scroll-wrap rubric-readonly-wrap capture-matrix-wrap"></div>
+          <div class="capture-footer-row">
+            <p id="capture-hint" class="lot-hint muted capture-hint-left" aria-live="polite"></p>
+            <h4 id="capture-rubric-title" class="capture-rubric-footer-title">Rúbrica del RA</h4>
+          </div>
         </div>
 
         <div id="grid-view" class="grid-view" hidden>
@@ -265,9 +268,8 @@
               <tbody id="students-body"></tbody>
             </table>
           </div>
+          <p id="grid-capture-hint" class="lot-hint muted" aria-live="polite"></p>
         </div>
-
-        <p id="capture-hint" class="lot-hint muted" aria-live="polite"></p>
         <button id="continue-analysis-btn" class="btn-primary compact-btn" type="button" hidden>
           Continuar al análisis cualitativo
         </button>
