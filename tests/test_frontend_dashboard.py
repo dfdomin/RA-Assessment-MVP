@@ -167,3 +167,9 @@ def test_dashboard_treats_consolidator_assignments_as_leader_capability():
     assert "docente y líder consolidador" in js
     assert 'from("ra_consolidator_assignments")' in js
     assert "hasConsolidatorAssignments" in js and "isLeader()" in js
+
+
+def test_leader_program_select_preserves_choice_on_reload():
+    js = read_frontend("js/dashboard.js")
+    assert "previousProgramId" in js
+    assert "stillValid" in js

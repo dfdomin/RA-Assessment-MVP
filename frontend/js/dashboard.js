@@ -813,12 +813,21 @@
         programSelect.appendChild(new Option("Sin programas asignados", ""));
         return;
       }
-      rows.forEach(function (a) {
+      const sorted = rows.slice().sort(function (a, b) {
+        const an = (a.program && a.program.name) || String(a.program_id);
+        const bn = (b.program && b.program.name) || String(b.program_id);
+        return an.localeCompare(bn, "es");
+      });
+      const previousProgramId = currentProgramId;
+      sorted.forEach(function (a) {
         const prog = a.program || {};
         programSelect.appendChild(new Option(prog.name || ("Programa " + a.program_id), a.program_id));
       });
       programSelect.disabled = false;
-      currentProgramId = String(rows[0].program_id);
+      const stillValid = previousProgramId && sorted.some(function (a) {
+        return String(a.program_id) === String(previousProgramId);
+      });
+      currentProgramId = stillValid ? String(previousProgramId) : String(sorted[0].program_id);
       programSelect.value = currentProgramId;
     } catch (e) {
       console.error(e);
