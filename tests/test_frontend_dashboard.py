@@ -121,6 +121,9 @@ def test_dashboard_js_exports_reports_via_edge_functions():
     assert "RaApi.reportLeaderExport" in js
     assert "report-abet" in api
     assert "report-leader" in api
+    assert "program_id" in api
+    assert "currentProgramId" in js
+    assert 'reportLeaderExport(Number(currentPeriodId), Number(currentProgramId)' in js
 
 
 def test_dashboard_links_to_assessment_page_with_evaluation_id():

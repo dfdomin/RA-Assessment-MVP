@@ -21,8 +21,8 @@ ROOT = Path(__file__).resolve().parents[1]
 RUN_DIR = ROOT / "final_runs" / f"run_teacher_leader_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 EVALUATION_ID = int(os.getenv("EVALUATION_ID", "19"))
-TEACHER_EMAIL = os.getenv("TEACHER_EMAIL", "jorly.berdugo@iub.edu.co")
-LEADER_EMAIL = os.getenv("LEADER_EMAIL", "jorly.berdugo@iub.edu.co")
+TEACHER_EMAIL = os.getenv("TEACHER_EMAIL", "john.doe@iub.edu.co")
+LEADER_EMAIL = os.getenv("LEADER_EMAIL", "john.doe@iub.edu.co")
 PERIOD_ID = int(os.getenv("PERIOD_ID", "3"))
 PROGRAM_ID = int(os.getenv("PROGRAM_ID", "6"))
 
@@ -193,7 +193,7 @@ def evaluate_teacher_module(page, e2e, evaluation_id: int, teacher_idx: int, bas
 def verify_leader_sees_module(page, e2e, evaluation_id: int, step: int) -> dict:
     e2e.login(page, LEADER_EMAIL, step)
     page.wait_for_function(
-        """() => (document.getElementById('welcome-msg')?.textContent || '').includes('Jorly')""",
+        """() => (document.getElementById('welcome-msg')?.textContent || '').includes('John Doe')""",
         timeout=20000,
     )
     page.select_option("#period-select", str(PERIOD_ID))

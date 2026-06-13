@@ -55,6 +55,7 @@ PROGRAM_ALIASES: dict[str, list[str]] = {
 
 USER_ALIASES: dict[str, list[str]] = {
     "J. PERTUZ": ["J PERTUZ", "JUAN PERTUZ", "JORGE PERTUZ"],
+    "JORLY BERDUGO": ["JOHN DOE (A REEMPLAZAR)", "JOHN DOE"],
 }
 
 

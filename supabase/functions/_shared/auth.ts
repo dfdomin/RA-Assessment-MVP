@@ -53,6 +53,41 @@ export function requireRole(
   return null;
 }
 
+/** Docente asignado como consolidador del programa en el RA del período. */
+export async function isProgramConsolidator(
+  userId: string,
+  programId: number,
+  periodId: number,
+): Promise<boolean> {
+  const db = serviceClient();
+  const { data: period } = await db
+    .from("periods")
+    .select("student_outcome_id")
+    .eq("id", periodId)
+    .single();
+  if (!period?.student_outcome_id) return false;
+
+  const { count } = await db
+    .from("ra_consolidator_assignments")
+    .select("id", { count: "exact", head: true })
+    .eq("consolidator_user_id", userId)
+    .eq("program_id", programId)
+    .eq("student_outcome_id", period.student_outcome_id);
+
+  return (count ?? 0) > 0;
+}
+
+/** Admin, rol leader legacy o consolidador del programa×período. */
+export async function requireLeaderAccess(
+  user: AppUser,
+  programId: number,
+  periodId: number,
+): Promise<string | null> {
+  if (user.role === "admin" || user.role === "leader") return null;
+  if (await isProgramConsolidator(user.id, programId, periodId)) return null;
+  return "Forbidden";
+}
+
 export function serviceClient() {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
