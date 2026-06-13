@@ -68,6 +68,7 @@
   ];
 
   let currentUser = null;
+  let hasConsolidatorAssignments = false;
   let currentPeriodId = "";
   let currentProgramId = "";
   let currentModules = [];
@@ -127,9 +128,56 @@
     return m.teacher.full_name;
   }
 
-  function isLeader() { return currentUser && currentUser.role === "leader"; }
+  function isLeader() {
+    return currentUser && (currentUser.role === "leader" || hasConsolidatorAssignments);
+  }
   function isAdmin() { return currentUser && currentUser.role === "admin"; }
-  function isTeacher() { return currentUser && currentUser.role === "teacher"; }
+  function isTeacher() {
+    return currentUser && (currentUser.role === "teacher" || currentUser.role === "leader");
+  }
+
+  function formatRoleLabel(profile) {
+    if (!profile) return "—";
+    if (profile.role === "admin") return safeText(profile.role);
+    var leader = isLeader();
+    var teacher = profile.role === "teacher" || profile.role === "leader";
+    if (leader && teacher) return "docente y líder consolidador";
+    if (leader) return "líder consolidador";
+    return safeText(profile.role);
+  }
+
+  async function loadConsolidatorCapability() {
+    hasConsolidatorAssignments = false;
+    if (!currentUser || isAdmin()) return;
+    try {
+      var sb = ensureSupabase();
+      var res = await sb.from("ra_consolidator_assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("consolidator_user_id", currentUser.id);
+      if (!res.error && Number(res.count || 0) > 0) {
+        hasConsolidatorAssignments = true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function applyRoleChrome() {
+    var admin = isAdmin();
+    if (adminPanel) adminPanel.hidden = !admin;
+    if (modulesPanel) modulesPanel.hidden = admin;
+    if (teacherXpPanel) teacherXpPanel.hidden = !isTeacher() || admin;
+    if (modulesXpHead) modulesXpHead.hidden = !isTeacher() || admin;
+    if (teacherPeriodHint) teacherPeriodHint.hidden = !isTeacher() || admin;
+    if (periodSelectLabel && isTeacher() && !admin) periodSelectLabel.textContent = "RA / período";
+    leaderPanel.hidden = !isLeader() || admin;
+    leaderReportPdfBtn.hidden = !isLeader() || admin;
+    leaderReportDocxBtn.hidden = !isLeader() || admin;
+    if (programSelect) programSelect.hidden = !isLeader() || admin;
+    if (admin && document.getElementById("dashboard-title")) {
+      document.getElementById("dashboard-title").textContent = "Líder de medición";
+    }
+  }
 
   function computeXpCumulative(completed, total) {
     var safeTotal = total > 0 ? total : 1;
@@ -666,7 +714,9 @@
   }
 
   function filterEvaluationsForRole(rows) {
-    if (!currentUser || currentUser.role !== "teacher") return rows || [];
+    if (!currentUser) return rows || [];
+    if (isLeader() || currentUser.role === "admin") return rows || [];
+    if (currentUser.role !== "teacher") return rows || [];
     return (rows || []).filter(function (row) {
       const mod = row.module || {};
       return (mod.module_staff || []).some(function (staff) {
@@ -697,21 +747,9 @@
       const { data: profile, error: pe } = await sb.from("users").select("*").eq("id", ud.user.id).single();
       if (pe) throw pe;
       currentUser = profile;
-      welcomeMsg.textContent = "Hola, " + safeText(profile.full_name) + " (" + safeText(profile.role) + ")";
-      var admin = isAdmin();
-      if (adminPanel) adminPanel.hidden = !admin;
-      if (modulesPanel) modulesPanel.hidden = admin;
-      if (teacherXpPanel) teacherXpPanel.hidden = !isTeacher() || admin;
-      if (modulesXpHead) modulesXpHead.hidden = !isTeacher() || admin;
-      if (teacherPeriodHint) teacherPeriodHint.hidden = !isTeacher() || admin;
-      if (periodSelectLabel && isTeacher() && !admin) periodSelectLabel.textContent = "RA / período";
-      leaderPanel.hidden = !isLeader() || admin;
-      leaderReportPdfBtn.hidden = !isLeader() || admin;
-      leaderReportDocxBtn.hidden = !isLeader() || admin;
-      if (programSelect) programSelect.hidden = !isLeader() || admin;
-      if (admin && document.getElementById("dashboard-title")) {
-        document.getElementById("dashboard-title").textContent = "Líder de medición";
-      }
+      await loadConsolidatorCapability();
+      welcomeMsg.textContent = "Hola, " + safeText(profile.full_name) + " (" + formatRoleLabel(profile) + ")";
+      applyRoleChrome();
       return true;
     } catch (e) { console.error(e); welcomeMsg.textContent = "No se pudo cargar."; return false; }
   }
@@ -842,7 +880,7 @@
           m.students_graded = await countGraded(m.id, piIds);
         } catch (e) { console.error(e); }
       }));
-      renderModules(modules, periodId);
+      renderModules(modules, periodId, cycleProgress);
       if (isLeader() && currentProgramId && periodId !== TEACHER_ALL_PERIODS) await loadLeaderDashboard(periodId);
     } catch (e) { console.error(e); renderEmpty("Error al cargar."); setStatus("Error.", "error"); }
   }
@@ -1050,7 +1088,7 @@
         return;
       }
       let periodIdsWithData = await teacherPeriodIds();
-      if (!periodIdsWithData && currentUser && (currentUser.role === "leader" || currentUser.role === "admin")) {
+      if (!periodIdsWithData && currentUser && (isLeader() || isAdmin())) {
         periodIdsWithData = await periodsWithModules();
       }
       var defaultPeriodId = "";

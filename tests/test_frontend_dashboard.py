@@ -156,3 +156,14 @@ def test_dashboard_leader_scopes_by_program():
     assert "currentProgramId" in js
     assert "program_id" in js
     assert "loadLeaderPrograms" in js
+
+
+def test_dashboard_treats_consolidator_assignments_as_leader_capability():
+    js = read_frontend("js/dashboard.js")
+
+    assert "hasConsolidatorAssignments" in js
+    assert "loadConsolidatorCapability" in js
+    assert "formatRoleLabel" in js
+    assert "docente y líder consolidador" in js
+    assert 'from("ra_consolidator_assignments")' in js
+    assert "hasConsolidatorAssignments" in js and "isLeader()" in js
