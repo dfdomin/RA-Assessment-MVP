@@ -23,7 +23,7 @@ async function buildLeaderReport(periodId: number, programId: number) {
   const { data: period } = await db
     .from("periods")
     .select(
-      "id, name, rubric_id, student_outcome:student_outcomes(code, name)",
+      "id, name, rubric_id, student_outcome:student_outcomes(code, description)",
     )
     .eq("id", periodId)
     .single();
@@ -70,7 +70,7 @@ async function buildLeaderReport(periodId: number, programId: number) {
   );
 
   const studentOutcome = period.student_outcome as
-    | { code: string; name: string }
+    | { code: string; description: string }
     | null;
 
   return {
@@ -92,7 +92,7 @@ function renderHtml(
   report: Awaited<ReturnType<typeof buildLeaderReport>>,
 ): string {
   const raLabel = report.student_outcome
-    ? `${report.student_outcome.code} — ${report.student_outcome.name}`
+    ? `${report.student_outcome.code} — ${report.student_outcome.description}`
     : "—";
   const progress = report.module_progress;
   const progressPct = progress.total
@@ -141,7 +141,7 @@ function renderDocxLike(
   report: Awaited<ReturnType<typeof buildLeaderReport>>,
 ): string {
   const raLabel = report.student_outcome
-    ? `${report.student_outcome.code} — ${report.student_outcome.name}`
+    ? `${report.student_outcome.code} — ${report.student_outcome.description}`
     : "—";
   const progress = report.module_progress;
   const lines = [
