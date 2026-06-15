@@ -1169,7 +1169,7 @@
       await RaApi.reportLeaderExport(Number(currentPeriodId), Number(currentProgramId), "docx");
       setLeaderReportStatus("Informe descargado (texto plano).", "success");
     } catch (e) {
-      setLeaderReportStatus("Error al exportar DOCX.", "error");
+      setLeaderReportStatus("Error al exportar texto.", "error");
     }
   });
   if (modogrillaCsvApply) {

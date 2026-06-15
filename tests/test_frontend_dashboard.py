@@ -109,6 +109,7 @@ def test_dashboard_declares_leader_report_surface_for_f14():
     assert 'id="save-leader-report-btn"' in html
     assert 'id="leader-report-pdf-btn"' in html
     assert 'id="leader-report-docx-btn"' in html
+    assert "Exportar texto" in html
     assert 'id="leader-report-status"' in html
 
 
