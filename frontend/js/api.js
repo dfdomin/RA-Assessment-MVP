@@ -86,12 +86,12 @@
         "reporte-" + periodId + "." + (format === "xlsx" ? "xlsx" : "html")
       );
     },
-    reportLeaderExport: function (periodId, format) {
+    reportLeaderExport: function (periodId, programId, format) {
       var ext = format === "docx" ? "txt" : "html";
       return downloadEdgeFunction(
         "report-leader",
-        { period_id: periodId, format: format },
-        "informe-lider-" + periodId + "." + ext
+        { period_id: periodId, program_id: programId, format: format },
+        "informe-lider-p" + periodId + "-prog" + programId + "." + ext
       );
     },
     bulkImport: function (formData) {
