@@ -40,6 +40,10 @@
     </div>
   </header>
 
+  <p id="review-mode-banner" class="review-mode-banner" hidden role="status">
+    Revisión del envío del docente — solo lectura. Para calificar tus propios módulos, entra desde la vista docente en el panel.
+  </p>
+
   <nav class="wizard-steps wizard-steps--toolbar" aria-label="Pasos de evaluación del módulo">
     <button class="wizard-step" type="button" data-step-target="general" aria-current="step">
       <span>1</span> Información
@@ -75,6 +79,14 @@
         <div>
           <dt>Módulo</dt>
           <dd id="summary-module">Cargando…</dd>
+        </div>
+        <div id="summary-teacher-block" hidden>
+          <dt>Docente evaluador</dt>
+          <dd id="summary-teacher">—</dd>
+        </div>
+        <div id="summary-status-block" hidden>
+          <dt>Estado del envío</dt>
+          <dd id="summary-eval-status">—</dd>
         </div>
         <div>
           <dt>Líder consolidador</dt>

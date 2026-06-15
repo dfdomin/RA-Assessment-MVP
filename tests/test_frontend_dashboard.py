@@ -131,6 +131,7 @@ def test_dashboard_links_to_assessment_page_with_evaluation_id():
     js = read_frontend("js/dashboard.js")
 
     assert "./assessment.html?evaluation_id=" in js
+    assert "mode=review" in js
 
 
 def test_dashboard_declares_admin_measurement_panel():

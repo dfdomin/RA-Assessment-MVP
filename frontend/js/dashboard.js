@@ -582,7 +582,7 @@
     modules.forEach(function(m) {
       const row = document.createElement("tr");
       if (m.status === "completed") row.classList.add("module-row--completed");
-      const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id;
+      const actionHref = "./assessment.html?evaluation_id=" + m.evaluation_id + (isLeader() ? "&mode=review" : "");
       [safeText(m.course_name), safeText(m.ra_code), safeText(m.group_name), teacherText(m), statusLabel(m.status), progressText(m)]
         .forEach(function(t) { const c = document.createElement("td"); c.textContent = t; row.appendChild(c); });
       appendXpCell(row, m, xpModuleTotal);

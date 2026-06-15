@@ -144,3 +144,16 @@ def test_assessment_shows_leader_contact_on_general_and_submit():
     assert "ra_consolidator_assignments" in js
     assert "buildMailtoLink" in js
     assert "unibarranquilla" not in js
+
+
+def test_assessment_supports_leader_review_mode():
+    html = read_frontend("assessment.html")
+    js = read_frontend("js/module_assessment.js")
+
+    assert 'id="review-mode-banner"' in html
+    assert 'id="summary-teacher"' in html
+    assert 'id="summary-eval-status"' in html
+    assert "reviewMode" in js
+    assert 'params.get("mode") === "review"' in js
+    assert "applyReviewModeChrome" in js
+    assert "verifyReviewAccess" in js

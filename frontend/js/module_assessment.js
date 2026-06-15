@@ -6,6 +6,7 @@
   var params = new URLSearchParams(window.location.search);
   var evaluationId = params.get("evaluation_id");
   var legacyModuleId = params.get("module_id");
+  var reviewMode = params.get("mode") === "review";
   if (!evaluationId && !legacyModuleId) {
     document.body.innerHTML = '<p style="padding:2rem">Falta evaluation_id en la URL.</p>';
     return;
@@ -24,6 +25,12 @@
   var summaryModule = document.getElementById("summary-module");
   var summaryLeader = document.getElementById("summary-leader");
   var summaryLeaderEmail = document.getElementById("summary-leader-email");
+  var summaryTeacherBlock = document.getElementById("summary-teacher-block");
+  var summaryTeacher = document.getElementById("summary-teacher");
+  var summaryStatusBlock = document.getElementById("summary-status-block");
+  var summaryEvalStatus = document.getElementById("summary-eval-status");
+  var reviewModeBanner = document.getElementById("review-mode-banner");
+  var leaderContactHint = document.getElementById("leader-contact-hint");
   var submitLeaderNotice = document.getElementById("submit-leader-notice");
   var submitLeaderName = document.getElementById("submit-leader-name");
   var submitLeaderEmail = document.getElementById("submit-leader-email");
@@ -291,6 +298,89 @@
     qualitativeSaveIndicator.textContent = text;
     qualitativeSaveIndicator.className = "qualitative-save-indicator"
       + (kind ? " " + kind : "") + (kind ? "" : " muted");
+  }
+
+  function evaluationStatusLabel(status) {
+    if (status === "completed") return "Completado";
+    if (status === "in_progress") return "En progreso";
+    return "Pendiente";
+  }
+
+  function isNavigationControl(el) {
+    if (!el) return false;
+    if (el.classList && el.classList.contains("back-link")) return true;
+    if (el.id === "wizard-prev-btn" || el.id === "wizard-next-btn") return true;
+    if (el.id === "roster-import-notice-dismiss") return true;
+    if (el.dataset && (el.dataset.stepTarget || el.dataset.gradingSub || el.dataset.analysisSub)) return true;
+    return false;
+  }
+
+  function disableEditingControls() {
+    document.querySelectorAll("input, textarea, select, button").forEach(function (el) {
+      if (isNavigationControl(el)) return;
+      if (el.closest(".wizard-steps")) return;
+      el.disabled = true;
+      if (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type !== "radio" && el.type !== "checkbox")) {
+        el.readOnly = true;
+      }
+    });
+    document.querySelectorAll(".level-radio").forEach(function (radio) {
+      radio.disabled = true;
+    });
+  }
+
+  function renderReviewSummaryExtras() {
+    var staff = (currentModule && currentModule.module_staff) || [];
+    var teacher = staff[0] && staff[0].users;
+    if (summaryTeacherBlock) summaryTeacherBlock.hidden = false;
+    if (summaryTeacher) {
+      summaryTeacher.textContent = teacher
+        ? (teacher.full_name || "—") + (teacher.email ? " (" + teacher.email + ")" : "")
+        : "Sin docente asignado";
+    }
+    if (summaryStatusBlock) summaryStatusBlock.hidden = false;
+    if (summaryEvalStatus) {
+      summaryEvalStatus.textContent = evaluationStatusLabel(currentEvaluation && currentEvaluation.status);
+    }
+    if (leaderContactHint) {
+      leaderContactHint.textContent = "Revisión del envío del docente. No puede modificar calificaciones ni análisis desde esta vista.";
+    }
+  }
+
+  function applyReviewModeChrome() {
+    document.body.classList.add("assessment-review-mode");
+    if (reviewModeBanner) reviewModeBanner.hidden = false;
+    var brandTitle = document.querySelector(".assessment-header-brand h1");
+    if (brandTitle) brandTitle.textContent = "Revisión de módulo";
+    var headerTitle = document.getElementById("assessment-title");
+    if (headerTitle) headerTitle.textContent = "Revisión del envío del docente";
+    document.title = "Revisión de módulo — RA Assessment";
+    if (submitModuleBtn) submitModuleBtn.hidden = true;
+    renderReviewSummaryExtras();
+    disableEditingControls();
+  }
+
+  async function verifyReviewAccess(client, userId, evaluation) {
+    var mod = evaluation.module || {};
+    var period = evaluation.period || mod.period || {};
+    var so = period.student_outcome || {};
+    var programId = mod.program_id;
+    var soId = so.id;
+    var cycleId = period.cycle_id;
+    if (!programId || !soId) return false;
+
+    var profileRes = await client.from("users").select("role").eq("id", userId).maybeSingle();
+    var role = profileRes.data && profileRes.data.role;
+    if (role === "admin" || role === "leader") return true;
+
+    var query = client.from("ra_consolidator_assignments")
+      .select("id", { count: "exact", head: true })
+      .eq("consolidator_user_id", userId)
+      .eq("program_id", programId)
+      .eq("student_outcome_id", soId);
+    if (cycleId) query = query.eq("cycle_id", cycleId);
+    var res = await query;
+    return !res.error && Number(res.count || 0) > 0;
   }
 
   function setSaveIndicator(text, kind) {
@@ -1207,6 +1297,7 @@
   }
 
   function queueSave(msId, piId, level) {
+    if (reviewMode) return;
     pendingUpserts.set(String(msId) + "-" + String(piId), {
       module_student_id: Number(msId),
       perf_indicator_id: Number(piId),
@@ -1220,6 +1311,7 @@
   }
 
   async function flushPendingSaves(force) {
+    if (reviewMode) return;
     if (!pendingUpserts.size) return;
     var payload = Array.from(pendingUpserts.values());
     pendingUpserts.clear();
@@ -1691,6 +1783,7 @@
   }
 
   function queueQualitativeSave() {
+    if (reviewMode) return;
     qualitativeSaveQueued = true;
     setQualitativeSaveIndicator("Guardando análisis…", "saving");
     clearTimeout(qualitativeSaveDebounceTimer);
@@ -1701,6 +1794,7 @@
   }
 
   async function flushQualitativeSave(force) {
+    if (reviewMode) return;
     if (!qualitativeSaveQueued && !force) return;
     var evalId = currentEvaluation && currentEvaluation.id;
     if (!evalId) return;
@@ -1756,17 +1850,25 @@
       if (!resolvedId) { setStatus("Evaluación no encontrada.", "error"); return; }
 
       var evalResult = await client.from("module_ra_evaluations")
-        .select("id, status, grading_view_mode, conclusions_text, recommendations_text, preventive_measures_text, corrective_measures_text, improvement_plan_text, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+        .select("id, status, grading_view_mode, conclusions_text, recommendations_text, preventive_measures_text, corrective_measures_text, improvement_plan_text, module:modules(*, module_staff(users(full_name, email))), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
         .eq("id", resolvedId)
         .single();
       if (evalResult.error) {
         evalResult = await client.from("module_ra_evaluations")
-          .select("id, status, grading_view_mode, module:modules(*), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
+          .select("id, status, grading_view_mode, module:modules(*, module_staff(users(full_name, email))), period:periods(rubric_id, cycle_id, student_outcome:student_outcomes(id, code, description, program_id))")
           .eq("id", resolvedId)
           .single();
       }
       var evaluation = evalResult.data;
       if (!evaluation || !evaluation.module) { setStatus("Módulo no encontrado.", "error"); return; }
+
+      if (reviewMode) {
+        var canReview = await verifyReviewAccess(client, session.user.id, evaluation);
+        if (!canReview) {
+          setStatus("No tiene permiso para revisar este módulo.", "error");
+          return;
+        }
+      }
 
       var { data: profile } = await client.from("users")
         .select("grid_grading_enabled")
@@ -1822,7 +1924,12 @@
       renderAnalyses({ analyses: qualitativeData.analyses });
       enableActions();
       updateWizardState();
-      setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");
+      if (reviewMode) {
+        applyReviewModeChrome();
+        setStatus("Revisión cargada. " + activeStudentCount + " estudiantes activos.", "success");
+      } else {
+        setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");
+      }
     } catch (e) {
       if (isAuthError(e)) { redirectToLogin(); return; }
       setStatus("Error al cargar módulo: " + (e.message || e), "error");
@@ -1960,6 +2067,7 @@
   }
 
   submitModuleBtn.addEventListener("click", async function () {
+    if (reviewMode) return;
     if (!allActiveStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
     submitModuleBtn.disabled = true;
     setStatus("Enviando módulo...");

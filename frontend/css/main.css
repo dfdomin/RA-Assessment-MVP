@@ -120,6 +120,39 @@ body {
   flex-shrink: 0;
 }
 
+.review-mode-banner {
+  max-width: 1004px;
+  margin: 0.75rem auto 0;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  background: #eef6ff;
+  border: 1px solid #b6d4fe;
+  color: #1e3a5f;
+  font-size: 0.95rem;
+}
+
+.assessment-review-mode .assessment-header-submit,
+.assessment-review-mode .roster-import-block,
+.assessment-review-mode #roster-manual-toggle,
+.assessment-review-mode #roster-manual-block,
+.assessment-review-mode #edit-roster-btn,
+.assessment-review-mode #continue-analysis-btn,
+.assessment-review-mode #continue-qualitative-btn,
+.assessment-review-mode #grading-toolbar-zone {
+  display: none !important;
+}
+
+.assessment-review-mode input:not([type="button"]):not([type="submit"]),
+.assessment-review-mode textarea,
+.assessment-review-mode select {
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.assessment-review-mode .level-radio {
+  pointer-events: none;
+}
+
 .wizard-steps--toolbar {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
