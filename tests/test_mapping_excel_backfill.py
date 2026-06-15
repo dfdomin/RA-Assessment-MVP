@@ -12,12 +12,10 @@ SCRIPT = ROOT / "scripts" / "backfill_module_program_ids_from_mapping.py"
 
 def _load_script():
     import importlib.util
-    import sys
 
     spec = importlib.util.spec_from_file_location("backfill_mapping", SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
-    sys.modules["backfill_mapping"] = mod
     spec.loader.exec_module(mod)
     return mod
 

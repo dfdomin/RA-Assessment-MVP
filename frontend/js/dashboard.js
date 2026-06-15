@@ -1146,28 +1146,20 @@
   leaderReportForm.addEventListener("submit", saveLeaderReport);
   leaderReportPdfBtn.addEventListener("click", async function() {
     if (!currentPeriodId) return;
-    if (!currentProgramId) {
-      setLeaderReportStatus("Seleccione un programa.", "error");
-      return;
-    }
     try {
       await requireSession();
-      await RaApi.reportLeaderExport(Number(currentPeriodId), Number(currentProgramId), "pdf");
-      setLeaderReportStatus("Informe descargado (HTML — imprimir como PDF).", "success");
+      await RaApi.reportLeaderExport(Number(currentPeriodId), "pdf");
+      setLeaderReportStatus("Informe PDF descargado.", "success");
     } catch (e) {
       setLeaderReportStatus("Error al exportar PDF.", "error");
     }
   });
   leaderReportDocxBtn.addEventListener("click", async function() {
     if (!currentPeriodId) return;
-    if (!currentProgramId) {
-      setLeaderReportStatus("Seleccione un programa.", "error");
-      return;
-    }
     try {
       await requireSession();
-      await RaApi.reportLeaderExport(Number(currentPeriodId), Number(currentProgramId), "docx");
-      setLeaderReportStatus("Informe descargado (texto plano).", "success");
+      await RaApi.reportLeaderExport(Number(currentPeriodId), "docx");
+      setLeaderReportStatus("Informe DOCX descargado.", "success");
     } catch (e) {
       setLeaderReportStatus("Error al exportar DOCX.", "error");
     }
