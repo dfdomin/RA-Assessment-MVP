@@ -356,7 +356,24 @@
     if (headerTitle) headerTitle.textContent = "Revisión del envío del docente";
     document.title = "Revisión de módulo — RA Assessment";
     if (submitModuleBtn) submitModuleBtn.hidden = true;
+    [summaryLeader, summaryLeaderEmail].forEach(function (el) {
+      var row = el && el.closest("div");
+      if (row) row.hidden = true;
+    });
+    if (leaderContactHint) leaderContactHint.hidden = true;
+    var submitNotice = document.getElementById("submit-leader-notice");
+    if (submitNotice) submitNotice.hidden = true;
     renderReviewSummaryExtras();
+    document.querySelectorAll(".grading-intro").forEach(function (el) {
+      el.textContent = "Datos registrados por el docente (solo lectura).";
+    });
+    if (reviewModeBanner && currentEvaluation && currentEvaluation.status !== "completed") {
+      reviewModeBanner.textContent =
+        "Revisión del envío del docente — solo lectura. " +
+        "Estado actual: " + evaluationStatusLabel(currentEvaluation.status) + ".";
+    }
+    renderWeightsPanel();
+    renderRubricReviewPanel();
     disableEditingControls();
   }
 
@@ -405,6 +422,7 @@
   }
 
   function canEnterStep(stepTarget) {
+    if (reviewMode) return true;
     if (stepTarget === "grading" || stepTarget === "analysis" || stepTarget === "submit") {
       return activeStudentCount > 0;
     }
@@ -789,6 +807,7 @@
   }
 
   function canEnterAnalysisSub(sub) {
+    if (reviewMode) return true;
     if (sub === "quantitative") return allActiveStudentsFullyGraded();
     if (sub === "qualitative") return allActiveStudentsFullyGraded();
     return false;
@@ -898,6 +917,11 @@
   }
 
   function tryAdvanceGradingSubStep() {
+    if (reviewMode) {
+      if (gradingSubStep === "weights") { showGradingSubStep("rubric"); return false; }
+      if (gradingSubStep === "rubric") { showGradingSubStep("capture"); return false; }
+      return true;
+    }
     if (gradingSubStep === "weights") {
       if (!piWeightsValid) {
         setStatus("La suma de ponderaciones debe ser exactamente 100%.", "error");
@@ -918,6 +942,7 @@
   }
 
   function buildWeightsTableHtml(pis) {
+    if (reviewMode) return buildWeightsReadOnlyHtml(pis);
     var head = "<thead><tr><th scope=\"col\">Criterio</th><th scope=\"col\">%</th></tr></thead><tbody>";
     var body = "";
     pis.forEach(function (pi) {
@@ -925,6 +950,22 @@
       body += '<td class="weight-cell">' + buildWeightInputHtml(pi) + "</td></tr>";
     });
     return '<table class="rubric-matrix weights-matrix">' + head + body + "</tbody></table>" + buildWeightTotalHtml();
+  }
+
+  function buildWeightsReadOnlyHtml(pis) {
+    var head = "<thead><tr><th scope=\"col\">Criterio</th><th scope=\"col\">%</th></tr></thead><tbody>";
+    var body = "";
+    var hasAny = false;
+    pis.forEach(function (pi) {
+      var label = pi.pi_weight != null ? String(pi.pi_weight) + " %" : "Sin registrar";
+      if (pi.pi_weight != null) hasAny = true;
+      body += "<tr><td class=\"criterion-cell\">" + escapeHtml(pi.code) + ": " + escapeHtml(pi.description) + "</td>";
+      body += '<td class="weight-cell">' + escapeHtml(label) + "</td></tr>";
+    });
+    var foot = hasAny
+      ? "<p class=\"muted weight-total weight-total-ok\">Total ponderación: " + escapeHtml(formatWeightTotal(sumPiWeights())) + "%</p>"
+      : "<p class=\"muted\">El docente aún no registró ponderaciones para este módulo.</p>";
+    return '<table class="rubric-matrix weights-matrix weights-matrix--readonly">' + head + body + "</tbody></table>" + foot;
   }
 
   function buildRubricReadOnlyHtml(pis) {
@@ -946,7 +987,7 @@
   }
 
   function attachPiWeightListeners(root) {
-    if (!root) return;
+    if (reviewMode || !root) return;
     root.querySelectorAll(".pi-weight-input").forEach(function (input) {
       input.addEventListener("input", function () {
         queuePiWeightSave(input);
@@ -974,6 +1015,7 @@
   }
 
   function queuePiWeightSave(input) {
+    if (reviewMode) return;
     if (!currentEvaluation || !input) return;
     var piId = Number(input.dataset.piId);
     var raw = (input.value || "").trim();
@@ -999,6 +1041,7 @@
   }
 
   async function flushPendingWeightSaves(force) {
+    if (reviewMode) return;
     if (!pendingWeightUpserts.size) return;
     if (!validatePiWeights()) {
       setSaveIndicator("Ponderaciones deben sumar 100%", "error");
@@ -1918,7 +1961,7 @@
       renderGradingHeader();
       renderWeightsPanel();
       renderRubricReviewPanel();
-      showGradingSubStep("weights");
+      if (!reviewMode) showGradingSubStep("weights");
       analysisSubStep = "quantitative";
       applyModuleQualitativeFields(qualitativeData.module);
       renderAnalyses({ analyses: qualitativeData.analyses });
@@ -1926,6 +1969,7 @@
       updateWizardState();
       if (reviewMode) {
         applyReviewModeChrome();
+        showStep("general");
         setStatus("Revisión cargada. " + activeStudentCount + " estudiantes activos.", "success");
       } else {
         setStatus("Datos cargados. " + activeStudentCount + " estudiantes activos.", "success");

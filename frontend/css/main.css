@@ -153,6 +153,18 @@ body {
   pointer-events: none;
 }
 
+.assessment-review-mode #edit-roster-btn,
+.assessment-review-mode .rubric-ack-label,
+.assessment-review-mode #weights-recalc-notice,
+.assessment-review-mode #save-indicator,
+.assessment-review-mode #qualitative-save-indicator {
+  display: none !important;
+}
+
+.assessment-review-mode .weights-matrix--readonly .weight-cell {
+  font-weight: 600;
+}
+
 .wizard-steps--toolbar {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

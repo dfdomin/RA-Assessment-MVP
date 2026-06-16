@@ -157,3 +157,4 @@ def test_assessment_supports_leader_review_mode():
     assert 'params.get("mode") === "review"' in js
     assert "applyReviewModeChrome" in js
     assert "verifyReviewAccess" in js
+    assert "buildWeightsReadOnlyHtml" in js

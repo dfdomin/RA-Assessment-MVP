@@ -161,6 +161,8 @@ def test_dashboard_leader_scopes_by_program():
     assert "currentProgramId" in js
     assert "program_id" in js
     assert "loadLeaderPrograms" in js
+    assert "currentProgramId = null" in js
+    assert "No está asignado como consolidador en este RA" in js
 
 
 def test_dashboard_treats_consolidator_assignments_as_leader_capability():

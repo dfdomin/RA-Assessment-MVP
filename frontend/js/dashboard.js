@@ -810,6 +810,7 @@
       if (period.cycle_id) assignQuery = assignQuery.eq("cycle_id", period.cycle_id);
       const { data: rows } = await assignQuery;
       if (!rows.length) {
+        currentProgramId = null;
         programSelect.appendChild(new Option("Sin programas asignados", ""));
         return;
       }
@@ -841,7 +842,14 @@
     try {
       await requireSession();
       const sb = ensureSupabase();
-      if (isLeader() && periodId !== TEACHER_ALL_PERIODS) await loadLeaderPrograms(periodId);
+      if (isLeader() && periodId !== TEACHER_ALL_PERIODS) {
+        await loadLeaderPrograms(periodId);
+        if (!currentProgramId) {
+          renderEmpty("No está asignado como consolidador en este RA.");
+          setStatus("Seleccione un RA donde tenga asignación de consolidador.", "info");
+          return;
+        }
+      }
       var evalQuery = sb.from("module_ra_evaluations")
         .select("id, status, period_id, module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name))), period:periods(student_outcome:student_outcomes(code))");
       var cycleProgress = null;
