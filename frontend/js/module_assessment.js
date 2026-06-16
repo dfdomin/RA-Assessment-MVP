@@ -846,6 +846,7 @@
   }
 
   function canEnterGradingSub(sub) {
+    if (reviewMode) return true;
     if (sub === "weights") return true;
     if (sub === "rubric") return piWeightsValid;
     if (sub === "capture") return piWeightsValid && rubricReviewAck && rubricReviewAck.checked;
@@ -854,6 +855,7 @@
 
   function showGradingSubStep(sub) {
     if (!canEnterGradingSub(sub)) {
+      if (reviewMode) return;
       if (sub === "rubric" && !piWeightsValid) {
         setStatus("Ajuste las ponderaciones hasta sumar 100% antes de continuar.", "error");
       } else if (sub === "capture") {
@@ -881,6 +883,7 @@
     }
     updateWizardNavLabels();
     updateWizardChrome();
+    if (reviewMode) setStatus("", "");
   }
 
   function updateWizardNavLabels() {
