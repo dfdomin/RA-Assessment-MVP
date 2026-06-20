@@ -76,14 +76,18 @@
     callEdgeFunction: callEdgeFunction,
     callEdgeFunctionJson: callEdgeFunctionJson,
     downloadEdgeFunction: downloadEdgeFunction,
-    reportAbetPreview: function (periodId) {
-      return callEdgeFunctionJson("report-abet", { period_id: periodId, format: "preview" });
+    reportAbetPreview: function (periodId, programId) {
+      return callEdgeFunctionJson("report-abet", {
+        period_id: periodId,
+        program_id: programId,
+        format: "preview",
+      });
     },
-    reportAbetExport: function (periodId, format) {
+    reportAbetExport: function (periodId, programId, format) {
       return downloadEdgeFunction(
         "report-abet",
-        { period_id: periodId, format: format },
-        "reporte-" + periodId + "." + (format === "xlsx" ? "xlsx" : "html")
+        { period_id: periodId, program_id: programId, format: format },
+        "reporte-" + periodId + "-prog" + programId + "." + (format === "xlsx" ? "xlsx" : "html")
       );
     },
     reportLeaderExport: function (periodId, programId, format) {

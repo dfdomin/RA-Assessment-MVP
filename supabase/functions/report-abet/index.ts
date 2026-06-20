@@ -1,14 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as XLSX from "https://esm.sh/xlsx@0.18.5";
-import { getCaller, requireRole, serviceClient } from "../_shared/auth.ts";
+import { getCaller, requireLeaderAccess, serviceClient } from "../_shared/auth.ts";
 import { safeCellValue } from "../_shared/sanitize.ts";
 import { corsHeaders, handleCors, jsonResponse } from "../_shared/cors.ts";
 
 const LEVEL_LABELS: Record<number, string> = {
   1: "Poor",
   2: "Inadequate",
-  3: "Adequate",
-  4: "Exemplary",
+  4: "Adequate",
+  5: "Exemplary",
 };
 
 type ReportPayload = {
@@ -18,7 +18,10 @@ type ReportPayload = {
   distribution_by_pi: Record<string, unknown>;
 };
 
-async function buildReportData(periodId: number): Promise<ReportPayload> {
+async function buildReportData(
+  periodId: number,
+  programId?: number | null,
+): Promise<ReportPayload> {
   const db = serviceClient();
 
   const { data: period, error: periodError } = await db
@@ -28,10 +31,21 @@ async function buildReportData(periodId: number): Promise<ReportPayload> {
     .single();
   if (periodError || !period) throw new Error("Period not found");
 
-  const { data: modules } = await db
-    .from("modules")
-    .select("id, course_code, course_name, group_name, module_staff(user_id, users(full_name))")
+  const { data: evalRows } = await db
+    .from("module_ra_evaluations")
+    .select(
+      "module:modules(id, course_code, course_name, group_name, program_id, module_staff(user_id, users(full_name)))",
+    )
     .eq("period_id", periodId);
+
+  const moduleMap = new Map<number, Record<string, unknown>>();
+  for (const row of evalRows ?? []) {
+    const mod = row.module as Record<string, unknown> | null;
+    if (!mod || mod.id == null) continue;
+    if (programId && Number(mod.program_id) !== programId) continue;
+    moduleMap.set(Number(mod.id), mod);
+  }
+  const modules = Array.from(moduleMap.values());
 
   let pis: Array<{ id: number; code: string; description: string }> = [];
   if (period.rubric_id) {
@@ -185,16 +199,26 @@ serve(async (req) => {
     const { user, error } = await getCaller(req);
     if (error || !user) return jsonResponse({ error: error ?? "Unauthorized" }, 401);
 
-    const forbidden = requireRole(user, ["admin", "leader"]);
-    if (forbidden) return jsonResponse({ error: forbidden }, 403);
-
     const body = await req.json();
     const periodId = Number(body.period_id);
+    const programId = body.program_id != null ? Number(body.program_id) : null;
     const format = String(body.format ?? "json");
 
     if (!periodId) return jsonResponse({ error: "period_id required" }, 400);
 
-    const report = await buildReportData(periodId);
+    if (user.role === "teacher") {
+      if (!programId) {
+        return jsonResponse({ error: "program_id required" }, 400);
+      }
+      const forbidden = await requireLeaderAccess(user, programId, periodId);
+      if (forbidden) return jsonResponse({ error: forbidden }, 403);
+    } else if (user.role === "leader") {
+      /* legacy leader role — allowed for period */
+    } else if (user.role !== "admin") {
+      return jsonResponse({ error: "Forbidden" }, 403);
+    }
+
+    const report = await buildReportData(periodId, programId);
 
     if (format === "json" || format === "preview") {
       return jsonResponse(report);

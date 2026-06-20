@@ -34,6 +34,10 @@
       <div>
         <h2 id="dashboard-title">Módulos asignados</h2>
         <p id="welcome-msg">Cargando información de usuario…</p>
+        <div id="work-mode-switcher" class="work-mode-switcher" hidden>
+          <span id="work-mode-label" class="work-mode-label"></span>
+          <button id="change-role-btn" type="button" class="btn-secondary compact">Cambiar rol</button>
+        </div>
       </div>
       <button id="logout-btn" class="btn-secondary" type="button">Cerrar sesión</button>
     </section>
@@ -154,8 +158,8 @@
     <section id="leader-panel" class="leader-panel" aria-labelledby="leader-title" hidden>
       <div class="leader-header">
         <div>
-          <h3 id="leader-title">Panel del líder</h3>
-          <p class="muted">Revisa el avance consolidado, el reporte ABET y el análisis por PI.</p>
+          <h3 id="leader-title">Consolidación del programa</h3>
+          <p class="muted">Use las pestañas: seguimiento, portada del informe, medición, análisis por PI e informe final.</p>
         </div>
         <div class="period-filter leader-program-filter">
           <label for="program-select">Programa</label>
@@ -163,62 +167,250 @@
             <option value="">Cargando programas…</option>
           </select>
         </div>
-        <div class="leader-actions" aria-label="Acciones del período">
-          <button id="view-report-btn" class="btn-secondary" type="button">Ver reporte</button>
-          <button id="close-period-btn" class="btn-secondary" type="button">Cerrar período</button>
-          <button id="send-reminder-btn" class="btn-secondary" type="button">Enviar recordatorio</button>
-        </div>
       </div>
 
-      <div class="period-progress" aria-label="Progreso de módulos completados">
-        <div class="period-progress-meta">
-          <span>Módulos completados</span>
-          <strong id="period-progress-text">0 de 0</strong>
-        </div>
-        <div class="progress-track" aria-hidden="true">
-          <span id="period-progress-bar" class="progress-bar" style="width: 0%"></span>
-        </div>
+      <div class="leader-tabs" role="tablist" aria-label="Pasos de consolidación">
+        <button
+          id="leader-tab-btn-tracking"
+          class="leader-tab"
+          type="button"
+          role="tab"
+          aria-selected="true"
+          aria-controls="leader-tab-tracking"
+          data-leader-tab="tracking"
+        >
+          Seguimiento
+        </button>
+        <button
+          id="leader-tab-btn-cover"
+          class="leader-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="leader-tab-cover"
+          data-leader-tab="cover"
+          tabindex="-1"
+        >
+          Portada del informe
+        </button>
+        <button
+          id="leader-tab-btn-distribution"
+          class="leader-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="leader-tab-distribution"
+          data-leader-tab="distribution"
+          tabindex="-1"
+        >
+          Medición consolidada
+        </button>
+        <button
+          id="leader-tab-btn-analysis"
+          class="leader-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="leader-tab-analysis"
+          data-leader-tab="analysis"
+          tabindex="-1"
+        >
+          Análisis por PI
+        </button>
+        <button
+          id="leader-tab-btn-report"
+          class="leader-tab"
+          type="button"
+          role="tab"
+          aria-selected="false"
+          aria-controls="leader-tab-report"
+          data-leader-tab="report"
+          tabindex="-1"
+        >
+          Informe del líder
+        </button>
       </div>
 
-      <div id="report-preview" class="report-preview" aria-live="polite">
-        Selecciona un período para consultar el resumen ejecutivo.
-      </div>
-
-      <form id="leader-analysis-form" class="leader-analysis-form">
-        <div class="section-heading">
-          <h4>Análisis del líder</h4>
-          <button id="save-leader-analysis-btn" class="btn-primary compact" type="submit">
-            Guardar análisis
-          </button>
-        </div>
-        <div id="leader-analysis-list" class="leader-analysis-list">
-          <p class="muted">Selecciona un período para cargar los indicadores.</p>
-        </div>
-        <p id="leader-analysis-status" class="status-message" role="status" aria-live="polite"></p>
-      </form>
-
-      <form id="leader-report-form" class="leader-analysis-form">
-        <div class="section-heading">
-          <h4>Informe del líder</h4>
-          <div class="leader-actions">
-            <button id="save-leader-report-btn" class="btn-primary compact" type="submit">
-              Guardar informe
-            </button>
-            <button id="leader-report-pdf-btn" class="btn-secondary compact" type="button">
-              PDF
-            </button>
-            <button id="leader-report-docx-btn" class="btn-secondary compact" type="button" title="Descarga un archivo de texto plano (.txt)">
-              Exportar texto
-            </button>
+      <div
+        id="leader-tab-tracking"
+        class="leader-tab-panel"
+        role="tabpanel"
+        aria-labelledby="leader-tab-btn-tracking"
+      >
+        <p class="leader-tab-intro muted">
+          Avance de envío de los docentes del programa. Desde la tabla superior puede revisar cada módulo antes de consolidar.
+        </p>
+        <div class="period-progress" aria-label="Progreso de módulos completados">
+          <div class="period-progress-meta">
+            <span>Módulos completados</span>
+            <strong id="period-progress-text">0 de 0</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <span id="period-progress-bar" class="progress-bar" style="width: 0%"></span>
           </div>
         </div>
-        <div id="leader-report-list" class="leader-analysis-list">
-          <p class="muted">Selecciona un período para cargar el informe.</p>
+        <div class="leader-actions leader-tab-actions" aria-label="Acciones de seguimiento">
+          <button id="send-reminder-btn" class="btn-secondary" type="button">Enviar recordatorio</button>
+          <button id="close-period-btn" class="btn-secondary" type="button">Cerrar período</button>
         </div>
-        <p id="leader-report-status" class="status-message" role="status" aria-live="polite"></p>
-      </form>
+        <div id="reminder-history-wrap" class="reminder-history-wrap" hidden>
+          <h4>Recordatorios enviados</h4>
+          <ul id="reminder-history-list" class="reminder-history-list"></ul>
+        </div>
+      </div>
+
+      <div
+        id="leader-tab-cover"
+        class="leader-tab-panel"
+        role="tabpanel"
+        aria-labelledby="leader-tab-btn-cover"
+        hidden
+      >
+        <p class="leader-tab-intro muted">
+          Portada del informe consolidado: alcance del RA, módulos participantes, leyenda ABET y metadatos del período.
+        </p>
+        <div id="leader-report-cover" class="leader-report-cover" aria-live="polite">
+          Selecciona un período para consultar la portada del informe.
+        </div>
+      </div>
+
+      <div
+        id="leader-tab-distribution"
+        class="leader-tab-panel"
+        role="tabpanel"
+        aria-labelledby="leader-tab-btn-distribution"
+        hidden
+      >
+        <p class="leader-tab-intro muted">
+          Distribución cuantitativa consolidada del programa: mismos niveles que ve cada docente, sumando todos los grupos.
+        </p>
+        <div class="leader-actions leader-tab-actions" aria-label="Acciones del reporte ABET">
+          <button id="view-report-btn" class="btn-secondary" type="button">Ver reporte ABET</button>
+        </div>
+        <div id="report-preview" class="report-preview" aria-live="polite">
+          Selecciona un período para consultar la medición consolidada.
+        </div>
+      </div>
+
+      <div
+        id="leader-tab-analysis"
+        class="leader-tab-panel"
+        role="tabpanel"
+        aria-labelledby="leader-tab-btn-analysis"
+        hidden
+      >
+        <form id="leader-analysis-form" class="leader-analysis-form">
+          <p class="leader-tab-intro muted">
+            Por cada indicador verá la medición por grupo (solo lectura), los análisis que escribieron los docentes y, al final, su propio análisis como líder.
+          </p>
+          <div class="section-heading">
+            <h4>Reporte por indicador de desempeño</h4>
+            <button id="save-leader-analysis-btn" class="btn-primary compact" type="submit">
+              Guardar análisis
+            </button>
+          </div>
+          <div id="leader-analysis-list" class="leader-analysis-list">
+            <p class="muted">Selecciona un período para cargar los indicadores.</p>
+          </div>
+          <p id="leader-analysis-status" class="status-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <div
+        id="leader-tab-report"
+        class="leader-tab-panel"
+        role="tabpanel"
+        aria-labelledby="leader-tab-btn-report"
+        hidden
+      >
+        <form id="leader-report-form" class="leader-analysis-form">
+          <p class="leader-tab-intro muted">
+            Redacte las conclusiones finales del informe del líder por PI. Puede exportar a PDF o texto cuando termine.
+          </p>
+          <div class="section-heading">
+            <h4>Informe consolidado</h4>
+            <div class="leader-actions">
+              <button id="save-leader-report-btn" class="btn-primary compact" type="submit">
+                Guardar informe
+              </button>
+              <button id="leader-report-pdf-btn" class="btn-secondary compact" type="button">
+                PDF
+              </button>
+              <button id="leader-report-docx-btn" class="btn-secondary compact" type="button" title="Descarga un archivo de texto plano (.txt)">
+                Exportar texto
+              </button>
+            </div>
+          </div>
+          <div id="leader-report-list" class="leader-analysis-list">
+            <p class="muted">Selecciona un período para cargar el informe.</p>
+          </div>
+          <p id="leader-report-status" class="status-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
     </section>
   </main>
+
+  <dialog id="close-period-dialog" class="ra-dialog ra-dialog-wide" aria-labelledby="close-period-title">
+    <form method="dialog" id="close-period-form">
+      <h3 id="close-period-title">Cerrar período de captura</h3>
+      <p id="close-period-intro" class="muted"></p>
+      <ul id="close-period-checklist" class="close-period-checklist"></ul>
+      <div id="close-period-pending-wrap" class="close-period-pending-wrap" hidden>
+        <h4>Módulos pendientes</h4>
+        <ul id="close-period-pending-list" class="close-period-pending-list"></ul>
+      </div>
+      <label id="close-period-force-wrap" class="close-period-force-wrap" hidden>
+        <input id="close-period-force" type="checkbox" />
+        Entiendo que aún hay pendientes y deseo forzar el cierre del período completo.
+      </label>
+      <p id="close-period-dialog-status" class="status-message" role="status" aria-live="polite"></p>
+      <menu class="ra-dialog-actions">
+        <button class="btn-secondary" type="submit" value="cancel">Cancelar</button>
+        <button id="close-period-confirm" class="btn-primary compact" type="submit" value="confirm" disabled>
+          Cerrar período
+        </button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="reminder-dialog" class="ra-dialog ra-dialog-wide" aria-labelledby="reminder-dialog-title">
+    <form method="dialog" id="reminder-form">
+      <h3 id="reminder-dialog-title">Enviar recordatorio a docentes</h3>
+      <p id="reminder-dialog-intro" class="muted">
+        Seleccione los módulos pendientes, revise el mensaje y abra el borrador de correo en su cliente habitual.
+      </p>
+      <label class="reminder-select-all-wrap">
+        <input id="reminder-select-all" type="checkbox" />
+        Seleccionar todos los pendientes
+      </label>
+      <div id="reminder-recipient-wrap" class="reminder-recipient-wrap">
+        <ul id="reminder-recipient-list" class="reminder-recipient-list"></ul>
+      </div>
+      <label class="reminder-template-label" for="reminder-template">
+        Mensaje (plantilla editable)
+      </label>
+      <textarea id="reminder-template" class="reminder-template" rows="8" maxlength="4000"></textarea>
+      <p class="muted reminder-template-hint">
+        Variables: <code>{nombre_docente}</code>, <code>{modulo}</code>, <code>{avance_pct}</code>,
+        <code>{dias_restantes}</code>, <code>{login_url}</code>
+      </p>
+      <div id="reminder-preview-wrap" class="reminder-preview-wrap" hidden>
+        <h4>Vista previa (primer destinatario seleccionado)</h4>
+        <pre id="reminder-preview" class="reminder-preview"></pre>
+      </div>
+      <div id="reminder-mailto-wrap" class="reminder-mailto-wrap" hidden>
+        <h4>Abrir correo</h4>
+        <ul id="reminder-mailto-list" class="reminder-mailto-list"></ul>
+      </div>
+      <p id="reminder-dialog-status" class="status-message" role="status" aria-live="polite"></p>
+      <menu class="ra-dialog-actions">
+        <button class="btn-secondary" type="submit" value="cancel">Cancelar</button>
+        <button id="reminder-send-btn" class="btn-primary compact" type="submit" value="send" disabled>
+          Registrar y preparar correos
+        </button>
+      </menu>
+    </form>
+  </dialog>
 
   <footer class="site-footer" role="contentinfo">
     <p>© 2026 Institución Universitaria de Barranquilla · Todos los derechos reservados</p>
@@ -227,7 +419,9 @@
     <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="./js/supabase-client.js?v=BUILD_SHA"></script>
+  <script src="./js/role_mode.js?v=BUILD_SHA"></script>
   <script src="./js/api.js?v=BUILD_SHA"></script>
+  <script src="./js/action-button.js?v=BUILD_SHA"></script>
   <script src="./js/dashboard.js?v=BUILD_SHA"></script>
 </body>
 </html>

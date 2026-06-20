@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <title>Elegir modo — RA Assessment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="./css/main.css?v=BUILD_SHA" />
+</head>
+<body>
+
+  <header class="site-header" role="banner">
+    <svg
+      class="logo"
+      viewBox="0 0 120 40"
+      aria-label="Institución Universitaria de Barranquilla"
+      role="img"
+      focusable="false"
+    >
+      <rect width="120" height="40" fill="#FFDF2D" rx="4" />
+      <text x="8" y="26" font-family="Arial, sans-serif" font-weight="bold" font-size="14" fill="#1E2843">IUB</text>
+    </svg>
+    <h1>Sistema de Evaluación de Resultados de Aprendizaje</h1>
+  </header>
+
+  <main>
+    <section class="card role-select-card-wrap" aria-labelledby="role-select-heading">
+      <h2 id="role-select-heading">¿Cómo quieres trabajar hoy?</h2>
+      <p class="role-select-intro">Puedes cambiar de modo más tarde desde el panel.</p>
+
+      <form id="role-select-form" class="role-select-form" novalidate>
+        <fieldset class="role-select-fieldset">
+          <legend class="visually-hidden">Modo de trabajo</legend>
+
+          <label class="role-select-option">
+            <input type="radio" name="work-mode" value="teacher" required />
+            <span class="role-select-option-body">
+              <span class="role-select-option-title">Docente</span>
+              <span class="role-select-option-desc">Calificar tus módulos, importar listas y enviar mediciones.</span>
+            </span>
+          </label>
+
+          <label class="role-select-option">
+            <input type="radio" name="work-mode" value="leader" required />
+            <span class="role-select-option-body">
+              <span class="role-select-option-title">Líder consolidador</span>
+              <span class="role-select-option-desc">Revisar envíos de docentes, análisis por PI e informe del RA.</span>
+            </span>
+          </label>
+        </fieldset>
+
+        <button class="btn-primary" type="submit">Continuar</button>
+      </form>
+
+      <p id="role-select-status" class="status-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <p>© 2026 Institución Universitaria de Barranquilla · Todos los derechos reservados</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="./js/supabase-client.js?v=BUILD_SHA"></script>
+  <script src="./js/role_mode.js?v=BUILD_SHA"></script>
+  <script src="./js/role_select.js?v=BUILD_SHA"></script>
+</body>
+</html>

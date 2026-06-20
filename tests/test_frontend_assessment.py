@@ -50,6 +50,7 @@ def test_assessment_page_declares_grading_surface():
     assert 'id="qualitative-save-indicator"' in html
     assert 'id="submit-module-btn"' in html
     assert "./js/module_assessment.js" in html
+    assert "./js/action-button.js" in html
     assert "./js/supabase-client.js" in html
     assert "./js/api.js" in html
 

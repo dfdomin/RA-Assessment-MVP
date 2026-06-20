@@ -7,6 +7,11 @@
   var evaluationId = params.get("evaluation_id");
   var legacyModuleId = params.get("module_id");
   var reviewMode = params.get("mode") === "review";
+  if (reviewMode && evaluationId) {
+    window.location.replace("./module_review.html?evaluation_id=" + encodeURIComponent(evaluationId));
+    return;
+  }
+
   if (!evaluationId && !legacyModuleId) {
     document.body.innerHTML = '<p style="padding:2rem">Falta evaluation_id en la URL.</p>';
     return;
@@ -600,12 +605,12 @@
   }
 
   async function handleRosterPreview() {
-    if (!rosterPdfFile || !currentModule) return;
+    if (!rosterPdfFile || !currentModule || !rosterPreviewBtn) return;
     if (typeof RaApi === "undefined" || !RaApi.studentsImportPreview) {
       setStatus("API de importación no disponible.", "error");
       return;
     }
-    rosterPreviewBtn.disabled = true;
+    if (!window.RaActionButton || !window.RaActionButton.setLoading(rosterPreviewBtn, true, "Analizando…")) return;
     setStatus("Analizando PDF…");
     try {
       await requireAuthOrRedirect();
@@ -616,12 +621,14 @@
     } catch (e) {
       resetRosterPreviewUi();
       if (!isAuthError(e)) setStatus("Error en vista previa: " + (e.message || e), "error");
+    } finally {
+      window.RaActionButton.setLoading(rosterPreviewBtn, false);
+      rosterPreviewBtn.disabled = !rosterPdfFile;
     }
-    rosterPreviewBtn.disabled = !rosterPdfFile;
   }
 
   async function handleRosterConfirm() {
-    if (!rosterPdfFile || !rosterPreviewData || !currentModule) return;
+    if (!rosterPdfFile || !rosterPreviewData || !currentModule || !rosterConfirmBtn) return;
     if (!rosterConsentCheckbox || !rosterConsentCheckbox.checked) {
       setStatus("Debe aceptar el tratamiento de datos (Ley 1581).", "error");
       return;
@@ -630,7 +637,7 @@
       setStatus("API de importación no disponible.", "error");
       return;
     }
-    rosterConfirmBtn.disabled = true;
+    if (!window.RaActionButton || !window.RaActionButton.setLoading(rosterConfirmBtn, true, "Importando…")) return;
     setStatus("Importando estudiantes…");
     try {
       await requireAuthOrRedirect();
@@ -658,8 +665,10 @@
       setStatus(msg, (result.errors && result.errors.length) ? "error" : "success");
     } catch (e) {
       if (!isAuthError(e)) setStatus("Error al importar: " + (e.message || e), "error");
+    } finally {
+      window.RaActionButton.setLoading(rosterConfirmBtn, false);
+      updateRosterConfirmState();
     }
-    updateRosterConfirmState();
   }
 
   async function addManualStudent() {
@@ -670,7 +679,7 @@
       setStatus("Documento y nombre completo son obligatorios.", "error");
       return;
     }
-    rosterManualAddBtn.disabled = true;
+    if (!window.RaActionButton || !window.RaActionButton.setLoading(rosterManualAddBtn, true, "Agregando…")) return;
     setStatus("Agregando estudiante…");
     try {
       var client = assertSupabase();
@@ -725,8 +734,9 @@
       setStatus("Estudiante agregado a la lista.", "success");
     } catch (e) {
       if (!isAuthError(e)) setStatus("Error al agregar: " + (e.message || e), "error");
+    } finally {
+      if (window.RaActionButton) window.RaActionButton.setLoading(rosterManualAddBtn, false);
     }
-    rosterManualAddBtn.disabled = false;
   }
 
   async function excludeStudent(msId, reasonCode) {
@@ -2093,11 +2103,13 @@
 
   if (continueAnalysisBtn) {
     continueAnalysisBtn.addEventListener("click", async function () {
-      if (!allActiveStudentsFullyGraded()) return;
-      await flushPendingSaves(true);
-      analysisSubStep = "quantitative";
-      showStep("analysis");
-      setStatus("Revise la distribución por indicador (4a) antes del análisis cualitativo.", "success");
+      if (!allActiveStudentsFullyGraded() || !window.RaActionButton) return;
+      await window.RaActionButton.run(continueAnalysisBtn, "Cargando…", async function () {
+        await flushPendingSaves(true);
+        analysisSubStep = "quantitative";
+        showStep("analysis");
+        setStatus("Revise la distribución por indicador (4a) antes del análisis cualitativo.", "success");
+      });
     });
   }
 
@@ -2116,7 +2128,7 @@
   submitModuleBtn.addEventListener("click", async function () {
     if (reviewMode) return;
     if (!allActiveStudentsFullyGraded() || !allAnalysesComplete()) { setStatus("Complete calificaciones y analisis primero.", "error"); return; }
-    submitModuleBtn.disabled = true;
+    if (!window.RaActionButton || !window.RaActionButton.setLoading(submitModuleBtn, true, "Enviando…")) return;
     setStatus("Enviando módulo...");
     if (submitCelebration) submitCelebration.hidden = true;
     try {
@@ -2137,11 +2149,13 @@
       var progress = await teacherEvaluationProgress(client, session.user.id, cycleId);
       var xp = computeXpProgress(progress.completed, progress.total);
       setStatus("", "");
+      submitModuleBtn.removeAttribute("aria-busy");
+      submitModuleBtn.disabled = true;
       submitModuleBtn.textContent = "Módulo enviado";
       showSubmitCelebration(xp.earned, xp.cumulative, xp.allComplete);
     } catch (e) {
       if (!isAuthError(e)) setStatus("Error: " + (e.message || e), "error");
-      submitModuleBtn.disabled = false;
+      if (window.RaActionButton) window.RaActionButton.setLoading(submitModuleBtn, false);
     }
   });
 

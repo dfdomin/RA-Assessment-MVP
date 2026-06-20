@@ -14,11 +14,26 @@
 
   if (!form) return;
 
+  async function redirectAfterLogin(userId) {
+    if (typeof RaRoleMode === "undefined") {
+      window.location.replace("./dashboard.html");
+      return;
+    }
+    var caps = await RaRoleMode.detectUserCapabilities(supabase, userId);
+    if (caps.teacher && !caps.leader) RaRoleMode.setWorkMode("teacher");
+    if (caps.leader && !caps.teacher) RaRoleMode.setWorkMode("leader");
+    var path = RaRoleMode.resolvePostLoginPath(
+      caps,
+      RaRoleMode.getWorkMode(),
+      RaRoleMode.hasSeenRolePicker()
+    );
+    window.location.replace(path);
+  }
+
   // Check if already logged in
   async function checkSession() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      // Verify user has a profile in public.users
       const { data: profile } = await supabase
         .from("users")
         .select("role")
@@ -26,9 +41,8 @@
         .single();
 
       if (profile) {
-        window.location.replace("./dashboard.html");
+        await redirectAfterLogin(session.user.id);
       } else {
-        // User exists in Auth but not in public.users — sign out
         await supabase.auth.signOut();
       }
     }
@@ -90,7 +104,6 @@
       }
 
       if (data.session) {
-        // Verify user profile exists
         const { data: profile, error: profileError } = await supabase
           .from("users")
           .select("role")
@@ -103,7 +116,7 @@
           return;
         }
 
-        window.location.replace("./dashboard.html");
+        await redirectAfterLogin(data.user.id);
       }
     } catch (_) {
       showError("No se pudo conectar con el servidor. Verifique su conexión.");
@@ -113,6 +126,5 @@
     }
   });
 
-  // Check session on page load
   checkSession();
 })();
