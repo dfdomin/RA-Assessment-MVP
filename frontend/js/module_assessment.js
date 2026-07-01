@@ -266,6 +266,22 @@
     });
   }
 
+  function getStudentMissingPis(student) {
+    if (!student || !piRows.length) return piRows.slice();
+    return piRows.filter(function (pi) {
+      return !(student.assessments || []).some(function (a) {
+        return a.perf_indicator_id === pi.id && a.level;
+      });
+    });
+  }
+
+  function studentGradingIncompleteMessage(student) {
+    var missing = getStudentMissingPis(student);
+    if (!missing.length) return "";
+    var codes = missing.map(function (pi) { return pi.code; }).join(", ");
+    return "Seleccione un nivel para cada criterio antes de continuar. Pendientes: " + codes + ".";
+  }
+
   function countGradedStudents() {
     return studentsData.students.filter(isStudentFullyGraded).length;
   }
@@ -1255,8 +1271,15 @@
   }
 
   function updateStudentNavButtons() {
+    var student = getCurrentStudent();
+    var atLast = currentStudentIndex >= activeStudentCount - 1;
+    var currentComplete = !student || isStudentFullyGraded(student);
     if (btnPrevStudent) btnPrevStudent.disabled = currentStudentIndex <= 0;
-    if (btnNextStudent) btnNextStudent.disabled = currentStudentIndex >= activeStudentCount - 1;
+    if (btnNextStudent) {
+      btnNextStudent.disabled = atLast;
+      btnNextStudent.setAttribute("aria-disabled", atLast || !currentComplete ? "true" : "false");
+      btnNextStudent.title = !currentComplete && !atLast ? studentGradingIncompleteMessage(student) : "";
+    }
   }
 
   function renderStudentCard() {
@@ -1305,9 +1328,15 @@
 
   function goToNextStudent() {
     if (currentStudentIndex >= activeStudentCount - 1) return;
+    var student = getCurrentStudent();
+    if (student && !isStudentFullyGraded(student)) {
+      setStatus(studentGradingIncompleteMessage(student), "error");
+      return;
+    }
     currentStudentIndex += 1;
     renderStudentCard();
     updateCaptureChrome();
+    setStatus("", "");
   }
 
   function goToPrevStudent() {
@@ -1345,10 +1374,16 @@
     if (allGraded) {
       setCaptureHintText("Todos los estudiantes activos están calificados. Puede continuar al análisis cuantitativo.");
     } else if (effectiveCaptureViewMode() === "student_card") {
-      setCaptureHintText("Complete los cuatro criterios del estudiante activo.");
+      var current = getCurrentStudent();
+      if (current && !isStudentFullyGraded(current)) {
+        setCaptureHintText(studentGradingIncompleteMessage(current));
+      } else {
+        setCaptureHintText("Todos los criterios del estudiante activo están calificados. Puede pasar al siguiente.");
+      }
     } else {
       setCaptureHintText("Complete todos los criterios de cada estudiante visible.");
     }
+    updateStudentNavButtons();
     updateWizardState();
   }
 

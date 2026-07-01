@@ -159,3 +159,13 @@ def test_assessment_supports_leader_review_mode():
     assert "applyReviewModeChrome" in js
     assert "verifyReviewAccess" in js
     assert "buildWeightsReadOnlyHtml" in js
+
+
+def test_assessment_js_blocks_next_student_until_all_pis_graded():
+    js = read_frontend("js/module_assessment.js")
+
+    assert "getStudentMissingPis" in js
+    assert "studentGradingIncompleteMessage" in js
+    assert "isStudentFullyGraded(student)" in js
+    assert "goToNextStudent" in js
+    assert "updateStudentNavButtons" in js
